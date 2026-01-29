@@ -54,6 +54,15 @@ body {
   font-size: 1.2rem;
   font-weight: 600;
   color: #f1edff;
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.nav-time:hover {
+  background: rgba(122, 82, 255, 0.15);
 }
 
 .nav-actions {

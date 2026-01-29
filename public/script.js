@@ -20,9 +20,13 @@ const appPage = document.getElementById('appPage');
 const homePage = document.getElementById('homePage');
 const worldsPage = document.getElementById('worldsPage');
 const settingsPage = document.getElementById('settingsPage');
+const combatPage = document.getElementById('combatPage');
+const logPage = document.getElementById('logPage');
 const openHomeButton = document.getElementById('openHomeButton');
 const openWorldsButton = document.getElementById('openWorldsButton');
 const openTrackerButton = document.getElementById('openTrackerButton');
+const openCombatButton = document.getElementById('openCombatButton');
+const openLogButton = document.getElementById('openLogButton');
 const openSettingsButton = document.getElementById('openSettingsButton');
 const homeGoWorldsButton = document.getElementById('homeGoWorldsButton');
 const homeGoTrackerButton = document.getElementById('homeGoTrackerButton');
@@ -794,6 +798,14 @@ const adjustTime = (milliseconds) => {
   saveState();
 };
 
+const toggleLiveClock = () => {
+  if (autoClockTimer) {
+    stopAutoClock();
+  } else {
+    startAutoClock();
+  }
+};
+
 const getInitials = (name) =>
   name
     .trim()
@@ -946,6 +958,8 @@ const showPage = (page) => {
   homePage.hidden = page !== 'home';
   worldsPage.hidden = page !== 'worlds';
   appPage.hidden = page !== 'tracker';
+  combatPage.hidden = page !== 'combat';
+  logPage.hidden = page !== 'log';
   settingsPage.hidden = page !== 'settings';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -1059,12 +1073,9 @@ longRestButton.addEventListener('click', () => {
   logEvent('Long rest taken.');
 });
 toggleClockButton.addEventListener('click', () => {
-  if (autoClockTimer) {
-    stopAutoClock();
-  } else {
-    startAutoClock();
-  }
+  toggleLiveClock();
 });
+navTimeDisplay.addEventListener('click', toggleLiveClock);
 addCombatantButton.addEventListener('click', addCombatant);
 combatantNameInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
@@ -1177,6 +1188,8 @@ createWorldButton.addEventListener('click', () => {
 openHomeButton.addEventListener('click', () => showPage('home'));
 openWorldsButton.addEventListener('click', () => showPage('worlds'));
 openTrackerButton.addEventListener('click', () => showPage('tracker'));
+openCombatButton.addEventListener('click', () => showPage('combat'));
+openLogButton.addEventListener('click', () => showPage('log'));
 homeGoWorldsButton.addEventListener('click', () => showPage('worlds'));
 homeGoTrackerButton.addEventListener('click', () => showPage('tracker'));
 openSettingsButton.addEventListener('click', openSettingsPage);

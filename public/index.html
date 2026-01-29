@@ -9,11 +9,15 @@
   <body>
     <nav class="top-nav">
       <div class="nav-brand">D&amp;D Time Tracker</div>
-      <div class="nav-time" aria-live="polite" id="navTimeDisplay">--:--:--</div>
+      <button class="nav-time" type="button" aria-live="polite" id="navTimeDisplay">
+        --:--:--
+      </button>
       <div class="nav-actions">
         <button class="ghost" id="openHomeButton" type="button">Home</button>
         <button class="ghost" id="openWorldsButton" type="button">Worlds</button>
         <button class="ghost" id="openTrackerButton" type="button">Tracker</button>
+        <button class="ghost" id="openCombatButton" type="button">Combat</button>
+        <button class="ghost" id="openLogButton" type="button">Log</button>
         <button class="ghost" id="openSettingsButton" type="button">Settings</button>
       </div>
     </nav>
@@ -158,6 +162,17 @@
           <div class="round-display" id="roundDisplay">Round 1</div>
         </div>
 
+      </section>
+    </main>
+
+    <section class="page combat-page" id="combatPage" hidden>
+      <header class="page-header">
+        <div>
+          <h2>Combat</h2>
+          <p class="helper-text">Manage initiative order and quick encounters.</p>
+        </div>
+      </header>
+      <div class="controls">
         <div class="control-group">
           <h2>Initiative Order</h2>
           <p class="helper-text">
@@ -219,13 +234,20 @@
           </div>
           <ul class="encounter-list" id="encounterDraftList"></ul>
         </div>
+      </div>
+    </section>
 
-        <div class="control-group">
+    <section class="page log-page" id="logPage" hidden>
+      <header class="page-header">
+        <div>
           <h2>Combat Log</h2>
-          <ul class="combat-log" id="combatLog"></ul>
+          <p class="helper-text">Review recent activity for this world.</p>
         </div>
-      </section>
-    </main>
+      </header>
+      <div class="control-group">
+        <ul class="combat-log" id="combatLog"></ul>
+      </div>
+    </section>
 
     <div class="modal" id="profileModal" aria-hidden="true">
       <div class="modal-backdrop" id="profileBackdrop"></div>
