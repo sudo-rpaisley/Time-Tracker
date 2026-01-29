@@ -1969,7 +1969,16 @@ const endCombat = () => {
     return;
   }
   combatActive = false;
+  if (roundHistoryEntries.length > 0) {
+    const historyEntries = roundHistoryEntries
+      .map((entry) => `Combat history • ${formatRoundHistoryEntry(entry)}`);
+    combatLogEntries = [...historyEntries, ...combatLogEntries].slice(0, 25);
+  }
+  roundHistoryEntries = [];
+  roundNumber = 1;
   updateStartCombatButton();
+  updateRoundDisplay();
+  renderRoundHistory();
   logEvent('Combat ended.');
   saveState();
 };
