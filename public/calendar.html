@@ -20,6 +20,10 @@
           <div class="calendar-month" id="calendarMonthLabel">Month</div>
           <button class="ghost" id="calendarNextButton" type="button">Next →</button>
         </div>
+        <label class="filter-control">
+          Filter
+          <select id="calendarFilterSelect"></select>
+        </label>
       </header>
 
       <div class="calendar-grid" id="calendarGrid"></div>
@@ -28,10 +32,14 @@
         <div class="calendar-form">
           <h3>Add Event</h3>
           <div class="input-row">
-            <label>
-              Title
-              <input type="text" id="eventTitleInput" placeholder="e.g. Harvest Festival" />
-            </label>
+          <label>
+            Title
+            <input type="text" id="eventTitleInput" placeholder="e.g. Harvest Festival" />
+          </label>
+          <label>
+            Type
+            <select id="eventTypeInput"></select>
+          </label>
             <label>
               Day
               <input type="number" id="eventDayInput" min="1" />

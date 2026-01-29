@@ -116,13 +116,31 @@ const calendarGrid = document.getElementById('calendarGrid');
 const calendarMonthLabel = document.getElementById('calendarMonthLabel');
 const calendarPrevButton = document.getElementById('calendarPrevButton');
 const calendarNextButton = document.getElementById('calendarNextButton');
+const calendarFilterSelect = document.getElementById('calendarFilterSelect');
 const eventTitleInput = document.getElementById('eventTitleInput');
+const eventTypeInput = document.getElementById('eventTypeInput');
 const eventDayInput = document.getElementById('eventDayInput');
 const eventMonthInput = document.getElementById('eventMonthInput');
 const eventYearInput = document.getElementById('eventYearInput');
 const eventDescriptionInput = document.getElementById('eventDescriptionInput');
 const addEventButton = document.getElementById('addEventButton');
 const calendarEventList = document.getElementById('calendarEventList');
+const timelineList = document.getElementById('timelineList');
+const timelineFilterSelect = document.getElementById('timelineFilterSelect');
+const distanceTravelledInput = document.getElementById('distanceTravelledInput');
+const encountersCompletedInput = document.getElementById('encountersCompletedInput');
+const saveWorldStatsButton = document.getElementById('saveWorldStatsButton');
+const partyDamageList = document.getElementById('partyDamageList');
+const mapImageInput = document.getElementById('mapImageInput');
+const mapZoomInput = document.getElementById('mapZoomInput');
+const mapResetButton = document.getElementById('mapResetButton');
+const mapViewport = document.getElementById('mapViewport');
+const mapImage = document.getElementById('mapImage');
+const mapMarkers = document.getElementById('mapMarkers');
+const mapTagList = document.getElementById('mapTagList');
+const encounterPresetName = document.getElementById('encounterPresetName');
+const saveEncounterPresetButton = document.getElementById('saveEncounterPresetButton');
+const encounterPresetList = document.getElementById('encounterPresetList');
 
 const timeInputs = [
   yearInput,
@@ -149,6 +167,18 @@ let roundHistoryEntries = [];
 let calendarEvents = [];
 let calendarView = null;
 let combatActive = false;
+let encounterPresets = [];
+let worldStats = {
+  distanceTravelled: 0,
+  encountersCompleted: 0
+};
+let worldMap = {
+  image: '',
+  zoom: 1,
+  offsetX: 0,
+  offsetY: 0,
+  markers: []
+};
 
 let calendarSettings = {
   monthsInYear: 12,
@@ -189,6 +219,17 @@ let timeConfig = {
 const STORAGE_KEY = 'time-tracker-state';
 let worlds = {};
 let activeWorldId = null;
+
+const EVENT_TYPES = [
+  { value: 'all', label: 'All Events' },
+  { value: 'general', label: 'General' },
+  { value: 'festival', label: 'Festival' },
+  { value: 'milestone', label: 'Milestone' },
+  { value: 'quest', label: 'Quest' },
+  { value: 'travel', label: 'Travel' },
+  { value: 'downtime', label: 'Downtime' },
+  { value: 'combat', label: 'Combat' }
+];
 
 const monsterPresets = [
   {
@@ -238,7 +279,10 @@ const createWorld = (name) => ({
   partyMembers: [],
   roundHistoryEntries: [],
   calendarEvents: [],
-  combatActive: false
+  combatActive: false,
+  encounterPresets: [],
+  worldStats: { ...worldStats },
+  worldMap: { ...worldMap }
 });
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -261,7 +305,10 @@ const saveState = () => {
     partyMembers,
     roundHistoryEntries,
     calendarEvents,
-    combatActive
+    combatActive,
+    encounterPresets,
+    worldStats,
+    worldMap
   };
   localStorage.setItem(
     STORAGE_KEY,
@@ -362,8 +409,27 @@ const setActiveWorld = (worldId) => {
     ? nextWorld.roundHistoryEntries
     : [];
   calendarEvents = Array.isArray(nextWorld.calendarEvents)
-    ? nextWorld.calendarEvents
+    ? nextWorld.calendarEvents.map((event) => ({
+      ...event,
+      type: event.type || 'general'
+    }))
     : [];
+  encounterPresets = Array.isArray(nextWorld.encounterPresets)
+    ? nextWorld.encounterPresets
+    : [];
+  worldStats = {
+    distanceTravelled: Number(nextWorld.worldStats?.distanceTravelled) || 0,
+    encountersCompleted: Number(nextWorld.worldStats?.encountersCompleted) || 0
+  };
+  worldMap = {
+    image: nextWorld.worldMap?.image || '',
+    zoom: Number(nextWorld.worldMap?.zoom) || 1,
+    offsetX: Number(nextWorld.worldMap?.offsetX) || 0,
+    offsetY: Number(nextWorld.worldMap?.offsetY) || 0,
+    markers: Array.isArray(nextWorld.worldMap?.markers)
+      ? nextWorld.worldMap.markers
+      : []
+  };
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers.map((member) => ({
       ...member,
@@ -393,6 +459,10 @@ const setActiveWorld = (worldId) => {
   updateRoundDisplay();
   updateStartCombatButton();
   renderCalendar();
+  renderTimeline();
+  renderStats();
+  renderWorldMap();
+  renderEncounterPresets();
   saveState();
 };
 
@@ -572,6 +642,9 @@ const updateRoundDisplay = () => {
   roundDisplay.textContent = `Round ${roundNumber}`;
 };
 
+const getEventTypeLabel = (value) =>
+  EVENT_TYPES.find((type) => type.value === value)?.label || 'Event';
+
 const updateStartCombatButton = () => {
   if (!startCombatButton) {
     return;
@@ -625,6 +698,28 @@ const renderRoundHistory = () => {
   });
 };
 
+const getEventFilterValue = (selectElement) =>
+  selectElement?.value && selectElement.value !== 'all'
+    ? selectElement.value
+    : null;
+
+const ensureEventTypeOptions = (selectElement, includeAll) => {
+  if (!selectElement || selectElement.options.length > 0) {
+    return;
+  }
+  EVENT_TYPES.filter((type) => includeAll || type.value !== 'all').forEach(
+    (type) => {
+      const option = document.createElement('option');
+      option.value = type.value;
+      option.textContent = type.label;
+      selectElement.appendChild(option);
+    }
+  );
+  if (!includeAll) {
+    selectElement.value = 'general';
+  }
+};
+
 const getDaysInMonth = (month, settings) =>
   settings.daysPerMonth[month - 1] || 30;
 
@@ -661,6 +756,8 @@ const renderCalendar = () => {
   if (!calendarView) {
     setCalendarViewToCurrent();
   }
+  ensureEventTypeOptions(eventTypeInput, false);
+  ensureEventTypeOptions(calendarFilterSelect, true);
   const { month, year } = calendarView;
   const monthName = calendarSettings.monthNames[month - 1] || `Month ${month}`;
   if (calendarMonthLabel) {
@@ -746,9 +843,11 @@ const renderCalendarEventsList = () => {
     return;
   }
   calendarEventList.innerHTML = '';
+  const activeFilter = getEventFilterValue(calendarFilterSelect);
   const { month, year } = calendarView;
   const events = calendarEvents
     .filter((event) => event.month === month && event.year === year)
+    .filter((event) => !activeFilter || event.type === activeFilter)
     .sort((a, b) => a.day - b.day);
 
   if (events.length === 0) {
@@ -774,7 +873,14 @@ const renderCalendarEventsList = () => {
     description.className = 'event-description';
     description.textContent = event.description || 'No description provided.';
 
-    content.append(title, description);
+    const meta = document.createElement('div');
+    meta.className = 'timeline-meta';
+    const tag = document.createElement('span');
+    tag.className = 'timeline-tag';
+    tag.textContent = getEventTypeLabel(event.type || 'general');
+    meta.appendChild(tag);
+
+    content.append(title, description, meta);
 
     const remove = document.createElement('button');
     remove.type = 'button';
@@ -783,6 +889,7 @@ const renderCalendarEventsList = () => {
     remove.addEventListener('click', () => {
       calendarEvents = calendarEvents.filter((entry) => entry.id !== event.id);
       renderCalendar();
+      renderTimeline();
       saveState();
     });
 
@@ -803,6 +910,7 @@ const addCalendarEvent = () => {
   const year = Math.max(1, Number(eventYearInput.value) || 1);
   const daysInMonth = getDaysInMonth(month, calendarSettings);
   const day = Math.max(1, Math.min(daysInMonth, Number(eventDayInput.value) || 1));
+  const type = eventTypeInput?.value || 'general';
   const description = eventDescriptionInput ? eventDescriptionInput.value.trim() : '';
 
   const newEvent = {
@@ -811,12 +919,14 @@ const addCalendarEvent = () => {
     description,
     day,
     month,
-    year
+    year,
+    type
   };
   calendarEvents = [...calendarEvents, newEvent];
   eventTitleInput.value = '';
   eventDescriptionInput.value = '';
   renderCalendar();
+  renderTimeline();
   saveState();
 };
 
@@ -837,6 +947,243 @@ const changeCalendarMonth = (delta) => {
   }
   calendarView = { month: nextMonth, year: Math.max(1, nextYear) };
   renderCalendar();
+};
+
+const getEventDateKey = (event) =>
+  `${event.year.toString().padStart(4, '0')}-${event.month
+    .toString()
+    .padStart(2, '0')}-${event.day.toString().padStart(2, '0')}`;
+
+const buildTimelineEvents = () =>
+  calendarEvents
+    .map((event) => ({
+      ...event,
+      dateKey: getEventDateKey(event)
+    }))
+    .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+const renderTimeline = () => {
+  if (!timelineList) {
+    return;
+  }
+  ensureEventTypeOptions(timelineFilterSelect, true);
+  const activeFilter = getEventFilterValue(timelineFilterSelect);
+  timelineList.innerHTML = '';
+  const events = buildTimelineEvents().filter(
+    (event) => !activeFilter || event.type === activeFilter
+  );
+  if (events.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No events recorded yet.';
+    timelineList.appendChild(item);
+    return;
+  }
+  events.forEach((event) => {
+    const item = document.createElement('li');
+    item.className = 'timeline-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'timeline-meta';
+    const dateText = document.createElement('span');
+    dateText.textContent = formatDate(
+      { year: event.year, month: event.month, day: event.day, dayOfWeekIndex: null },
+      calendarSettings
+    );
+    const tag = document.createElement('span');
+    tag.className = 'timeline-tag';
+    tag.textContent = getEventTypeLabel(event.type || 'general');
+    meta.append(dateText, tag);
+
+    const title = document.createElement('div');
+    title.className = 'timeline-title';
+    title.textContent = event.title;
+
+    const description = document.createElement('div');
+    description.className = 'event-description';
+    description.textContent = event.description || 'No description provided.';
+
+    item.append(meta, title, description);
+    timelineList.appendChild(item);
+  });
+};
+
+const renderStats = () => {
+  if (!partyDamageList) {
+    return;
+  }
+  if (distanceTravelledInput) {
+    distanceTravelledInput.value = worldStats.distanceTravelled;
+  }
+  if (encountersCompletedInput) {
+    encountersCompletedInput.value = worldStats.encountersCompleted;
+  }
+  partyDamageList.innerHTML = '';
+  if (partyMembers.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No party members added yet.';
+    partyDamageList.appendChild(item);
+    return;
+  }
+  partyMembers.forEach((member) => {
+    const item = document.createElement('li');
+    const name = document.createElement('span');
+    name.textContent = member.name;
+    const total = document.createElement('span');
+    total.textContent = `${member.totalDamageTaken || 0} dmg`;
+    item.append(name, total);
+    partyDamageList.appendChild(item);
+  });
+};
+
+const renderEncounterPresets = () => {
+  if (!encounterPresetList) {
+    return;
+  }
+  encounterPresetList.innerHTML = '';
+  if (encounterPresets.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No presets saved yet.';
+    encounterPresetList.appendChild(item);
+    return;
+  }
+  encounterPresets.forEach((preset) => {
+    const item = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = preset.name;
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+
+    const loadButton = document.createElement('button');
+    loadButton.type = 'button';
+    loadButton.className = 'ghost';
+    loadButton.textContent = 'Load';
+    loadButton.addEventListener('click', () => {
+      encounterDraft = preset.encounterDraft.map((entry) => ({ ...entry }));
+      renderEncounterDraft();
+      saveState();
+    });
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'ghost';
+    removeButton.textContent = 'Delete';
+    removeButton.addEventListener('click', () => {
+      encounterPresets = encounterPresets.filter((entry) => entry.id !== preset.id);
+      renderEncounterPresets();
+      saveState();
+    });
+
+    actions.append(loadButton, removeButton);
+    item.append(label, actions);
+    encounterPresetList.appendChild(item);
+  });
+};
+
+const handleMapDragStart = (event) => {
+  if (!mapViewport) {
+    return;
+  }
+  mapViewport.dataset.dragging = 'true';
+  mapViewport.classList.add('is-dragging');
+  mapViewport.dataset.dragStartX = event.clientX;
+  mapViewport.dataset.dragStartY = event.clientY;
+  mapViewport.dataset.dragOriginX = worldMap.offsetX;
+  mapViewport.dataset.dragOriginY = worldMap.offsetY;
+};
+
+const handleMapDragMove = (event) => {
+  if (!mapViewport || mapViewport.dataset.dragging !== 'true') {
+    return;
+  }
+  const startX = Number(mapViewport.dataset.dragStartX) || 0;
+  const startY = Number(mapViewport.dataset.dragStartY) || 0;
+  const originX = Number(mapViewport.dataset.dragOriginX) || 0;
+  const originY = Number(mapViewport.dataset.dragOriginY) || 0;
+  worldMap.offsetX = originX + (event.clientX - startX);
+  worldMap.offsetY = originY + (event.clientY - startY);
+  renderWorldMap();
+};
+
+const handleMapDragEnd = () => {
+  if (!mapViewport) {
+    return;
+  }
+  mapViewport.dataset.dragging = 'false';
+  mapViewport.classList.remove('is-dragging');
+  saveState();
+};
+
+const addMapMarker = (event) => {
+  if (!mapImage || !mapViewport || !worldMap.image) {
+    return;
+  }
+  const rect = mapImage.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return;
+  }
+  const label = window.prompt('Label this location');
+  if (!label) {
+    return;
+  }
+  const x = ((event.clientX - rect.left) / rect.width) * 100;
+  const y = ((event.clientY - rect.top) / rect.height) * 100;
+  worldMap.markers = [
+    ...worldMap.markers,
+    { id: crypto.randomUUID(), label: label.trim(), x, y }
+  ];
+  renderWorldMap();
+  saveState();
+};
+
+const renderWorldMap = () => {
+  if (!mapImage || !mapViewport || !mapMarkers) {
+    return;
+  }
+  mapImage.src = worldMap.image || '';
+  if (mapZoomInput) {
+    mapZoomInput.value = worldMap.zoom;
+  }
+  const transform = `translate(${worldMap.offsetX}px, ${worldMap.offsetY}px) scale(${worldMap.zoom})`;
+  mapImage.style.transform = transform;
+  mapMarkers.style.transform = transform;
+  mapMarkers.innerHTML = '';
+  worldMap.markers.forEach((marker) => {
+    const pin = document.createElement('div');
+    pin.className = 'map-marker';
+    pin.textContent = marker.label;
+    pin.style.left = `${marker.x}%`;
+    pin.style.top = `${marker.y}%`;
+    mapMarkers.appendChild(pin);
+  });
+  if (mapTagList) {
+    mapTagList.innerHTML = '';
+    if (worldMap.markers.length === 0) {
+      const item = document.createElement('li');
+      item.className = 'helper-text';
+      item.textContent = 'No map tags added yet.';
+      mapTagList.appendChild(item);
+    } else {
+      worldMap.markers.forEach((marker) => {
+        const item = document.createElement('li');
+        const name = document.createElement('span');
+        name.textContent = marker.label;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'ghost';
+        remove.textContent = 'Remove';
+        remove.addEventListener('click', () => {
+          worldMap.markers = worldMap.markers.filter((entry) => entry.id !== marker.id);
+          renderWorldMap();
+          saveState();
+        });
+        item.append(name, remove);
+        mapTagList.appendChild(item);
+      });
+    }
+  }
 };
 
 const updateTimeEditingState = () => {
@@ -1274,11 +1621,29 @@ const updatePartyMember = (memberId, updates) => {
   if (!memberId) {
     return;
   }
+  const { __skipDamageTracking, ...safeUpdates } = updates;
   partyMembers = partyMembers.map((member) =>
-    member.id === memberId ? { ...member, ...updates } : member
+    member.id === memberId
+      ? (() => {
+        const next = { ...member, ...safeUpdates };
+        if (
+          safeUpdates.hasOwnProperty('currentHp') &&
+          !__skipDamageTracking &&
+          Number.isFinite(member.currentHp) &&
+          Number.isFinite(next.currentHp)
+        ) {
+          const damage = Math.max(0, member.currentHp - next.currentHp);
+          if (damage > 0) {
+            next.totalDamageTaken = (member.totalDamageTaken || 0) + damage;
+          }
+        }
+        return next;
+      })()
+      : member
   );
   renderPartyList();
   renderPartyProfile();
+  renderStats();
   saveState();
 };
 
@@ -1292,6 +1657,7 @@ const removeSelectedPartyMember = () => {
   selectedPartyMemberId = null;
   renderPartyList();
   renderPartyProfile();
+  renderStats();
   saveState();
 };
 
@@ -1315,7 +1681,8 @@ const addPartyMember = () => {
     currentHp: maxHp,
     xp: Number.isNaN(xpValue) ? 0 : xpValue,
     level: Number.isNaN(levelValue) ? 1 : Math.max(1, levelValue),
-    conditions: []
+    conditions: [],
+    totalDamageTaken: 0
   };
   partyMembers = [...partyMembers, newMember];
   partyMemberName.value = '';
@@ -1326,6 +1693,7 @@ const addPartyMember = () => {
   }
   partyMemberName.focus();
   renderPartyList();
+  renderStats();
   saveState();
 };
 
@@ -1969,6 +2337,29 @@ const endCombat = () => {
     return;
   }
   combatActive = false;
+  const roundCount =
+    roundHistoryEntries.length > 0
+      ? roundHistoryEntries[roundHistoryEntries.length - 1].round
+      : roundNumber;
+  const combatDate = fromTotalSeconds(totalSeconds, calendarSettings);
+  calendarEvents = [
+    ...calendarEvents,
+    {
+      id: crypto.randomUUID(),
+      title: 'Combat concluded',
+      description: `Encounter ended after ${roundCount} round${
+        roundCount === 1 ? '' : 's'
+      }.`,
+      day: combatDate.day,
+      month: combatDate.month,
+      year: combatDate.year,
+      type: 'combat'
+    }
+  ];
+  worldStats = {
+    ...worldStats,
+    encountersCompleted: worldStats.encountersCompleted + 1
+  };
   if (roundHistoryEntries.length > 0) {
     const historyEntries = roundHistoryEntries
       .map((entry) => `Combat history • ${formatRoundHistoryEntry(entry)}`);
@@ -1979,6 +2370,9 @@ const endCombat = () => {
   updateStartCombatButton();
   updateRoundDisplay();
   renderRoundHistory();
+  renderCalendar();
+  renderTimeline();
+  renderStats();
   logEvent('Combat ended.');
   saveState();
 };
@@ -2095,6 +2489,64 @@ if (calendarNextButton) {
 if (addEventButton) {
   addEventButton.addEventListener('click', addCalendarEvent);
 }
+if (calendarFilterSelect) {
+  calendarFilterSelect.addEventListener('change', renderCalendarEventsList);
+}
+if (timelineFilterSelect) {
+  timelineFilterSelect.addEventListener('change', renderTimeline);
+}
+if (saveWorldStatsButton) {
+  saveWorldStatsButton.addEventListener('click', () => {
+    worldStats = {
+      distanceTravelled: Number(distanceTravelledInput?.value) || 0,
+      encountersCompleted: Number(encountersCompletedInput?.value) || 0
+    };
+    renderStats();
+    saveState();
+  });
+}
+if (mapImageInput) {
+  mapImageInput.addEventListener('change', () => {
+    const file = mapImageInput.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      worldMap = {
+        ...worldMap,
+        image: reader.result,
+        offsetX: 0,
+        offsetY: 0,
+        zoom: 1
+      };
+      renderWorldMap();
+      saveState();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+if (mapZoomInput) {
+  mapZoomInput.addEventListener('input', () => {
+    worldMap = { ...worldMap, zoom: Number(mapZoomInput.value) || 1 };
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapResetButton) {
+  mapResetButton.addEventListener('click', () => {
+    worldMap = { ...worldMap, offsetX: 0, offsetY: 0, zoom: 1 };
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapViewport) {
+  mapViewport.addEventListener('mousedown', handleMapDragStart);
+  mapViewport.addEventListener('mousemove', handleMapDragMove);
+  mapViewport.addEventListener('mouseup', handleMapDragEnd);
+  mapViewport.addEventListener('mouseleave', handleMapDragEnd);
+  mapViewport.addEventListener('dblclick', addMapMarker);
+}
 if (partyMemberName) {
   partyMemberName.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -2201,7 +2653,8 @@ if (partyProfileMaxHp) {
         : current?.currentHp ?? null;
     updatePartyMember(selectedPartyMemberId, {
       maxHp: nextMax,
-      currentHp: nextCurrent
+      currentHp: nextCurrent,
+      __skipDamageTracking: true
     });
   });
 }
@@ -2407,6 +2860,27 @@ if (addEncounterButton) {
 if (clearEncounterDraftButton) {
   clearEncounterDraftButton.addEventListener('click', clearEncounterDraft);
 }
+if (saveEncounterPresetButton) {
+  saveEncounterPresetButton.addEventListener('click', () => {
+    if (encounterDraft.length === 0) {
+      return;
+    }
+    const name = encounterPresetName?.value.trim() || 'Untitled Preset';
+    encounterPresets = [
+      ...encounterPresets,
+      {
+        id: crypto.randomUUID(),
+        name,
+        encounterDraft: encounterDraft.map((entry) => ({ ...entry }))
+      }
+    ];
+    if (encounterPresetName) {
+      encounterPresetName.value = '';
+    }
+    renderEncounterPresets();
+    saveState();
+  });
+}
 if (exportWorldButton) {
   exportWorldButton.addEventListener('click', () => {
     const world = getCurrentWorld();
@@ -2427,7 +2901,10 @@ if (exportWorldButton) {
       partyMembers,
       roundHistoryEntries,
       calendarEvents,
-      combatActive
+      combatActive,
+      encounterPresets,
+      worldStats,
+      worldMap
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -2478,7 +2955,23 @@ if (importWorldInput) {
           calendarEvents: Array.isArray(parsed.calendarEvents)
             ? parsed.calendarEvents
             : [],
-          combatActive: Boolean(parsed.combatActive)
+          combatActive: Boolean(parsed.combatActive),
+          encounterPresets: Array.isArray(parsed.encounterPresets)
+            ? parsed.encounterPresets
+            : [],
+          worldStats: {
+            distanceTravelled: Number(parsed.worldStats?.distanceTravelled) || 0,
+            encountersCompleted: Number(parsed.worldStats?.encountersCompleted) || 0
+          },
+          worldMap: {
+            image: parsed.worldMap?.image || '',
+            zoom: Number(parsed.worldMap?.zoom) || 1,
+            offsetX: Number(parsed.worldMap?.offsetX) || 0,
+            offsetY: Number(parsed.worldMap?.offsetY) || 0,
+            markers: Array.isArray(parsed.worldMap?.markers)
+              ? parsed.worldMap.markers
+              : []
+          }
         };
         worlds[world.id] = world;
         activeWorldId = world.id;
@@ -2546,6 +3039,10 @@ const initializeDefaults = () => {
   renderEncounterDraft();
   renderPartyList();
   renderCalendar();
+  renderTimeline();
+  renderStats();
+  renderWorldMap();
+  renderEncounterPresets();
 };
 
 initializeDefaults();
