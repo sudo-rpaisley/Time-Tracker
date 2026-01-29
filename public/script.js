@@ -1,7 +1,11 @@
 const dateDisplay = document.getElementById('dateDisplay');
 const timeDisplay = document.getElementById('timeDisplay');
-const dateInput = document.getElementById('dateInput');
-const timeInput = document.getElementById('timeInput');
+const yearInput = document.getElementById('yearInput');
+const monthInput = document.getElementById('monthInput');
+const dayInput = document.getElementById('dayInput');
+const hourInput = document.getElementById('hourInput');
+const minuteInput = document.getElementById('minuteInput');
+const secondInput = document.getElementById('secondInput');
 const setTimeButton = document.getElementById('setTimeButton');
 const nextTurnButton = document.getElementById('nextTurnButton');
 const shortRestButton = document.getElementById('shortRestButton');
@@ -12,6 +16,14 @@ const combatantMaxHpInput = document.getElementById('combatantMaxHp');
 const combatantPresetSelect = document.getElementById('combatantPreset');
 const addCombatantButton = document.getElementById('addCombatantButton');
 const initiativeTrack = document.getElementById('initiativeTrack');
+const openSettingsButton = document.getElementById('openSettingsButton');
+const settingsModal = document.getElementById('settingsModal');
+const settingsBackdrop = document.getElementById('settingsBackdrop');
+const closeSettingsButton = document.getElementById('closeSettingsButton');
+const monthsInYearInput = document.getElementById('monthsInYearInput');
+const hoursPerDayInput = document.getElementById('hoursPerDayInput');
+const daysPerMonthInput = document.getElementById('daysPerMonthInput');
+const applySettingsButton = document.getElementById('applySettingsButton');
 const profileModal = document.getElementById('profileModal');
 const profileBackdrop = document.getElementById('profileBackdrop');
 const closeProfileButton = document.getElementById('closeProfileButton');
@@ -25,12 +37,33 @@ const profileMaxHp = document.getElementById('profileMaxHp');
 const profileAvatar = document.getElementById('profileAvatar');
 const profileNotes = document.getElementById('profileNotes');
 
-let currentTime = new Date();
+let totalSeconds = 0;
 let tickingInterval = null;
 let combatants = [];
 let currentCombatantIndex = 0;
 let draggedCombatantId = null;
 let selectedCombatantId = null;
+
+let calendarSettings = {
+  monthsInYear: 12,
+  daysPerMonth: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  hoursPerDay: 24
+};
+
+const monthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+];
 
 const monsterPresets = [
   {
@@ -65,37 +98,121 @@ const monsterPresets = [
 
 const pad = (value) => String(value).padStart(2, '0');
 
-const formatDate = (date) =>
-  date.toLocaleDateString(undefined, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+const normalizeCalendarSettings = (settings) => {
+  const monthsInYear = Math.max(1, Math.floor(settings.monthsInYear || 12));
+  const hoursPerDay = Math.max(1, Math.floor(settings.hoursPerDay || 24));
+  const parsedDays = Array.isArray(settings.daysPerMonth)
+    ? settings.daysPerMonth
+    : [];
+  const daysPerMonth = [];
+  for (let i = 0; i < monthsInYear; i += 1) {
+    const value = Number(parsedDays[i]);
+    daysPerMonth.push(Number.isNaN(value) || value < 1 ? 30 : value);
+  }
+  return {
+    monthsInYear,
+    daysPerMonth,
+    hoursPerDay
+  };
+};
 
-const formatTime = (date) =>
-  date.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
+const getDaysInYear = (settings) =>
+  settings.daysPerMonth.reduce((sum, days) => sum + days, 0);
+
+const toTotalSeconds = (dateParts, settings) => {
+  const daysInYear = getDaysInYear(settings);
+  const year = Math.max(1, Math.floor(dateParts.year || 1));
+  const month = Math.max(1, Math.floor(dateParts.month || 1));
+  const safeMonth = Math.min(month, settings.monthsInYear);
+  const daysInMonth = settings.daysPerMonth[safeMonth - 1] || 30;
+  const day = Math.min(
+    Math.max(1, Math.floor(dateParts.day || 1)),
+    daysInMonth
+  );
+  const hour = Math.min(
+    Math.max(0, Math.floor(dateParts.hour || 0)),
+    settings.hoursPerDay - 1
+  );
+  const minute = Math.min(Math.max(0, Math.floor(dateParts.minute || 0)), 59);
+  const second = Math.min(Math.max(0, Math.floor(dateParts.second || 0)), 59);
+
+  const daysBeforeYear = (year - 1) * daysInYear;
+  const daysBeforeMonth = settings.daysPerMonth
+    .slice(0, safeMonth - 1)
+    .reduce((sum, value) => sum + value, 0);
+  const totalDays = daysBeforeYear + daysBeforeMonth + (day - 1);
+  return (
+    ((totalDays * settings.hoursPerDay + hour) * 60 + minute) * 60 + second
+  );
+};
+
+const fromTotalSeconds = (seconds, settings) => {
+  const totalSecondsSafe = Math.max(0, Math.floor(seconds));
+  const secondsPerHour = 60 * 60;
+  const secondsPerDay = settings.hoursPerDay * secondsPerHour;
+  const daysInYear = getDaysInYear(settings);
+  const secondsPerYear = daysInYear * secondsPerDay;
+
+  let remainingSeconds = totalSecondsSafe;
+  const year = Math.floor(remainingSeconds / secondsPerYear) + 1;
+  remainingSeconds %= secondsPerYear;
+
+  const dayOfYear = Math.floor(remainingSeconds / secondsPerDay);
+  remainingSeconds %= secondsPerDay;
+
+  let monthIndex = 0;
+  let dayIndex = dayOfYear;
+  while (monthIndex < settings.monthsInYear) {
+    const daysInMonth = settings.daysPerMonth[monthIndex] || 30;
+    if (dayIndex < daysInMonth) {
+      break;
+    }
+    dayIndex -= daysInMonth;
+    monthIndex += 1;
+  }
+
+  const hour = Math.floor(remainingSeconds / secondsPerHour);
+  remainingSeconds %= secondsPerHour;
+  const minute = Math.floor(remainingSeconds / 60);
+  const second = remainingSeconds % 60;
+
+  return {
+    year,
+    month: monthIndex + 1,
+    day: dayIndex + 1,
+    hour,
+    minute,
+    second
+  };
+};
+
+const formatDate = (dateParts, settings) => {
+  const name =
+    monthNames[dateParts.month - 1] || `Month ${dateParts.month}`;
+  return `${name} ${dateParts.day}, Year ${dateParts.year}`;
+};
+
+const formatTime = (dateParts) =>
+  `${pad(dateParts.hour)}:${pad(dateParts.minute)}:${pad(dateParts.second)}`;
 
 const syncInputs = () => {
-  dateInput.value = `${currentTime.getFullYear()}-${pad(
-    currentTime.getMonth() + 1
-  )}-${pad(currentTime.getDate())}`;
-  timeInput.value = `${pad(currentTime.getHours())}:${pad(
-    currentTime.getMinutes()
-  )}:${pad(currentTime.getSeconds())}`;
+  const dateParts = fromTotalSeconds(totalSeconds, calendarSettings);
+  yearInput.value = dateParts.year;
+  monthInput.value = dateParts.month;
+  dayInput.value = dateParts.day;
+  hourInput.value = dateParts.hour;
+  minuteInput.value = dateParts.minute;
+  secondInput.value = dateParts.second;
 };
 
 const render = () => {
-  dateDisplay.textContent = formatDate(currentTime);
-  timeDisplay.textContent = formatTime(currentTime);
+  const dateParts = fromTotalSeconds(totalSeconds, calendarSettings);
+  dateDisplay.textContent = formatDate(dateParts, calendarSettings);
+  timeDisplay.textContent = formatTime(dateParts);
 };
 
 const tick = () => {
-  currentTime = new Date(currentTime.getTime() + 1000);
+  totalSeconds += 1;
   render();
 };
 
@@ -107,18 +224,23 @@ const startClock = () => {
 };
 
 const updateTimeFromInputs = () => {
-  if (!dateInput.value || !timeInput.value) {
-    return;
-  }
-  const [year, month, day] = dateInput.value.split('-').map(Number);
-  const [hours, minutes, seconds = 0] = timeInput.value.split(':').map(Number);
-  currentTime = new Date(year, month - 1, day, hours, minutes, seconds);
+  totalSeconds = toTotalSeconds(
+    {
+      year: Number(yearInput.value),
+      month: Number(monthInput.value),
+      day: Number(dayInput.value),
+      hour: Number(hourInput.value),
+      minute: Number(minuteInput.value),
+      second: Number(secondInput.value)
+    },
+    calendarSettings
+  );
   render();
   startClock();
 };
 
 const adjustTime = (milliseconds) => {
-  currentTime = new Date(currentTime.getTime() + milliseconds);
+  totalSeconds += Math.floor(milliseconds / 1000);
   render();
   syncInputs();
 };
@@ -262,6 +384,16 @@ const renderProfile = () => {
   profileMaxHp.value = selected.maxHp ?? '';
   profileNotes.value = selected.notes ?? '';
   profileAvatar.value = '';
+};
+
+const openSettingsModal = () => {
+  settingsModal.classList.add('is-open');
+  settingsModal.setAttribute('aria-hidden', 'false');
+};
+
+const closeSettingsModal = () => {
+  settingsModal.classList.remove('is-open');
+  settingsModal.setAttribute('aria-hidden', 'true');
 };
 
 const openProfileModal = () => {
@@ -414,14 +546,28 @@ profileBackdrop.addEventListener('click', closeProfileModal);
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeProfileModal();
+    closeSettingsModal();
   }
 });
-
-syncInputs();
-render();
-startClock();
-renderInitiative();
-renderProfile();
+openSettingsButton.addEventListener('click', openSettingsModal);
+closeSettingsButton.addEventListener('click', closeSettingsModal);
+settingsBackdrop.addEventListener('click', closeSettingsModal);
+applySettingsButton.addEventListener('click', () => {
+  const monthsInYear = Number(monthsInYearInput.value);
+  const hoursPerDay = Number(hoursPerDayInput.value);
+  const daysPerMonth = daysPerMonthInput.value
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => !Number.isNaN(value));
+  calendarSettings = normalizeCalendarSettings({
+    monthsInYear,
+    hoursPerDay,
+    daysPerMonth
+  });
+  syncInputs();
+  render();
+  closeSettingsModal();
+});
 
 monsterPresets.forEach((preset) => {
   const option = document.createElement('option');
@@ -429,3 +575,28 @@ monsterPresets.forEach((preset) => {
   option.textContent = preset.name;
   combatantPresetSelect.appendChild(option);
 });
+
+const initializeDefaults = () => {
+  const now = new Date();
+  totalSeconds = toTotalSeconds(
+    {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      day: now.getDate(),
+      hour: now.getHours(),
+      minute: now.getMinutes(),
+      second: now.getSeconds()
+    },
+    calendarSettings
+  );
+  monthsInYearInput.value = calendarSettings.monthsInYear;
+  hoursPerDayInput.value = calendarSettings.hoursPerDay;
+  daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
+  syncInputs();
+  render();
+};
+
+initializeDefaults();
+startClock();
+renderInitiative();
+renderProfile();

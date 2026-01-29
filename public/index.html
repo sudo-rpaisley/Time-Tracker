@@ -11,6 +11,9 @@
       <header class="header">
         <h1>D&amp;D Time &amp; Turn Tracker</h1>
         <p>Track your in-game time for combat and rests.</p>
+        <button class="settings-button" id="openSettingsButton" type="button">
+          Settings
+        </button>
       </header>
 
       <section class="clock-card" aria-live="polite">
@@ -23,12 +26,28 @@
           <h2>Set Current Time</h2>
           <div class="input-row">
             <label>
-              Date
-              <input type="date" id="dateInput" />
+              Year
+              <input type="number" id="yearInput" min="1" />
             </label>
             <label>
-              Time
-              <input type="time" id="timeInput" step="1" />
+              Month
+              <input type="number" id="monthInput" min="1" />
+            </label>
+            <label>
+              Day
+              <input type="number" id="dayInput" min="1" />
+            </label>
+            <label>
+              Hour
+              <input type="number" id="hourInput" min="0" />
+            </label>
+            <label>
+              Minute
+              <input type="number" id="minuteInput" min="0" />
+            </label>
+            <label>
+              Second
+              <input type="number" id="secondInput" min="0" />
             </label>
           </div>
           <button class="primary" id="setTimeButton">Set Time &amp; Date</button>
@@ -133,6 +152,42 @@
               <textarea id="profileNotes" rows="3" placeholder="Conditions, AC, spells, etc."></textarea>
             </label>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="settingsModal" aria-hidden="true">
+      <div class="modal-backdrop" id="settingsBackdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="modal-header">
+          <h2 id="settingsTitle">Calendar Settings</h2>
+          <button type="button" class="icon-button" id="closeSettingsButton" aria-label="Close settings">
+            ✕
+          </button>
+        </div>
+        <p class="helper-text">
+          Customize the calendar for your world. These settings affect how time advances and displays.
+        </p>
+        <div class="profile-card">
+          <div class="input-row">
+            <label>
+              Months per Year
+              <input type="number" id="monthsInYearInput" min="1" />
+            </label>
+            <label>
+              Hours per Day
+              <input type="number" id="hoursPerDayInput" min="1" />
+            </label>
+          </div>
+          <label>
+            Days per Month (comma-separated)
+            <input
+              type="text"
+              id="daysPerMonthInput"
+              placeholder="e.g. 31,28,31,30,31,30,31,31,30,31,30,31"
+            />
+          </label>
+          <button class="primary" id="applySettingsButton" type="button">Apply Settings</button>
         </div>
       </div>
     </div>
