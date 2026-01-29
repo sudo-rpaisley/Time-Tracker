@@ -904,12 +904,41 @@ const addEncounterToInitiative = () => {
   if (encounterDraft.length === 0) {
     return;
   }
+  const escapeRegExp = (value) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const getMaxCombatantIndex = (baseName) => {
+    const pattern = new RegExp(`^${escapeRegExp(baseName)} (\\d+)$`, 'i');
+    return combatants.reduce((max, combatant) => {
+      if (!combatant?.name) {
+        return max;
+      }
+      if (combatant.name === baseName) {
+        return Math.max(max, 1);
+      }
+      const match = combatant.name.match(pattern);
+      if (match) {
+        return Math.max(max, Number(match[1]));
+      }
+      return max;
+    }, 0);
+  };
+  const nextIndexByName = new Map();
+  const getNextIndexedName = (baseName) => {
+    const current = nextIndexByName.has(baseName)
+      ? nextIndexByName.get(baseName)
+      : getMaxCombatantIndex(baseName);
+    const nextIndex = current + 1;
+    nextIndexByName.set(baseName, nextIndex);
+    return `${baseName} ${nextIndex}`;
+  };
   const newCombatants = [];
   encounterDraft.forEach((entry) => {
+    const needsNumbering =
+      entry.count > 1 || getMaxCombatantIndex(entry.name) > 0;
     for (let i = 0; i < entry.count; i += 1) {
       newCombatants.push({
         id: crypto.randomUUID(),
-        name: entry.count > 1 ? `${entry.name} ${i + 1}` : entry.name,
+        name: needsNumbering ? getNextIndexedName(entry.name) : entry.name,
         type: entry.type,
         maxHp: entry.maxHp,
         currentHp: entry.maxHp,
