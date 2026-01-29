@@ -148,6 +148,7 @@ let partyMembers = [];
 let roundHistoryEntries = [];
 let calendarEvents = [];
 let calendarView = null;
+let combatActive = false;
 
 let calendarSettings = {
   monthsInYear: 12,
@@ -236,7 +237,8 @@ const createWorld = (name) => ({
   encounterDraft: [],
   partyMembers: [],
   roundHistoryEntries: [],
-  calendarEvents: []
+  calendarEvents: [],
+  combatActive: false
 });
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -258,7 +260,8 @@ const saveState = () => {
     encounterDraft,
     partyMembers,
     roundHistoryEntries,
-    calendarEvents
+    calendarEvents,
+    combatActive
   };
   localStorage.setItem(
     STORAGE_KEY,
@@ -367,6 +370,7 @@ const setActiveWorld = (worldId) => {
       conditions: normalizeConditions(member.conditions)
     }))
     : [];
+  combatActive = Boolean(nextWorld.combatActive);
   if (monthsInYearInput) {
     monthsInYearInput.value = calendarSettings.monthsInYear;
     hoursPerDayInput.value = calendarSettings.hoursPerDay;
@@ -387,6 +391,7 @@ const setActiveWorld = (worldId) => {
   renderWorldTiles();
   updateAdvanceLabels();
   updateRoundDisplay();
+  updateStartCombatButton();
   renderCalendar();
   saveState();
 };
@@ -565,6 +570,13 @@ const updateRoundDisplay = () => {
     return;
   }
   roundDisplay.textContent = `Round ${roundNumber}`;
+};
+
+const updateStartCombatButton = () => {
+  if (!startCombatButton) {
+    return;
+  }
+  startCombatButton.textContent = combatActive ? 'End Combat' : 'Start Combat';
 };
 
 const recordRoundHistory = (round) => {
@@ -1514,7 +1526,9 @@ const clearEncounter = () => {
   combatLogEntries = [];
   encounterDraft = [];
   roundHistoryEntries = [];
+  combatActive = false;
   updateRoundDisplay();
+  updateStartCombatButton();
   renderRoundHistory();
   renderInitiative();
   renderProfile();
@@ -1905,6 +1919,9 @@ const addCombatant = () => {
 };
 
 const advanceCombatant = () => {
+  if (!combatActive) {
+    return;
+  }
   if (combatants.length === 0) {
     return;
   }
@@ -1925,19 +1942,35 @@ const advanceCombatant = () => {
 };
 
 const startCombat = () => {
+  if (combatActive) {
+    return;
+  }
   if (combatants.length === 0) {
     return;
   }
   stopAutoClock();
+  combatActive = true;
   currentCombatantIndex = 0;
   selectedCombatantId = combatants[0]?.id ?? null;
   if (roundNumber < 1) {
     roundNumber = 1;
   }
   updateRoundDisplay();
+  updateStartCombatButton();
   recordRoundHistory(roundNumber);
   renderInitiative();
   renderProfile();
+  logEvent('Combat started.');
+  saveState();
+};
+
+const endCombat = () => {
+  if (!combatActive) {
+    return;
+  }
+  combatActive = false;
+  updateStartCombatButton();
+  logEvent('Combat ended.');
   saveState();
 };
 
@@ -2029,7 +2062,13 @@ if (addPartyMemberButton) {
   addPartyMemberButton.addEventListener('click', addPartyMember);
 }
 if (startCombatButton) {
-  startCombatButton.addEventListener('click', startCombat);
+  startCombatButton.addEventListener('click', () => {
+    if (combatActive) {
+      endCombat();
+      return;
+    }
+    startCombat();
+  });
 }
 if (combatNextTurnButton) {
   combatNextTurnButton.addEventListener('click', () => {
@@ -2378,7 +2417,8 @@ if (exportWorldButton) {
       encounterDraft,
       partyMembers,
       roundHistoryEntries,
-      calendarEvents
+      calendarEvents,
+      combatActive
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -2428,7 +2468,8 @@ if (importWorldInput) {
             : [],
           calendarEvents: Array.isArray(parsed.calendarEvents)
             ? parsed.calendarEvents
-            : []
+            : [],
+          combatActive: Boolean(parsed.combatActive)
         };
         worlds[world.id] = world;
         activeWorldId = world.id;
@@ -2489,6 +2530,7 @@ const initializeDefaults = () => {
   syncTimeConfigInputs();
   updateAdvanceLabels();
   updateRoundDisplay();
+  updateStartCombatButton();
   renderCombatLog();
   renderRoundHistory();
   updateDifficultyLabel();
