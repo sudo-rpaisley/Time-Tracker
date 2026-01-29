@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Time Tracker - Clock</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page clock-page" id="clockPage">
+      <header class="page-header">
+        <div>
+          <h2>Clock</h2>
+          <p class="helper-text">Set the world clock, rests, and pacing.</p>
+        </div>
+      </header>
+      <section class="clock-card" aria-live="polite">
+        <div class="date" id="dateDisplay">--</div>
+        <div class="time" id="timeDisplay">--</div>
+      </section>
+      <section class="controls">
+        <div class="control-group">
+          <h2>Set Current Time</h2>
+          <div class="input-row">
+            <label>
+              Year
+              <input type="number" id="yearInput" min="1" />
+            </label>
+            <label>
+              Month
+              <input type="number" id="monthInput" min="1" />
+            </label>
+            <label>
+              Day
+              <input type="number" id="dayInput" min="1" />
+            </label>
+            <label>
+              Hour
+              <input type="number" id="hourInput" min="0" />
+            </label>
+            <label>
+              Minute
+              <input type="number" id="minuteInput" min="0" />
+            </label>
+            <label>
+              Second
+              <input type="number" id="secondInput" min="0" />
+            </label>
+          </div>
+          <button class="primary" id="setTimeButton">Set Time &amp; Date</button>
+        </div>
+
+        <div class="control-group">
+          <h2>Advance Time</h2>
+          <div class="input-row">
+            <label>
+              Turn (sec)
+              <input type="number" id="turnSecondsInput" min="1" />
+            </label>
+            <label>
+              Short Rest (hrs)
+              <input type="number" id="shortRestHoursInput" min="1" />
+            </label>
+            <label>
+              Long Rest (hrs)
+              <input type="number" id="longRestHoursInput" min="1" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="nextTurnButton">Next Turn</button>
+            <button id="shortRestButton">Short Rest</button>
+            <button id="longRestButton">Long Rest</button>
+          </div>
+          <div class="button-row">
+            <button class="ghost" id="toggleClockButton">Start Clock</button>
+            <label class="clock-speed">
+              Speed
+              <input type="number" id="clockSpeedInput" min="1" />
+              <span>x</span>
+            </label>
+          </div>
+          <div class="round-display" id="roundDisplay">Round 1</div>
+        </div>
+      </section>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

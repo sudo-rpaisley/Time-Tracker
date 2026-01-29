@@ -23,14 +23,6 @@ const settingsPage = document.getElementById('settingsPage');
 const combatPage = document.getElementById('combatPage');
 const logPage = document.getElementById('logPage');
 const clockPage = document.getElementById('clockPage');
-const openHomeButton = document.getElementById('openHomeButton');
-const openWorldsButton = document.getElementById('openWorldsButton');
-const openTrackerButton = document.getElementById('openTrackerButton');
-const openClockButton = document.getElementById('openClockButton');
-const openCombatButton = document.getElementById('openCombatButton');
-const openLogButton = document.getElementById('openLogButton');
-const openSettingsButton = document.getElementById('openSettingsButton');
-const homeGoWorldsButton = document.getElementById('homeGoWorldsButton');
 const navTimeDisplay = document.getElementById('navTimeDisplay');
 const navParty = document.getElementById('navParty');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
@@ -39,6 +31,7 @@ const worldGrid = document.getElementById('worldGrid');
 const partyMemberName = document.getElementById('partyMemberName');
 const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
 const partyMemberXp = document.getElementById('partyMemberXp');
+const partyMemberLevel = document.getElementById('partyMemberLevel');
 const addPartyMemberButton = document.getElementById('addPartyMemberButton');
 const partyList = document.getElementById('partyList');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
@@ -86,6 +79,7 @@ const partyProfileName = document.getElementById('partyProfileName');
 const partyProfileCurrentHp = document.getElementById('partyProfileCurrentHp');
 const partyProfileMaxHp = document.getElementById('partyProfileMaxHp');
 const partyProfileXp = document.getElementById('partyProfileXp');
+const partyProfileLevel = document.getElementById('partyProfileLevel');
 const removePartyMemberButton = document.getElementById('removePartyMemberButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
@@ -109,7 +103,7 @@ const timeInputs = [
   hourInput,
   minuteInput,
   secondInput
-];
+].filter(Boolean);
 let isEditingTimeInputs = false;
 
 let totalSeconds = 0;
@@ -328,11 +322,13 @@ const setActiveWorld = (worldId) => {
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers
     : [];
-  monthsInYearInput.value = calendarSettings.monthsInYear;
-  hoursPerDayInput.value = calendarSettings.hoursPerDay;
-  daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
-  monthNamesInput.value = calendarSettings.monthNames.join(', ');
-  dayNamesInput.value = calendarSettings.dayNames.join(', ');
+  if (monthsInYearInput) {
+    monthsInYearInput.value = calendarSettings.monthsInYear;
+    hoursPerDayInput.value = calendarSettings.hoursPerDay;
+    daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
+    monthNamesInput.value = calendarSettings.monthNames.join(', ');
+    dayNamesInput.value = calendarSettings.dayNames.join(', ');
+  }
   syncInputs();
   syncTimeConfigInputs();
   render();
@@ -341,6 +337,7 @@ const setActiveWorld = (worldId) => {
   renderCombatLog();
   renderEncounterDraft();
   renderPartyList();
+  renderPartyProfile();
   renderWorldTiles();
   updateAdvanceLabels();
   updateRoundDisplay();
@@ -348,6 +345,9 @@ const setActiveWorld = (worldId) => {
 };
 
 const renderWorldTiles = () => {
+  if (!worldGrid) {
+    return;
+  }
   worldGrid.innerHTML = '';
   Object.values(worlds).forEach((world) => {
     const tile = document.createElement('div');
@@ -387,7 +387,7 @@ const renderWorldTiles = () => {
     tile.append(name, deleteButton);
     tile.addEventListener('click', () => {
       setActiveWorld(world.id);
-      showPage('party');
+      window.location.href = 'party.html';
     });
     worldGrid.appendChild(tile);
   });
@@ -482,7 +482,7 @@ const formatTime = (dateParts) =>
   `${pad(dateParts.hour)}:${pad(dateParts.minute)}:${pad(dateParts.second)}`;
 
 const syncInputs = () => {
-  if (isEditingTimeInputs) {
+  if (isEditingTimeInputs || !yearInput) {
     return;
   }
   const dateParts = fromTotalSeconds(totalSeconds, calendarSettings);
@@ -495,6 +495,9 @@ const syncInputs = () => {
 };
 
 const syncTimeConfigInputs = () => {
+  if (!turnSecondsInput) {
+    return;
+  }
   turnSecondsInput.value = timeConfig.turnSeconds;
   shortRestHoursInput.value = timeConfig.shortRestHours;
   longRestHoursInput.value = timeConfig.longRestHours;
@@ -502,12 +505,18 @@ const syncTimeConfigInputs = () => {
 };
 
 const updateAdvanceLabels = () => {
+  if (!nextTurnButton) {
+    return;
+  }
   nextTurnButton.textContent = `Next Turn (+${timeConfig.turnSeconds}s)`;
   shortRestButton.textContent = `Short Rest (+${timeConfig.shortRestHours}h)`;
   longRestButton.textContent = `Long Rest (+${timeConfig.longRestHours}h)`;
 };
 
 const updateRoundDisplay = () => {
+  if (!roundDisplay) {
+    return;
+  }
   roundDisplay.textContent = `Round ${roundNumber}`;
 };
 
@@ -530,7 +539,16 @@ const getInitials = (name) =>
     .map((part) => part[0]?.toUpperCase())
     .join('') || '?';
 
+const closeXpMenus = () => {
+  document.querySelectorAll('.xp-menu.is-open').forEach((menu) => {
+    menu.classList.remove('is-open');
+  });
+};
+
 const renderCombatLog = () => {
+  if (!combatLog) {
+    return;
+  }
   combatLog.innerHTML = '';
   if (combatLogEntries.length === 0) {
     const item = document.createElement('li');
@@ -547,12 +565,17 @@ const renderCombatLog = () => {
 };
 
 const renderPartyList = () => {
+  if (!partyList) {
+    renderPartyNav();
+    return;
+  }
   partyList.innerHTML = '';
   if (partyMembers.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'helper-text';
     empty.textContent = 'No party members yet.';
     partyList.appendChild(empty);
+    renderPartyNav();
     return;
   }
   partyMembers.forEach((member) => {
@@ -562,16 +585,17 @@ const renderPartyList = () => {
     const name = document.createElement('span');
     name.textContent = member.name;
 
-    const hp = document.createElement('div');
-    hp.className = 'stat-block';
+    const hpGroup = document.createElement('div');
+    hpGroup.className = 'stat-group';
+    const hpLabel = document.createElement('span');
+    hpLabel.className = 'stat-label';
+    hpLabel.textContent = 'HP';
+    const hpControls = document.createElement('div');
+    hpControls.className = 'stat-controls';
     const hpValue = Number.isFinite(member.currentHp)
       ? member.currentHp
       : member.maxHp ?? 0;
     const hpMax = Number.isFinite(member.maxHp) ? member.maxHp : 0;
-    hp.textContent = `HP ${hpValue}/${hpMax}`;
-
-    const hpControls = document.createElement('div');
-    hpControls.className = 'stat-controls';
     const hpMinus = document.createElement('button');
     hpMinus.type = 'button';
     hpMinus.textContent = '−';
@@ -581,6 +605,9 @@ const renderPartyList = () => {
         currentHp: Math.max(0, (member.currentHp ?? hpMax ?? 0) - 1)
       });
     });
+    const hpValueText = document.createElement('span');
+    hpValueText.className = 'stat-value';
+    hpValueText.textContent = `${hpValue}/${hpMax}`;
     const hpPlus = document.createElement('button');
     hpPlus.type = 'button';
     hpPlus.textContent = '+';
@@ -591,15 +618,17 @@ const renderPartyList = () => {
         currentHp: hpMax ? Math.min(next, hpMax) : next
       });
     });
-    hpControls.append(hpMinus, hpPlus);
+    hpControls.append(hpMinus, hpValueText, hpPlus);
+    hpGroup.append(hpLabel, hpControls);
 
-    const xp = document.createElement('div');
-    xp.className = 'stat-block';
-    const xpValue = Number.isFinite(member.xp) ? member.xp : 0;
-    xp.textContent = `XP ${xpValue}`;
-
+    const xpGroup = document.createElement('div');
+    xpGroup.className = 'stat-group';
+    const xpLabel = document.createElement('span');
+    xpLabel.className = 'stat-label';
+    xpLabel.textContent = 'XP';
     const xpControls = document.createElement('div');
     xpControls.className = 'stat-controls';
+    const xpValue = Number.isFinite(member.xp) ? member.xp : 0;
     const xpMinus = document.createElement('button');
     xpMinus.type = 'button';
     xpMinus.textContent = '−';
@@ -607,14 +636,85 @@ const renderPartyList = () => {
     xpMinus.addEventListener('click', () => {
       updatePartyMember(member.id, { xp: Math.max(0, xpValue - 1) });
     });
+    const xpValueText = document.createElement('span');
+    xpValueText.className = 'stat-value';
+    xpValueText.textContent = String(xpValue);
     const xpPlus = document.createElement('button');
     xpPlus.type = 'button';
+    xpPlus.className = 'xp-plus';
     xpPlus.textContent = '+';
     xpPlus.setAttribute('aria-label', `Increase ${member.name} XP`);
-    xpPlus.addEventListener('click', () => {
+    let longPressTimer = null;
+    let longPressTriggered = false;
+    xpPlus.addEventListener('pointerdown', () => {
+      longPressTriggered = false;
+      longPressTimer = window.setTimeout(() => {
+        longPressTriggered = true;
+        closeXpMenus();
+        xpMenu.classList.add('is-open');
+      }, 600);
+    });
+    const clearLongPress = () => {
+      if (longPressTimer) {
+        window.clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+    xpPlus.addEventListener('pointerup', clearLongPress);
+    xpPlus.addEventListener('pointerleave', clearLongPress);
+    xpPlus.addEventListener('click', (event) => {
+      if (longPressTriggered) {
+        longPressTriggered = false;
+        event.preventDefault();
+        return;
+      }
       updatePartyMember(member.id, { xp: xpValue + 1 });
     });
-    xpControls.append(xpMinus, xpPlus);
+    xpControls.append(xpMinus, xpValueText, xpPlus);
+    xpGroup.append(xpLabel, xpControls);
+
+    const xpMenu = document.createElement('div');
+    xpMenu.className = 'xp-menu';
+    [10, 50, 100, 250, 500, 1000].forEach((amount) => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.textContent = `+${amount}`;
+      option.addEventListener('click', (event) => {
+        event.stopPropagation();
+        updatePartyMember(member.id, { xp: xpValue + amount });
+        xpMenu.classList.remove('is-open');
+      });
+      xpMenu.appendChild(option);
+    });
+    xpGroup.appendChild(xpMenu);
+
+    const levelGroup = document.createElement('div');
+    levelGroup.className = 'stat-group';
+    const levelLabel = document.createElement('span');
+    levelLabel.className = 'stat-label';
+    levelLabel.textContent = 'Level';
+    const levelControls = document.createElement('div');
+    levelControls.className = 'stat-controls';
+    const levelValue = Number.isFinite(member.level) ? member.level : 1;
+    const levelMinus = document.createElement('button');
+    levelMinus.type = 'button';
+    levelMinus.textContent = '−';
+    levelMinus.setAttribute('aria-label', `Decrease ${member.name} level`);
+    levelMinus.addEventListener('click', () => {
+      updatePartyMember(member.id, { level: Math.max(1, levelValue - 1) });
+    });
+    const levelValueText = document.createElement('span');
+    levelValueText.className = 'stat-value';
+    levelValueText.textContent = String(levelValue);
+    const levelPlus = document.createElement('button');
+    levelPlus.type = 'button';
+    levelPlus.textContent = '+';
+    levelPlus.setAttribute('aria-label', `Increase ${member.name} level`);
+    levelPlus.addEventListener('click', () => {
+      updatePartyMember(member.id, { level: levelValue + 1 });
+    });
+    levelControls.append(levelMinus, levelValueText, levelPlus);
+    levelGroup.append(levelLabel, levelControls);
 
     const removeButton = document.createElement('button');
     removeButton.className = 'icon-button';
@@ -623,17 +723,23 @@ const renderPartyList = () => {
     removeButton.setAttribute('aria-label', `Remove ${member.name}`);
     removeButton.addEventListener('click', () => {
       partyMembers = partyMembers.filter((entry) => entry.id !== member.id);
+      if (selectedPartyMemberId === member.id) {
+        selectedPartyMemberId = null;
+      }
       renderPartyList();
       saveState();
     });
 
-    row.append(name, hp, hpControls, xp, xpControls, removeButton);
+    row.append(name, hpGroup, xpGroup, levelGroup, removeButton);
     partyList.appendChild(row);
   });
   renderPartyNav();
 };
 
 const renderPartyNav = () => {
+  if (!navParty) {
+    return;
+  }
   navParty.innerHTML = '';
   if (partyMembers.length === 0) {
     return;
@@ -659,6 +765,9 @@ const renderPartyNav = () => {
 };
 
 const updatePartyMember = (memberId, updates) => {
+  if (!memberId) {
+    return;
+  }
   partyMembers = partyMembers.map((member) =>
     member.id === memberId ? { ...member, ...updates } : member
   );
@@ -681,6 +790,9 @@ const removeSelectedPartyMember = () => {
 };
 
 const addPartyMember = () => {
+  if (!partyMemberName) {
+    return;
+  }
   const name = partyMemberName.value.trim();
   if (!name) {
     partyMemberName.focus();
@@ -688,18 +800,23 @@ const addPartyMember = () => {
   }
   const maxHpValue = Number(partyMemberMaxHp.value);
   const xpValue = Number(partyMemberXp.value);
+  const levelValue = Number(partyMemberLevel?.value);
   const maxHp = Number.isNaN(maxHpValue) ? null : maxHpValue;
   const newMember = {
     id: crypto.randomUUID(),
     name,
     maxHp,
     currentHp: maxHp,
-    xp: Number.isNaN(xpValue) ? 0 : xpValue
+    xp: Number.isNaN(xpValue) ? 0 : xpValue,
+    level: Number.isNaN(levelValue) ? 1 : Math.max(1, levelValue)
   };
   partyMembers = [...partyMembers, newMember];
   partyMemberName.value = '';
   partyMemberMaxHp.value = '';
   partyMemberXp.value = '';
+  if (partyMemberLevel) {
+    partyMemberLevel.value = '';
+  }
   partyMemberName.focus();
   renderPartyList();
   saveState();
@@ -730,12 +847,18 @@ const addPartyToEncounter = () => {
 const difficultyLabels = ['Easy', 'Easy', 'Medium', 'Hard', 'Deadly'];
 
 const updateDifficultyLabel = () => {
+  if (!encounterDifficulty || !encounterDifficultyLabel) {
+    return;
+  }
   const value = Number(encounterDifficulty.value);
   encounterDifficultyLabel.textContent =
     difficultyLabels[value - 1] || 'Medium';
 };
 
 const renderEncounterDraft = () => {
+  if (!encounterDraftList) {
+    return;
+  }
   encounterDraftList.innerHTML = '';
   if (encounterDraft.length === 0) {
     const item = document.createElement('li');
@@ -876,7 +999,9 @@ const startAutoClock = () => {
   if (autoClockTimer) {
     return;
   }
-  toggleClockButton.textContent = 'Pause Clock';
+  if (toggleClockButton) {
+    toggleClockButton.textContent = 'Pause Clock';
+  }
   autoClockTimer = window.setInterval(() => {
     adjustTime(1000 * timeConfig.clockSpeed);
   }, 1000);
@@ -888,18 +1013,29 @@ const stopAutoClock = () => {
   }
   window.clearInterval(autoClockTimer);
   autoClockTimer = null;
-  toggleClockButton.textContent = 'Start Clock';
+  if (toggleClockButton) {
+    toggleClockButton.textContent = 'Start Clock';
+  }
 };
 
 const render = () => {
   const dateParts = fromTotalSeconds(totalSeconds, calendarSettings);
-  dateDisplay.textContent = formatDate(dateParts, calendarSettings);
+  if (dateDisplay) {
+    dateDisplay.textContent = formatDate(dateParts, calendarSettings);
+  }
   const formattedTime = formatTime(dateParts);
-  timeDisplay.textContent = formattedTime;
-  navTimeDisplay.textContent = formattedTime;
+  if (timeDisplay) {
+    timeDisplay.textContent = formattedTime;
+  }
+  if (navTimeDisplay) {
+    navTimeDisplay.textContent = formattedTime;
+  }
 };
 
 const updateTimeFromInputs = () => {
+  if (!yearInput) {
+    return;
+  }
   totalSeconds = toTotalSeconds(
     {
       year: Number(yearInput.value),
@@ -931,6 +1067,9 @@ const toggleLiveClock = () => {
 };
 
 const renderInitiative = () => {
+  if (!initiativeTrack) {
+    return;
+  }
   initiativeTrack.innerHTML = '';
 
   if (combatants.length === 0) {
@@ -1049,6 +1188,9 @@ const renderInitiative = () => {
 };
 
 const renderProfile = () => {
+  if (!profileDetails) {
+    return;
+  }
   const selected = combatants.find(
     (combatant) => combatant.id === selectedCombatantId
   );
@@ -1071,6 +1213,9 @@ const renderProfile = () => {
 };
 
 const renderPartyProfile = () => {
+  if (!partyProfileDetails) {
+    return;
+  }
   const selected = partyMembers.find(
     (member) => member.id === selectedPartyMemberId
   );
@@ -1086,21 +1231,10 @@ const renderPartyProfile = () => {
     Number.isFinite(selected.currentHp) ? selected.currentHp : '';
   partyProfileMaxHp.value = Number.isFinite(selected.maxHp) ? selected.maxHp : '';
   partyProfileXp.value = Number.isFinite(selected.xp) ? selected.xp : '';
+  if (partyProfileLevel) {
+    partyProfileLevel.value = Number.isFinite(selected.level) ? selected.level : 1;
+  }
 };
-
-const showPage = (page) => {
-  homePage.hidden = page !== 'home';
-  worldsPage.hidden = page !== 'worlds';
-  appPage.hidden = page !== 'party';
-  clockPage.hidden = page !== 'clock';
-  combatPage.hidden = page !== 'combat';
-  logPage.hidden = page !== 'log';
-  settingsPage.hidden = page !== 'settings';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-const openSettingsPage = () => showPage('settings');
-const closeSettingsPage = () => showPage('party');
 
 const openProfileModal = () => {
   profileModal.classList.add('is-open');
@@ -1137,6 +1271,9 @@ const updateSelectedCombatant = (updates) => {
 };
 
 const addCombatant = () => {
+  if (!combatantNameInput) {
+    return;
+  }
   const name = combatantNameInput.value.trim();
   if (!name) {
     combatantNameInput.focus();
@@ -1197,345 +1334,458 @@ const advanceCombatant = () => {
   saveState();
 };
 
-setTimeButton.addEventListener('click', updateTimeFromInputs);
-timeInputs.forEach((input) => {
-  input.addEventListener('focus', updateTimeEditingState);
-  input.addEventListener('blur', () => {
-    window.setTimeout(updateTimeEditingState, 0);
+if (setTimeButton) {
+  setTimeButton.addEventListener('click', updateTimeFromInputs);
+}
+if (timeInputs.length > 0) {
+  timeInputs.forEach((input) => {
+    input.addEventListener('focus', updateTimeEditingState);
+    input.addEventListener('blur', () => {
+      window.setTimeout(updateTimeEditingState, 0);
+    });
   });
-});
-nextTurnButton.addEventListener('click', () => {
-  adjustTime(timeConfig.turnSeconds * 1000);
-  advanceCombatant();
-  logEvent('Next turn.');
-});
-shortRestButton.addEventListener('click', () => {
-  adjustTime(timeConfig.shortRestHours * 60 * 60 * 1000);
-  logEvent('Short rest taken.');
-});
-longRestButton.addEventListener('click', () => {
-  adjustTime(timeConfig.longRestHours * 60 * 60 * 1000);
-  logEvent('Long rest taken.');
-});
-toggleClockButton.addEventListener('click', () => {
-  toggleLiveClock();
-});
-navTimeDisplay.addEventListener('click', toggleLiveClock);
-addCombatantButton.addEventListener('click', addCombatant);
-combatantNameInput.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') {
-    addCombatant();
-  }
-});
-combatantPresetSelect.addEventListener('change', () => {
-  const preset = monsterPresets.find(
-    (entry) => entry.id === combatantPresetSelect.value
+}
+if (nextTurnButton) {
+  nextTurnButton.addEventListener('click', () => {
+    adjustTime(timeConfig.turnSeconds * 1000);
+    advanceCombatant();
+    logEvent('Next turn.');
+  });
+}
+if (shortRestButton) {
+  shortRestButton.addEventListener('click', () => {
+    adjustTime(timeConfig.shortRestHours * 60 * 60 * 1000);
+    logEvent('Short rest taken.');
+  });
+}
+if (longRestButton) {
+  longRestButton.addEventListener('click', () => {
+    adjustTime(timeConfig.longRestHours * 60 * 60 * 1000);
+    logEvent('Long rest taken.');
+  });
+}
+if (toggleClockButton) {
+  toggleClockButton.addEventListener('click', () => {
+    toggleLiveClock();
+  });
+}
+if (navTimeDisplay) {
+  navTimeDisplay.addEventListener('click', toggleLiveClock);
+}
+if (addCombatantButton) {
+  addCombatantButton.addEventListener('click', addCombatant);
+}
+if (combatantNameInput) {
+  combatantNameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      addCombatant();
+    }
+  });
+}
+if (combatantPresetSelect) {
+  combatantPresetSelect.addEventListener('change', () => {
+    const preset = monsterPresets.find(
+      (entry) => entry.id === combatantPresetSelect.value
+    );
+    if (!preset) {
+      return;
+    }
+    if (combatantNameInput) {
+      combatantNameInput.value = preset.name;
+    }
+    if (combatantTypeSelect) {
+      combatantTypeSelect.value = preset.type;
+    }
+    if (combatantMaxHpInput) {
+      combatantMaxHpInput.value = preset.maxHp ?? '';
+    }
+  });
+}
+if (rollAllButton) {
+  rollAllButton.addEventListener('click', () => rollInitiative());
+}
+if (rollNpcsButton) {
+  rollNpcsButton.addEventListener('click', () =>
+    rollInitiative((combatant) => combatant.type === 'npc')
   );
-  if (!preset) {
-    return;
-  }
-  combatantNameInput.value = preset.name;
-  combatantTypeSelect.value = preset.type;
-  combatantMaxHpInput.value = preset.maxHp ?? '';
-});
-rollAllButton.addEventListener('click', () => rollInitiative());
-rollNpcsButton.addEventListener('click', () =>
-  rollInitiative((combatant) => combatant.type === 'npc')
-);
-sortInitiativeButton.addEventListener('click', sortCombatantsByInitiative);
-clearCombatButton.addEventListener('click', clearEncounter);
-addPartyToEncounterButton.addEventListener('click', addPartyToEncounter);
-addPartyMemberButton.addEventListener('click', addPartyMember);
-partyMemberName.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') {
-    addPartyMember();
-  }
-});
-profileName.addEventListener('input', () => {
-  updateSelectedCombatant({ name: profileName.value.trim() || 'Unnamed' });
-});
-profileType.addEventListener('change', () => {
-  updateSelectedCombatant({ type: profileType.value });
-});
-profileCurrentHp.addEventListener('input', () => {
-  const value = profileCurrentHp.value.trim();
-  const parsed = Number(value);
-  updateSelectedCombatant({
-    currentHp: value === '' || Number.isNaN(parsed) ? null : parsed
+}
+if (sortInitiativeButton) {
+  sortInitiativeButton.addEventListener('click', sortCombatantsByInitiative);
+}
+if (clearCombatButton) {
+  clearCombatButton.addEventListener('click', clearEncounter);
+}
+if (addPartyToEncounterButton) {
+  addPartyToEncounterButton.addEventListener('click', addPartyToEncounter);
+}
+if (addPartyMemberButton) {
+  addPartyMemberButton.addEventListener('click', addPartyMember);
+}
+if (partyMemberName) {
+  partyMemberName.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      addPartyMember();
+    }
   });
-});
-profileMaxHp.addEventListener('input', () => {
-  const value = profileMaxHp.value.trim();
-  const parsed = Number(value);
-  updateSelectedCombatant({
-    maxHp: value === '' || Number.isNaN(parsed) ? null : parsed
+}
+if (profileName) {
+  profileName.addEventListener('input', () => {
+    updateSelectedCombatant({ name: profileName.value.trim() || 'Unnamed' });
   });
-});
-profileInitiative.addEventListener('input', () => {
-  const value = profileInitiative.value.trim();
-  const parsed = Number(value);
-  updateSelectedCombatant({
-    initiative: value === '' || Number.isNaN(parsed) ? null : parsed
+}
+if (profileType) {
+  profileType.addEventListener('change', () => {
+    updateSelectedCombatant({ type: profileType.value });
   });
-});
-profileConditions.addEventListener('input', () => {
-  updateSelectedCombatant({ conditions: profileConditions.value });
-});
-profileNotes.addEventListener('input', () => {
-  updateSelectedCombatant({ notes: profileNotes.value });
-});
-profileAvatar.addEventListener('change', () => {
-  const file = profileAvatar.files?.[0];
-  if (!file) {
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    updateSelectedCombatant({ avatar: reader.result });
-  };
-  reader.readAsDataURL(file);
-});
-partyProfileName.addEventListener('input', () => {
-  if (!selectedPartyMemberId) {
-    return;
-  }
-  updatePartyMember(selectedPartyMemberId, {
-    name: partyProfileName.value.trim() || 'Unnamed'
+}
+if (profileCurrentHp) {
+  profileCurrentHp.addEventListener('input', () => {
+    const value = profileCurrentHp.value.trim();
+    const parsed = Number(value);
+    updateSelectedCombatant({
+      currentHp: value === '' || Number.isNaN(parsed) ? null : parsed
+    });
   });
-});
-partyProfileCurrentHp.addEventListener('input', () => {
-  if (!selectedPartyMemberId) {
-    return;
-  }
-  const value = partyProfileCurrentHp.value.trim();
-  const parsed = Number(value);
-  updatePartyMember(selectedPartyMemberId, {
-    currentHp: value === '' || Number.isNaN(parsed) ? null : parsed
+}
+if (profileMaxHp) {
+  profileMaxHp.addEventListener('input', () => {
+    const value = profileMaxHp.value.trim();
+    const parsed = Number(value);
+    updateSelectedCombatant({
+      maxHp: value === '' || Number.isNaN(parsed) ? null : parsed
+    });
   });
-});
-partyProfileMaxHp.addEventListener('input', () => {
-  if (!selectedPartyMemberId) {
-    return;
-  }
-  const value = partyProfileMaxHp.value.trim();
-  const parsed = Number(value);
-  const nextMax = value === '' || Number.isNaN(parsed) ? null : parsed;
-  const current = partyMembers.find(
-    (member) => member.id === selectedPartyMemberId
-  );
-  const nextCurrent =
-    current && nextMax !== null && Number.isFinite(current.currentHp)
-      ? Math.min(current.currentHp, nextMax)
-      : current?.currentHp ?? null;
-  updatePartyMember(selectedPartyMemberId, {
-    maxHp: nextMax,
-    currentHp: nextCurrent
+}
+if (profileInitiative) {
+  profileInitiative.addEventListener('input', () => {
+    const value = profileInitiative.value.trim();
+    const parsed = Number(value);
+    updateSelectedCombatant({
+      initiative: value === '' || Number.isNaN(parsed) ? null : parsed
+    });
   });
-});
-partyProfileXp.addEventListener('input', () => {
-  if (!selectedPartyMemberId) {
-    return;
-  }
-  const value = partyProfileXp.value.trim();
-  const parsed = Number(value);
-  updatePartyMember(selectedPartyMemberId, {
-    xp: value === '' || Number.isNaN(parsed) ? 0 : Math.max(0, parsed)
+}
+if (profileConditions) {
+  profileConditions.addEventListener('input', () => {
+    updateSelectedCombatant({ conditions: profileConditions.value });
   });
-});
-profileCard.addEventListener('click', (event) => {
-  const button = event.target.closest('button[data-hp-change]');
-  if (!button) {
-    return;
-  }
-  const delta = Number(button.dataset.hpChange);
-  const selected = combatants.find(
-    (combatant) => combatant.id === selectedCombatantId
-  );
-  if (!selected) {
-    return;
-  }
-  const nextValue = Math.max(0, (selected.currentHp ?? 0) + delta);
-  updateSelectedCombatant({ currentHp: nextValue });
-});
-removeCombatantButton.addEventListener('click', removeSelectedCombatant);
-closeProfileButton.addEventListener('click', closeProfileModal);
-profileBackdrop.addEventListener('click', closeProfileModal);
-closePartyProfileButton.addEventListener('click', closePartyProfileModal);
-partyProfileBackdrop.addEventListener('click', closePartyProfileModal);
-removePartyMemberButton.addEventListener('click', () => {
-  removeSelectedPartyMember();
-  closePartyProfileModal();
-});
+}
+if (profileNotes) {
+  profileNotes.addEventListener('input', () => {
+    updateSelectedCombatant({ notes: profileNotes.value });
+  });
+}
+if (profileAvatar) {
+  profileAvatar.addEventListener('change', () => {
+    const file = profileAvatar.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateSelectedCombatant({ avatar: reader.result });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+if (partyProfileName) {
+  partyProfileName.addEventListener('input', () => {
+    if (!selectedPartyMemberId) {
+      return;
+    }
+    updatePartyMember(selectedPartyMemberId, {
+      name: partyProfileName.value.trim() || 'Unnamed'
+    });
+  });
+}
+if (partyProfileCurrentHp) {
+  partyProfileCurrentHp.addEventListener('input', () => {
+    if (!selectedPartyMemberId) {
+      return;
+    }
+    const value = partyProfileCurrentHp.value.trim();
+    const parsed = Number(value);
+    updatePartyMember(selectedPartyMemberId, {
+      currentHp: value === '' || Number.isNaN(parsed) ? null : parsed
+    });
+  });
+}
+if (partyProfileMaxHp) {
+  partyProfileMaxHp.addEventListener('input', () => {
+    if (!selectedPartyMemberId) {
+      return;
+    }
+    const value = partyProfileMaxHp.value.trim();
+    const parsed = Number(value);
+    const nextMax = value === '' || Number.isNaN(parsed) ? null : parsed;
+    const current = partyMembers.find(
+      (member) => member.id === selectedPartyMemberId
+    );
+    const nextCurrent =
+      current && nextMax !== null && Number.isFinite(current.currentHp)
+        ? Math.min(current.currentHp, nextMax)
+        : current?.currentHp ?? null;
+    updatePartyMember(selectedPartyMemberId, {
+      maxHp: nextMax,
+      currentHp: nextCurrent
+    });
+  });
+}
+if (partyProfileXp) {
+  partyProfileXp.addEventListener('input', () => {
+    if (!selectedPartyMemberId) {
+      return;
+    }
+    const value = partyProfileXp.value.trim();
+    const parsed = Number(value);
+    updatePartyMember(selectedPartyMemberId, {
+      xp: value === '' || Number.isNaN(parsed) ? 0 : Math.max(0, parsed)
+    });
+  });
+}
+if (partyProfileLevel) {
+  partyProfileLevel.addEventListener('input', () => {
+    if (!selectedPartyMemberId) {
+      return;
+    }
+    const value = partyProfileLevel.value.trim();
+    const parsed = Number(value);
+    updatePartyMember(selectedPartyMemberId, {
+      level: value === '' || Number.isNaN(parsed) ? 1 : Math.max(1, parsed)
+    });
+  });
+}
+if (profileCard) {
+  profileCard.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-hp-change]');
+    if (!button) {
+      return;
+    }
+    const delta = Number(button.dataset.hpChange);
+    const selected = combatants.find(
+      (combatant) => combatant.id === selectedCombatantId
+    );
+    if (!selected) {
+      return;
+    }
+    const nextValue = Math.max(0, (selected.currentHp ?? 0) + delta);
+    updateSelectedCombatant({ currentHp: nextValue });
+  });
+}
+if (removeCombatantButton) {
+  removeCombatantButton.addEventListener('click', removeSelectedCombatant);
+}
+if (closeProfileButton) {
+  closeProfileButton.addEventListener('click', closeProfileModal);
+}
+if (profileBackdrop) {
+  profileBackdrop.addEventListener('click', closeProfileModal);
+}
+if (closePartyProfileButton) {
+  closePartyProfileButton.addEventListener('click', closePartyProfileModal);
+}
+if (partyProfileBackdrop) {
+  partyProfileBackdrop.addEventListener('click', closePartyProfileModal);
+}
+if (removePartyMemberButton) {
+  removePartyMemberButton.addEventListener('click', () => {
+    removeSelectedPartyMember();
+    closePartyProfileModal();
+  });
+}
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeProfileModal();
     closePartyProfileModal();
-    closeSettingsPage();
   }
 });
-createWorldButton.addEventListener('click', () => {
-  const name = window.prompt('Name the new world');
-  if (!name) {
-    return;
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('.xp-menu') && !event.target.closest('.xp-plus')) {
+    closeXpMenus();
   }
-  const world = createWorld(name.trim());
-  worlds[world.id] = world;
-  activeWorldId = world.id;
-  renderWorldTiles();
-  setActiveWorld(world.id);
 });
-openHomeButton.addEventListener('click', () => showPage('home'));
-openWorldsButton.addEventListener('click', () => showPage('worlds'));
-openTrackerButton.addEventListener('click', () => showPage('party'));
-openClockButton.addEventListener('click', () => showPage('clock'));
-openCombatButton.addEventListener('click', () => showPage('combat'));
-openLogButton.addEventListener('click', () => showPage('log'));
-homeGoWorldsButton.addEventListener('click', () => showPage('worlds'));
-openSettingsButton.addEventListener('click', openSettingsPage);
-closeSettingsButton.addEventListener('click', closeSettingsPage);
-applySettingsButton.addEventListener('click', () => {
-  const monthsInYear = Number(monthsInYearInput.value);
-  const hoursPerDay = Number(hoursPerDayInput.value);
-  const daysPerMonth = daysPerMonthInput.value
-    .split(',')
-    .map((value) => Number(value.trim()))
-    .filter((value) => !Number.isNaN(value));
-  const monthNames = monthNamesInput.value
-    .split(',')
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-  const dayNames = dayNamesInput.value
-    .split(',')
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-  calendarSettings = normalizeCalendarSettings({
-    monthsInYear,
-    hoursPerDay,
-    daysPerMonth,
-    monthNames,
-    dayNames
+if (createWorldButton) {
+  createWorldButton.addEventListener('click', () => {
+    const name = window.prompt('Name the new world');
+    if (!name) {
+      return;
+    }
+    const world = createWorld(name.trim());
+    worlds[world.id] = world;
+    activeWorldId = world.id;
+    renderWorldTiles();
+    setActiveWorld(world.id);
+    window.location.href = 'party.html';
   });
-  syncInputs();
-  render();
-  closeSettingsPage();
-  saveState();
-});
-turnSecondsInput.addEventListener('input', () => {
-  timeConfig = normalizeTimeConfig({
-    ...timeConfig,
-    turnSeconds: Number(turnSecondsInput.value)
+}
+if (applySettingsButton) {
+  applySettingsButton.addEventListener('click', () => {
+    const monthsInYear = Number(monthsInYearInput.value);
+    const hoursPerDay = Number(hoursPerDayInput.value);
+    const daysPerMonth = daysPerMonthInput.value
+      .split(',')
+      .map((value) => Number(value.trim()))
+      .filter((value) => !Number.isNaN(value));
+    const monthNames = monthNamesInput.value
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    const dayNames = dayNamesInput.value
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    calendarSettings = normalizeCalendarSettings({
+      monthsInYear,
+      hoursPerDay,
+      daysPerMonth,
+      monthNames,
+      dayNames
+    });
+    syncInputs();
+    render();
+    saveState();
+    window.location.href = 'party.html';
   });
-  syncTimeConfigInputs();
-  updateAdvanceLabels();
-  saveState();
-});
-shortRestHoursInput.addEventListener('input', () => {
-  timeConfig = normalizeTimeConfig({
-    ...timeConfig,
-    shortRestHours: Number(shortRestHoursInput.value)
+}
+if (turnSecondsInput) {
+  turnSecondsInput.addEventListener('input', () => {
+    timeConfig = normalizeTimeConfig({
+      ...timeConfig,
+      turnSeconds: Number(turnSecondsInput.value)
+    });
+    syncTimeConfigInputs();
+    updateAdvanceLabels();
+    saveState();
   });
-  syncTimeConfigInputs();
-  updateAdvanceLabels();
-  saveState();
-});
-longRestHoursInput.addEventListener('input', () => {
-  timeConfig = normalizeTimeConfig({
-    ...timeConfig,
-    longRestHours: Number(longRestHoursInput.value)
+}
+if (shortRestHoursInput) {
+  shortRestHoursInput.addEventListener('input', () => {
+    timeConfig = normalizeTimeConfig({
+      ...timeConfig,
+      shortRestHours: Number(shortRestHoursInput.value)
+    });
+    syncTimeConfigInputs();
+    updateAdvanceLabels();
+    saveState();
   });
-  syncTimeConfigInputs();
-  updateAdvanceLabels();
-  saveState();
-});
-clockSpeedInput.addEventListener('input', () => {
-  timeConfig = normalizeTimeConfig({
-    ...timeConfig,
-    clockSpeed: Number(clockSpeedInput.value)
+}
+if (longRestHoursInput) {
+  longRestHoursInput.addEventListener('input', () => {
+    timeConfig = normalizeTimeConfig({
+      ...timeConfig,
+      longRestHours: Number(longRestHoursInput.value)
+    });
+    syncTimeConfigInputs();
+    updateAdvanceLabels();
+    saveState();
   });
-  syncTimeConfigInputs();
-  saveState();
-});
-encounterDifficulty.addEventListener('input', updateDifficultyLabel);
-generateEncounterButton.addEventListener('click', generateEncounterDraft);
-addEncounterButton.addEventListener('click', addEncounterToInitiative);
-clearEncounterDraftButton.addEventListener('click', clearEncounterDraft);
-exportWorldButton.addEventListener('click', () => {
-  const world = getCurrentWorld();
-  if (!world) {
-    return;
-  }
-  const payload = {
-    ...world,
-    totalSeconds,
-    combatants,
-    currentCombatantIndex,
-    selectedCombatantId,
-    calendarSettings,
-    timeConfig,
+}
+if (clockSpeedInput) {
+  clockSpeedInput.addEventListener('input', () => {
+    timeConfig = normalizeTimeConfig({
+      ...timeConfig,
+      clockSpeed: Number(clockSpeedInput.value)
+    });
+    syncTimeConfigInputs();
+    saveState();
+  });
+}
+if (encounterDifficulty) {
+  encounterDifficulty.addEventListener('input', updateDifficultyLabel);
+}
+if (generateEncounterButton) {
+  generateEncounterButton.addEventListener('click', generateEncounterDraft);
+}
+if (addEncounterButton) {
+  addEncounterButton.addEventListener('click', addEncounterToInitiative);
+}
+if (clearEncounterDraftButton) {
+  clearEncounterDraftButton.addEventListener('click', clearEncounterDraft);
+}
+if (exportWorldButton) {
+  exportWorldButton.addEventListener('click', () => {
+    const world = getCurrentWorld();
+    if (!world) {
+      return;
+    }
+    const payload = {
+      ...world,
+      totalSeconds,
+      combatants,
+      currentCombatantIndex,
+      selectedCombatantId,
+      calendarSettings,
+      timeConfig,
       roundNumber,
       combatLogEntries,
-      encounterDraft
+      encounterDraft,
+      partyMembers
     };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: 'application/json'
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json'
+    });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${world.name.replace(/\s+/g, '-')}-world.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${world.name.replace(/\s+/g, '-')}-world.json`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-});
-importWorldInput.addEventListener('change', () => {
-  const file = importWorldInput.files?.[0];
-  if (!file) {
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(reader.result);
-      if (!parsed || typeof parsed !== 'object') {
-        throw new Error('Invalid world data');
-      }
-      const world = {
-        ...parsed,
-        id: crypto.randomUUID(),
-        name: parsed.name ? `${parsed.name} (Imported)` : 'Imported World',
-        totalSeconds: parsed.totalSeconds ?? 0,
-        currentCombatantIndex: parsed.currentCombatantIndex ?? 0,
-        selectedCombatantId: parsed.selectedCombatantId ?? null,
-        roundNumber: parsed.roundNumber ?? 1,
-        calendarSettings: normalizeCalendarSettings(parsed.calendarSettings || calendarSettings),
-        timeConfig: normalizeTimeConfig(parsed.timeConfig || timeConfig),
-        combatants: Array.isArray(parsed.combatants) ? parsed.combatants : [],
-        combatLogEntries: Array.isArray(parsed.combatLogEntries)
-          ? parsed.combatLogEntries
-          : [],
-        encounterDraft: Array.isArray(parsed.encounterDraft)
-          ? parsed.encounterDraft
-          : [],
-        partyMembers: Array.isArray(parsed.partyMembers)
-          ? parsed.partyMembers
-          : []
-      };
-      worlds[world.id] = world;
-      activeWorldId = world.id;
-      renderWorldTiles();
-      setActiveWorld(world.id);
-    } catch (error) {
-      window.alert('Invalid world file.');
+}
+if (importWorldInput) {
+  importWorldInput.addEventListener('change', () => {
+    const file = importWorldInput.files?.[0];
+    if (!file) {
+      return;
     }
-  };
-  reader.readAsText(file);
-  importWorldInput.value = '';
-});
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Invalid world data');
+        }
+        const world = {
+          ...parsed,
+          id: crypto.randomUUID(),
+          name: parsed.name ? `${parsed.name} (Imported)` : 'Imported World',
+          totalSeconds: parsed.totalSeconds ?? 0,
+          currentCombatantIndex: parsed.currentCombatantIndex ?? 0,
+          selectedCombatantId: parsed.selectedCombatantId ?? null,
+          roundNumber: parsed.roundNumber ?? 1,
+          calendarSettings: normalizeCalendarSettings(parsed.calendarSettings || calendarSettings),
+          timeConfig: normalizeTimeConfig(parsed.timeConfig || timeConfig),
+          combatants: Array.isArray(parsed.combatants) ? parsed.combatants : [],
+          combatLogEntries: Array.isArray(parsed.combatLogEntries)
+            ? parsed.combatLogEntries
+            : [],
+          encounterDraft: Array.isArray(parsed.encounterDraft)
+            ? parsed.encounterDraft
+            : [],
+          partyMembers: Array.isArray(parsed.partyMembers)
+            ? parsed.partyMembers
+            : []
+        };
+        worlds[world.id] = world;
+        activeWorldId = world.id;
+        renderWorldTiles();
+        setActiveWorld(world.id);
+      } catch (error) {
+        window.alert('Invalid world file.');
+      }
+    };
+    reader.readAsText(file);
+    importWorldInput.value = '';
+  });
+}
 
-monsterPresets.forEach((preset) => {
-  const option = document.createElement('option');
-  option.value = preset.id;
-  option.textContent = preset.name;
-  combatantPresetSelect.appendChild(option);
-});
+if (combatantPresetSelect) {
+  monsterPresets.forEach((preset) => {
+    const option = document.createElement('option');
+    option.value = preset.id;
+    option.textContent = preset.name;
+    combatantPresetSelect.appendChild(option);
+  });
+}
 
 const initializeDefaults = () => {
   const loaded = loadState();
@@ -1563,11 +1813,13 @@ const initializeDefaults = () => {
     setActiveWorld(activeWorldId);
   }
 
-  monthsInYearInput.value = calendarSettings.monthsInYear;
-  hoursPerDayInput.value = calendarSettings.hoursPerDay;
-  daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
-  monthNamesInput.value = calendarSettings.monthNames.join(', ');
-  dayNamesInput.value = calendarSettings.dayNames.join(', ');
+  if (monthsInYearInput) {
+    monthsInYearInput.value = calendarSettings.monthsInYear;
+    hoursPerDayInput.value = calendarSettings.hoursPerDay;
+    daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
+    monthNamesInput.value = calendarSettings.monthNames.join(', ');
+    dayNamesInput.value = calendarSettings.dayNames.join(', ');
+  }
   syncInputs();
   syncTimeConfigInputs();
   updateAdvanceLabels();
@@ -1576,7 +1828,6 @@ const initializeDefaults = () => {
   updateDifficultyLabel();
   renderEncounterDraft();
   renderPartyList();
-  showPage('home');
 };
 
 initializeDefaults();

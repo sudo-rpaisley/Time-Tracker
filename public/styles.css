@@ -71,6 +71,40 @@ body {
   flex-wrap: wrap;
 }
 
+.nav-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background-color: #2c3e6b;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: #3a5192;
+  transform: translateY(-1px);
+}
+
+.nav-link.primary {
+  background-color: #7a52ff;
+  color: #f6f7fb;
+}
+
+.nav-link.ghost {
+  background-color: transparent;
+  border: 1px solid #3a4563;
+}
+
+.nav-link.ghost:hover {
+  background-color: rgba(90, 103, 154, 0.2);
+}
+
 .nav-party {
   display: flex;
   gap: 8px;
@@ -248,7 +282,7 @@ body {
 
 .party-row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr auto 1fr auto auto;
+  grid-template-columns: 1.4fr repeat(3, minmax(140px, 1fr)) auto;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -261,14 +295,35 @@ body {
   font-size: 0.95rem;
 }
 
-.stat-block {
-  font-size: 0.9rem;
-  color: #d7daf0;
+.stat-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #aeb3c8;
 }
 
 .stat-controls {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto minmax(60px, 1fr) auto;
+  align-items: center;
   gap: 6px;
+}
+
+.stat-value {
+  font-size: 0.9rem;
+  color: #d7daf0;
+  text-align: center;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(24, 29, 44, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .stat-controls button {
@@ -276,6 +331,32 @@ body {
   border-radius: 10px;
   background: #263255;
   font-size: 0.95rem;
+}
+
+.xp-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(18, 21, 31, 0.98);
+  border: 1px solid rgba(122, 82, 255, 0.3);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+  z-index: 5;
+}
+
+.xp-menu.is-open {
+  display: flex;
+}
+
+.xp-menu button {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(122, 82, 255, 0.2);
 }
 
 .date {
