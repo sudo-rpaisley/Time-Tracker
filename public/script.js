@@ -8,14 +8,24 @@ const shortRestButton = document.getElementById('shortRestButton');
 const longRestButton = document.getElementById('longRestButton');
 const combatantNameInput = document.getElementById('combatantName');
 const combatantTypeSelect = document.getElementById('combatantType');
+const combatantMaxHpInput = document.getElementById('combatantMaxHp');
 const addCombatantButton = document.getElementById('addCombatantButton');
 const initiativeTrack = document.getElementById('initiativeTrack');
+const profileCard = document.getElementById('profileCard');
+const emptyProfile = document.getElementById('emptyProfile');
+const profileDetails = document.getElementById('profileDetails');
+const profileName = document.getElementById('profileName');
+const profileType = document.getElementById('profileType');
+const profileCurrentHp = document.getElementById('profileCurrentHp');
+const profileMaxHp = document.getElementById('profileMaxHp');
+const profileNotes = document.getElementById('profileNotes');
 
 let currentTime = new Date();
 let tickingInterval = null;
 let combatants = [];
 let currentCombatantIndex = 0;
 let draggedCombatantId = null;
+let selectedCombatantId = null;
 
 const pad = (value) => String(value).padStart(2, '0');
 
@@ -121,13 +131,17 @@ const renderInitiative = () => {
     container.append(avatar, name);
     container.addEventListener('click', () => {
       currentCombatantIndex = index;
+      selectedCombatantId = combatant.id;
       renderInitiative();
+      renderProfile();
     });
     container.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         currentCombatantIndex = index;
+        selectedCombatantId = combatant.id;
         renderInitiative();
+        renderProfile();
       }
     });
     container.addEventListener('dragstart', () => {
@@ -178,9 +192,42 @@ const renderInitiative = () => {
         }
       }
       renderInitiative();
+      renderProfile();
     });
     initiativeTrack.appendChild(container);
   });
+};
+
+const renderProfile = () => {
+  const selected = combatants.find(
+    (combatant) => combatant.id === selectedCombatantId
+  );
+  if (!selected) {
+    emptyProfile.hidden = false;
+    profileDetails.hidden = true;
+    return;
+  }
+
+  emptyProfile.hidden = true;
+  profileDetails.hidden = false;
+  profileName.value = selected.name;
+  profileType.value = selected.type;
+  profileCurrentHp.value = selected.currentHp ?? '';
+  profileMaxHp.value = selected.maxHp ?? '';
+  profileNotes.value = selected.notes ?? '';
+};
+
+const updateSelectedCombatant = (updates) => {
+  if (!selectedCombatantId) {
+    return;
+  }
+  combatants = combatants.map((combatant) =>
+    combatant.id === selectedCombatantId
+      ? { ...combatant, ...updates }
+      : combatant
+  );
+  renderInitiative();
+  renderProfile();
 };
 
 const addCombatant = () => {
@@ -190,20 +237,26 @@ const addCombatant = () => {
     return;
   }
 
-  combatants = [
-    ...combatants,
-    {
-      id: crypto.randomUUID(),
-      name,
-      type: combatantTypeSelect.value
-    }
-  ];
+  const maxHpValue = Number(combatantMaxHpInput.value);
+  const maxHp = Number.isNaN(maxHpValue) ? null : maxHpValue;
+  const newCombatant = {
+    id: crypto.randomUUID(),
+    name,
+    type: combatantTypeSelect.value,
+    maxHp,
+    currentHp: maxHp,
+    notes: ''
+  };
+  combatants = [...combatants, newCombatant];
   if (combatants.length === 1) {
     currentCombatantIndex = 0;
+    selectedCombatantId = newCombatant.id;
   }
   combatantNameInput.value = '';
+  combatantMaxHpInput.value = '';
   combatantNameInput.focus();
   renderInitiative();
+  renderProfile();
 };
 
 const advanceCombatant = () => {
@@ -213,6 +266,10 @@ const advanceCombatant = () => {
   currentCombatantIndex =
     (currentCombatantIndex + 1) % combatants.length;
   renderInitiative();
+  if (!selectedCombatantId) {
+    selectedCombatantId = combatants[currentCombatantIndex]?.id ?? null;
+    renderProfile();
+  }
 };
 
 setTimeButton.addEventListener('click', updateTimeFromInputs);
@@ -228,8 +285,47 @@ combatantNameInput.addEventListener('keydown', (event) => {
     addCombatant();
   }
 });
+profileName.addEventListener('input', () => {
+  updateSelectedCombatant({ name: profileName.value.trim() || 'Unnamed' });
+});
+profileType.addEventListener('change', () => {
+  updateSelectedCombatant({ type: profileType.value });
+});
+profileCurrentHp.addEventListener('input', () => {
+  const value = profileCurrentHp.value.trim();
+  const parsed = Number(value);
+  updateSelectedCombatant({
+    currentHp: value === '' || Number.isNaN(parsed) ? null : parsed
+  });
+});
+profileMaxHp.addEventListener('input', () => {
+  const value = profileMaxHp.value.trim();
+  const parsed = Number(value);
+  updateSelectedCombatant({
+    maxHp: value === '' || Number.isNaN(parsed) ? null : parsed
+  });
+});
+profileNotes.addEventListener('input', () => {
+  updateSelectedCombatant({ notes: profileNotes.value });
+});
+profileCard.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-hp-change]');
+  if (!button) {
+    return;
+  }
+  const delta = Number(button.dataset.hpChange);
+  const selected = combatants.find(
+    (combatant) => combatant.id === selectedCombatantId
+  );
+  if (!selected) {
+    return;
+  }
+  const nextValue = Math.max(0, (selected.currentHp ?? 0) + delta);
+  updateSelectedCombatant({ currentHp: nextValue });
+});
 
 syncInputs();
 render();
 startClock();
 renderInitiative();
+renderProfile();
