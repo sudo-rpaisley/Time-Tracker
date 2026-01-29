@@ -40,7 +40,6 @@ const profileAvatar = document.getElementById('profileAvatar');
 const profileNotes = document.getElementById('profileNotes');
 
 let totalSeconds = 0;
-let tickingInterval = null;
 let combatants = [];
 let currentCombatantIndex = 0;
 let draggedCombatantId = null;
@@ -246,18 +245,6 @@ const render = () => {
   timeDisplay.textContent = formatTime(dateParts);
 };
 
-const tick = () => {
-  totalSeconds += 1;
-  render();
-};
-
-const startClock = () => {
-  if (tickingInterval) {
-    clearInterval(tickingInterval);
-  }
-  tickingInterval = setInterval(tick, 1000);
-};
-
 const updateTimeFromInputs = () => {
   totalSeconds = toTotalSeconds(
     {
@@ -271,7 +258,6 @@ const updateTimeFromInputs = () => {
     calendarSettings
   );
   render();
-  startClock();
 };
 
 const adjustTime = (milliseconds) => {
@@ -645,6 +631,5 @@ const initializeDefaults = () => {
 };
 
 initializeDefaults();
-startClock();
 renderInitiative();
 renderProfile();
