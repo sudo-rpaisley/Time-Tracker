@@ -9,8 +9,12 @@ const longRestButton = document.getElementById('longRestButton');
 const combatantNameInput = document.getElementById('combatantName');
 const combatantTypeSelect = document.getElementById('combatantType');
 const combatantMaxHpInput = document.getElementById('combatantMaxHp');
+const combatantPresetSelect = document.getElementById('combatantPreset');
 const addCombatantButton = document.getElementById('addCombatantButton');
 const initiativeTrack = document.getElementById('initiativeTrack');
+const profileModal = document.getElementById('profileModal');
+const profileBackdrop = document.getElementById('profileBackdrop');
+const closeProfileButton = document.getElementById('closeProfileButton');
 const profileCard = document.getElementById('profileCard');
 const emptyProfile = document.getElementById('emptyProfile');
 const profileDetails = document.getElementById('profileDetails');
@@ -18,6 +22,7 @@ const profileName = document.getElementById('profileName');
 const profileType = document.getElementById('profileType');
 const profileCurrentHp = document.getElementById('profileCurrentHp');
 const profileMaxHp = document.getElementById('profileMaxHp');
+const profileAvatar = document.getElementById('profileAvatar');
 const profileNotes = document.getElementById('profileNotes');
 
 let currentTime = new Date();
@@ -26,6 +31,37 @@ let combatants = [];
 let currentCombatantIndex = 0;
 let draggedCombatantId = null;
 let selectedCombatantId = null;
+
+const monsterPresets = [
+  {
+    id: 'goblin',
+    name: 'Goblin',
+    type: 'npc',
+    maxHp: 7,
+    notes: 'AC 15, Nimble Escape'
+  },
+  {
+    id: 'orc',
+    name: 'Orc',
+    type: 'npc',
+    maxHp: 15,
+    notes: 'AC 13, Aggressive'
+  },
+  {
+    id: 'skeleton',
+    name: 'Skeleton',
+    type: 'npc',
+    maxHp: 13,
+    notes: 'AC 13, Vulnerable to bludgeoning'
+  },
+  {
+    id: 'bandit',
+    name: 'Bandit',
+    type: 'npc',
+    maxHp: 11,
+    notes: 'AC 12, Scimitar +3 to hit'
+  }
+];
 
 const pad = (value) => String(value).padStart(2, '0');
 
@@ -122,7 +158,15 @@ const renderInitiative = () => {
 
     const avatar = document.createElement('div');
     avatar.className = 'combatant-avatar';
-    avatar.textContent = getInitials(combatant.name);
+    if (combatant.avatar) {
+      avatar.classList.add('has-image');
+      avatar.style.backgroundImage = `url(${combatant.avatar})`;
+      avatar.textContent = '';
+    } else {
+      avatar.classList.remove('has-image');
+      avatar.style.backgroundImage = '';
+      avatar.textContent = getInitials(combatant.name);
+    }
 
     const name = document.createElement('div');
     name.className = 'combatant-name';
@@ -134,6 +178,7 @@ const renderInitiative = () => {
       selectedCombatantId = combatant.id;
       renderInitiative();
       renderProfile();
+      openProfileModal();
     });
     container.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -142,6 +187,7 @@ const renderInitiative = () => {
         selectedCombatantId = combatant.id;
         renderInitiative();
         renderProfile();
+        openProfileModal();
       }
     });
     container.addEventListener('dragstart', () => {
@@ -215,6 +261,17 @@ const renderProfile = () => {
   profileCurrentHp.value = selected.currentHp ?? '';
   profileMaxHp.value = selected.maxHp ?? '';
   profileNotes.value = selected.notes ?? '';
+  profileAvatar.value = '';
+};
+
+const openProfileModal = () => {
+  profileModal.classList.add('is-open');
+  profileModal.setAttribute('aria-hidden', 'false');
+};
+
+const closeProfileModal = () => {
+  profileModal.classList.remove('is-open');
+  profileModal.setAttribute('aria-hidden', 'true');
 };
 
 const updateSelectedCombatant = (updates) => {
@@ -237,15 +294,21 @@ const addCombatant = () => {
     return;
   }
 
+  const preset = monsterPresets.find(
+    (entry) => entry.id === combatantPresetSelect.value
+  );
   const maxHpValue = Number(combatantMaxHpInput.value);
-  const maxHp = Number.isNaN(maxHpValue) ? null : maxHpValue;
+  const maxHp = Number.isNaN(maxHpValue)
+    ? preset?.maxHp ?? null
+    : maxHpValue;
   const newCombatant = {
     id: crypto.randomUUID(),
     name,
-    type: combatantTypeSelect.value,
+    type: combatantTypeSelect.value || preset?.type || 'npc',
     maxHp,
     currentHp: maxHp,
-    notes: ''
+    notes: preset?.notes ?? '',
+    avatar: null
   };
   combatants = [...combatants, newCombatant];
   if (combatants.length === 1) {
@@ -254,6 +317,7 @@ const addCombatant = () => {
   }
   combatantNameInput.value = '';
   combatantMaxHpInput.value = '';
+  combatantPresetSelect.value = '';
   combatantNameInput.focus();
   renderInitiative();
   renderProfile();
@@ -285,6 +349,17 @@ combatantNameInput.addEventListener('keydown', (event) => {
     addCombatant();
   }
 });
+combatantPresetSelect.addEventListener('change', () => {
+  const preset = monsterPresets.find(
+    (entry) => entry.id === combatantPresetSelect.value
+  );
+  if (!preset) {
+    return;
+  }
+  combatantNameInput.value = preset.name;
+  combatantTypeSelect.value = preset.type;
+  combatantMaxHpInput.value = preset.maxHp ?? '';
+});
 profileName.addEventListener('input', () => {
   updateSelectedCombatant({ name: profileName.value.trim() || 'Unnamed' });
 });
@@ -308,6 +383,17 @@ profileMaxHp.addEventListener('input', () => {
 profileNotes.addEventListener('input', () => {
   updateSelectedCombatant({ notes: profileNotes.value });
 });
+profileAvatar.addEventListener('change', () => {
+  const file = profileAvatar.files?.[0];
+  if (!file) {
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    updateSelectedCombatant({ avatar: reader.result });
+  };
+  reader.readAsDataURL(file);
+});
 profileCard.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-hp-change]');
   if (!button) {
@@ -323,9 +409,23 @@ profileCard.addEventListener('click', (event) => {
   const nextValue = Math.max(0, (selected.currentHp ?? 0) + delta);
   updateSelectedCombatant({ currentHp: nextValue });
 });
+closeProfileButton.addEventListener('click', closeProfileModal);
+profileBackdrop.addEventListener('click', closeProfileModal);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeProfileModal();
+  }
+});
 
 syncInputs();
 render();
 startClock();
 renderInitiative();
 renderProfile();
+
+monsterPresets.forEach((preset) => {
+  const option = document.createElement('option');
+  option.value = preset.id;
+  option.textContent = preset.name;
+  combatantPresetSelect.appendChild(option);
+});

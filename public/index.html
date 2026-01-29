@@ -65,59 +65,77 @@
               Max HP
               <input type="number" id="combatantMaxHp" min="0" placeholder="e.g. 28" />
             </label>
+            <label>
+              Preset
+              <select id="combatantPreset">
+                <option value="">Custom</option>
+              </select>
+            </label>
           </div>
           <button class="primary" id="addCombatantButton">Add Combatant</button>
           <div class="initiative-track" id="initiativeTrack" aria-live="polite"></div>
         </div>
-
-        <div class="control-group">
-          <h2>Combatant Profile</h2>
-          <p class="helper-text">
-            Select a combatant to edit stats, current HP, and notes.
-          </p>
-          <div class="profile-card" id="profileCard">
-            <div class="empty-profile" id="emptyProfile">
-              Choose a combatant from the initiative order to view details.
-            </div>
-            <div class="profile-details" id="profileDetails" hidden>
-              <div class="input-row">
-                <label>
-                  Name
-                  <input type="text" id="profileName" />
-                </label>
-                <label>
-                  Type
-                  <select id="profileType">
-                    <option value="player">Player</option>
-                    <option value="npc">NPC</option>
-                  </select>
-                </label>
-              </div>
-              <div class="input-row">
-                <label>
-                  Current HP
-                  <input type="number" id="profileCurrentHp" min="0" />
-                </label>
-                <label>
-                  Max HP
-                  <input type="number" id="profileMaxHp" min="0" />
-                </label>
-              </div>
-              <div class="hp-controls">
-                <button type="button" data-hp-change="-1">-1 HP</button>
-                <button type="button" data-hp-change="-5">-5 HP</button>
-                <button type="button" data-hp-change="1">+1 HP</button>
-                <button type="button" data-hp-change="5">+5 HP</button>
-              </div>
-              <label>
-                Notes
-                <textarea id="profileNotes" rows="3" placeholder="Conditions, AC, spells, etc."></textarea>
-              </label>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
+
+    <div class="modal" id="profileModal" aria-hidden="true">
+      <div class="modal-backdrop" id="profileBackdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <div class="modal-header">
+          <h2 id="profileTitle">Combatant Profile</h2>
+          <button type="button" class="icon-button" id="closeProfileButton" aria-label="Close profile">
+            ✕
+          </button>
+        </div>
+        <p class="helper-text">
+          Edit stats, current HP, notes, and upload an avatar icon.
+        </p>
+        <div class="profile-card" id="profileCard">
+          <div class="empty-profile" id="emptyProfile">
+            Choose a combatant from the initiative order to view details.
+          </div>
+          <div class="profile-details" id="profileDetails" hidden>
+            <div class="input-row">
+              <label>
+                Name
+                <input type="text" id="profileName" />
+              </label>
+              <label>
+                Type
+                <select id="profileType">
+                  <option value="player">Player</option>
+                  <option value="npc">NPC</option>
+                </select>
+              </label>
+            </div>
+            <div class="input-row">
+              <label>
+                Current HP
+                <input type="number" id="profileCurrentHp" min="0" />
+              </label>
+              <label>
+                Max HP
+                <input type="number" id="profileMaxHp" min="0" />
+              </label>
+            </div>
+            <div class="hp-controls">
+              <button type="button" data-hp-change="-1">-1 HP</button>
+              <button type="button" data-hp-change="-5">-5 HP</button>
+              <button type="button" data-hp-change="1">+1 HP</button>
+              <button type="button" data-hp-change="5">+5 HP</button>
+            </div>
+            <label>
+              Avatar
+              <input type="file" id="profileAvatar" accept="image/*" />
+            </label>
+            <label>
+              Notes
+              <textarea id="profileNotes" rows="3" placeholder="Conditions, AC, spells, etc."></textarea>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script src="script.js"></script>
   </body>
