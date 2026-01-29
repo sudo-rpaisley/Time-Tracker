@@ -144,6 +144,24 @@
         </div>
 
         <div class="control-group">
+          <h2>Quick Encounter</h2>
+          <p class="helper-text">Generate a random encounter based on difficulty.</p>
+          <div class="input-row">
+            <label>
+              Difficulty
+              <input type="range" id="encounterDifficulty" min="1" max="5" value="3" />
+            </label>
+            <div class="difficulty-label" id="encounterDifficultyLabel">Medium</div>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="generateEncounterButton" type="button">Generate Encounter</button>
+            <button class="ghost" id="addEncounterButton" type="button">Add to Initiative</button>
+            <button class="ghost" id="clearEncounterDraftButton" type="button">Clear Suggestion</button>
+          </div>
+          <ul class="encounter-list" id="encounterDraftList"></ul>
+        </div>
+
+        <div class="control-group">
           <h2>Combat Log</h2>
           <ul class="combat-log" id="combatLog"></ul>
         </div>

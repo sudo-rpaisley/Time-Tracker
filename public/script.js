@@ -58,6 +58,18 @@ const profileNotes = document.getElementById('profileNotes');
 const removeCombatantButton = document.getElementById('removeCombatantButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
+const encounterDifficulty = document.getElementById('encounterDifficulty');
+const encounterDifficultyLabel = document.getElementById(
+  'encounterDifficultyLabel'
+);
+const generateEncounterButton = document.getElementById(
+  'generateEncounterButton'
+);
+const addEncounterButton = document.getElementById('addEncounterButton');
+const clearEncounterDraftButton = document.getElementById(
+  'clearEncounterDraftButton'
+);
+const encounterDraftList = document.getElementById('encounterDraftList');
 
 const timeInputs = [
   yearInput,
@@ -77,6 +89,7 @@ let selectedCombatantId = null;
 let combatLogEntries = [];
 let roundNumber = 1;
 let autoClockTimer = null;
+let encounterDraft = [];
 
 let calendarSettings = {
   monthsInYear: 12,
@@ -161,7 +174,8 @@ const createWorld = (name) => ({
   calendarSettings: { ...calendarSettings },
   timeConfig: { ...timeConfig },
   roundNumber: 1,
-  combatLogEntries: []
+  combatLogEntries: [],
+  encounterDraft: []
 });
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -179,7 +193,8 @@ const saveState = () => {
     calendarSettings,
     timeConfig,
     roundNumber,
-    combatLogEntries
+    combatLogEntries,
+    encounterDraft
   };
   localStorage.setItem(
     STORAGE_KEY,
@@ -265,6 +280,9 @@ const setActiveWorld = (worldId) => {
   combatLogEntries = Array.isArray(nextWorld.combatLogEntries)
     ? nextWorld.combatLogEntries
     : [];
+  encounterDraft = Array.isArray(nextWorld.encounterDraft)
+    ? nextWorld.encounterDraft
+    : [];
   monthsInYearInput.value = calendarSettings.monthsInYear;
   hoursPerDayInput.value = calendarSettings.hoursPerDay;
   daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
@@ -276,6 +294,7 @@ const setActiveWorld = (worldId) => {
   renderInitiative();
   renderProfile();
   renderCombatLog();
+  renderEncounterDraft();
   updateAdvanceLabels();
   updateRoundDisplay();
   saveState();
@@ -439,6 +458,89 @@ const renderCombatLog = () => {
   });
 };
 
+const difficultyLabels = ['Easy', 'Easy', 'Medium', 'Hard', 'Deadly'];
+
+const updateDifficultyLabel = () => {
+  const value = Number(encounterDifficulty.value);
+  encounterDifficultyLabel.textContent =
+    difficultyLabels[value - 1] || 'Medium';
+};
+
+const renderEncounterDraft = () => {
+  encounterDraftList.innerHTML = '';
+  if (encounterDraft.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No suggested encounter yet.';
+    encounterDraftList.appendChild(item);
+    return;
+  }
+  encounterDraft.forEach((entry) => {
+    const item = document.createElement('li');
+    item.textContent = `${entry.name} • ${entry.count}`;
+    encounterDraftList.appendChild(item);
+  });
+};
+
+const generateEncounterDraft = () => {
+  const difficulty = Number(encounterDifficulty.value);
+  const monsterCount = Math.max(1, Math.ceil(difficulty + Math.random() * 2));
+  encounterDraft = [];
+  for (let i = 0; i < monsterCount; i += 1) {
+    const preset =
+      monsterPresets[Math.floor(Math.random() * monsterPresets.length)];
+    const existing = encounterDraft.find((entry) => entry.id === preset.id);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      encounterDraft.push({
+        id: preset.id,
+        name: preset.name,
+        type: preset.type,
+        maxHp: preset.maxHp,
+        notes: preset.notes,
+        count: 1
+      });
+    }
+  }
+  renderEncounterDraft();
+  logEvent(`Generated a ${difficultyLabels[difficulty - 1] || 'Medium'} encounter.`);
+  saveState();
+};
+
+const addEncounterToInitiative = () => {
+  if (encounterDraft.length === 0) {
+    return;
+  }
+  const newCombatants = [];
+  encounterDraft.forEach((entry) => {
+    for (let i = 0; i < entry.count; i += 1) {
+      newCombatants.push({
+        id: crypto.randomUUID(),
+        name: entry.count > 1 ? `${entry.name} ${i + 1}` : entry.name,
+        type: entry.type,
+        maxHp: entry.maxHp,
+        currentHp: entry.maxHp,
+        initiative: null,
+        conditions: '',
+        notes: entry.notes,
+        avatar: null
+      });
+    }
+  });
+  combatants = [...combatants, ...newCombatants];
+  renderInitiative();
+  renderProfile();
+  logEvent('Quick encounter added to initiative.');
+  saveState();
+};
+
+const clearEncounterDraft = () => {
+  encounterDraft = [];
+  renderEncounterDraft();
+  saveState();
+};
+
 const sortCombatantsByInitiative = () => {
   combatants = [...combatants].sort((a, b) => {
     const aInit = Number.isFinite(a.initiative) ? a.initiative : -1;
@@ -469,10 +571,12 @@ const clearEncounter = () => {
   selectedCombatantId = null;
   roundNumber = 1;
   combatLogEntries = [];
+  encounterDraft = [];
   updateRoundDisplay();
   renderInitiative();
   renderProfile();
   renderCombatLog();
+  renderEncounterDraft();
   logEvent('Encounter cleared.');
   saveState();
 };
@@ -1009,6 +1113,10 @@ clockSpeedInput.addEventListener('input', () => {
   syncTimeConfigInputs();
   saveState();
 });
+encounterDifficulty.addEventListener('input', updateDifficultyLabel);
+generateEncounterButton.addEventListener('click', generateEncounterDraft);
+addEncounterButton.addEventListener('click', addEncounterToInitiative);
+clearEncounterDraftButton.addEventListener('click', clearEncounterDraft);
 exportWorldButton.addEventListener('click', () => {
   const world = getCurrentWorld();
   if (!world) {
@@ -1022,9 +1130,10 @@ exportWorldButton.addEventListener('click', () => {
     selectedCombatantId,
     calendarSettings,
     timeConfig,
-    roundNumber,
-    combatLogEntries
-  };
+      roundNumber,
+      combatLogEntries,
+      encounterDraft
+    };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: 'application/json'
   });
@@ -1059,6 +1168,9 @@ importWorldInput.addEventListener('change', () => {
         combatants: Array.isArray(parsed.combatants) ? parsed.combatants : [],
         combatLogEntries: Array.isArray(parsed.combatLogEntries)
           ? parsed.combatLogEntries
+          : [],
+        encounterDraft: Array.isArray(parsed.encounterDraft)
+          ? parsed.encounterDraft
           : []
       };
       worlds[world.id] = world;
@@ -1116,6 +1228,8 @@ const initializeDefaults = () => {
   updateAdvanceLabels();
   updateRoundDisplay();
   renderCombatLog();
+  updateDifficultyLabel();
+  renderEncounterDraft();
 };
 
 initializeDefaults();
