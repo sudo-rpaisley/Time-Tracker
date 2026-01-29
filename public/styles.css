@@ -177,6 +177,19 @@ button.primary {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.combatant[draggable='true'] {
+  cursor: grab;
+}
+
+.combatant.dragging {
+  opacity: 0.5;
+}
+
+.combatant.drag-over .combatant-avatar {
+  outline: 2px dashed #7a52ff;
+  outline-offset: 4px;
+}
+
 .combatant.npc .combatant-avatar {
   background: #5a2f3a;
 }

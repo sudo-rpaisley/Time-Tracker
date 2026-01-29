@@ -15,6 +15,7 @@ let currentTime = new Date();
 let tickingInterval = null;
 let combatants = [];
 let currentCombatantIndex = 0;
+let draggedCombatantId = null;
 
 const pad = (value) => String(value).padStart(2, '0');
 
@@ -102,6 +103,8 @@ const renderInitiative = () => {
     }`;
     container.setAttribute('role', 'button');
     container.setAttribute('tabindex', '0');
+    container.setAttribute('draggable', 'true');
+    container.dataset.combatantId = combatant.id;
     container.setAttribute(
       'aria-label',
       `${combatant.name} (${combatant.type})`
@@ -126,6 +129,55 @@ const renderInitiative = () => {
         currentCombatantIndex = index;
         renderInitiative();
       }
+    });
+    container.addEventListener('dragstart', () => {
+      draggedCombatantId = combatant.id;
+      container.classList.add('dragging');
+    });
+    container.addEventListener('dragend', () => {
+      draggedCombatantId = null;
+      container.classList.remove('dragging');
+      initiativeTrack
+        .querySelectorAll('.combatant.drag-over')
+        .forEach((element) => element.classList.remove('drag-over'));
+    });
+    container.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      container.classList.add('drag-over');
+    });
+    container.addEventListener('dragleave', () => {
+      container.classList.remove('drag-over');
+    });
+    container.addEventListener('drop', (event) => {
+      event.preventDefault();
+      container.classList.remove('drag-over');
+      if (!draggedCombatantId || draggedCombatantId === combatant.id) {
+        return;
+      }
+      const fromIndex = combatants.findIndex(
+        (item) => item.id === draggedCombatantId
+      );
+      const toIndex = combatants.findIndex(
+        (item) => item.id === combatant.id
+      );
+      if (fromIndex === -1 || toIndex === -1) {
+        return;
+      }
+      const [moved] = combatants.splice(fromIndex, 1);
+      combatants.splice(toIndex, 0, moved);
+      if (currentCombatantIndex === fromIndex) {
+        currentCombatantIndex = toIndex;
+      } else if (
+        currentCombatantIndex >= Math.min(fromIndex, toIndex) &&
+        currentCombatantIndex <= Math.max(fromIndex, toIndex)
+      ) {
+        if (fromIndex < toIndex) {
+          currentCombatantIndex -= 1;
+        } else {
+          currentCombatantIndex += 1;
+        }
+      }
+      renderInitiative();
     });
     initiativeTrack.appendChild(container);
   });
