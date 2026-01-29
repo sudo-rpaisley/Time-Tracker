@@ -12,7 +12,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  padding: 96px 24px 24px;
+  padding: 124px 24px 24px;
   background: radial-gradient(circle at top, #202538 0%, #0f1116 55%);
 }
 
@@ -35,10 +35,10 @@ body {
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 24px;
+  gap: 24px;
+  padding: 16px 24px 20px;
   background: rgba(12, 15, 24, 0.9);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -48,6 +48,20 @@ body {
 .nav-brand {
   font-weight: 600;
   letter-spacing: 0.03em;
+}
+
+.nav-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nav-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  flex: 1;
 }
 
 .nav-time {
@@ -69,6 +83,7 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .nav-link {
@@ -109,6 +124,7 @@ body {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .party-avatar-button {
@@ -1023,7 +1039,7 @@ button.primary {
 
 @media (max-width: 600px) {
   body {
-    padding: 88px 16px 16px;
+    padding: 160px 16px 16px;
   }
 
   .clock-card {
