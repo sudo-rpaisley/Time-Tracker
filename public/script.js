@@ -23,6 +23,8 @@ const closeSettingsButton = document.getElementById('closeSettingsButton');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
 const hoursPerDayInput = document.getElementById('hoursPerDayInput');
 const daysPerMonthInput = document.getElementById('daysPerMonthInput');
+const monthNamesInput = document.getElementById('monthNamesInput');
+const dayNamesInput = document.getElementById('dayNamesInput');
 const applySettingsButton = document.getElementById('applySettingsButton');
 const profileModal = document.getElementById('profileModal');
 const profileBackdrop = document.getElementById('profileBackdrop');
@@ -47,23 +49,31 @@ let selectedCombatantId = null;
 let calendarSettings = {
   monthsInYear: 12,
   daysPerMonth: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-  hoursPerDay: 24
+  hoursPerDay: 24,
+  monthNames: [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ],
+  dayNames: [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+  ]
 };
-
-const monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December'
-];
 
 const monsterPresets = [
   {
@@ -109,10 +119,26 @@ const normalizeCalendarSettings = (settings) => {
     const value = Number(parsedDays[i]);
     daysPerMonth.push(Number.isNaN(value) || value < 1 ? 30 : value);
   }
+  const parsedMonthNames = Array.isArray(settings.monthNames)
+    ? settings.monthNames
+    : [];
+  const monthNames = [];
+  for (let i = 0; i < monthsInYear; i += 1) {
+    const name = String(parsedMonthNames[i] || '').trim();
+    monthNames.push(name || `Month ${i + 1}`);
+  }
+  const parsedDayNames = Array.isArray(settings.dayNames)
+    ? settings.dayNames
+    : [];
+  const dayNames = parsedDayNames
+    .map((value) => String(value).trim())
+    .filter((value) => value.length > 0);
   return {
     monthsInYear,
     daysPerMonth,
-    hoursPerDay
+    hoursPerDay,
+    monthNames,
+    dayNames
   };
 };
 
@@ -176,20 +202,29 @@ const fromTotalSeconds = (seconds, settings) => {
   const minute = Math.floor(remainingSeconds / 60);
   const second = remainingSeconds % 60;
 
+  const dayOfWeekIndex =
+    settings.dayNames.length > 0 ? dayOfYear % settings.dayNames.length : null;
+
   return {
     year,
     month: monthIndex + 1,
     day: dayIndex + 1,
     hour,
     minute,
-    second
+    second,
+    dayOfWeekIndex
   };
 };
 
 const formatDate = (dateParts, settings) => {
   const name =
-    monthNames[dateParts.month - 1] || `Month ${dateParts.month}`;
-  return `${name} ${dateParts.day}, Year ${dateParts.year}`;
+    settings.monthNames[dateParts.month - 1] || `Month ${dateParts.month}`;
+  const dayName =
+    dateParts.dayOfWeekIndex !== null && settings.dayNames.length > 0
+      ? settings.dayNames[dateParts.dayOfWeekIndex]
+      : '';
+  const dayPrefix = dayName ? `${dayName}, ` : '';
+  return `${dayPrefix}${name} ${dateParts.day}, Year ${dateParts.year}`;
 };
 
 const formatTime = (dateParts) =>
@@ -559,10 +594,20 @@ applySettingsButton.addEventListener('click', () => {
     .split(',')
     .map((value) => Number(value.trim()))
     .filter((value) => !Number.isNaN(value));
+  const monthNames = monthNamesInput.value
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const dayNames = dayNamesInput.value
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
   calendarSettings = normalizeCalendarSettings({
     monthsInYear,
     hoursPerDay,
-    daysPerMonth
+    daysPerMonth,
+    monthNames,
+    dayNames
   });
   syncInputs();
   render();
@@ -592,6 +637,8 @@ const initializeDefaults = () => {
   monthsInYearInput.value = calendarSettings.monthsInYear;
   hoursPerDayInput.value = calendarSettings.hoursPerDay;
   daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
+  monthNamesInput.value = calendarSettings.monthNames.join(', ');
+  dayNamesInput.value = calendarSettings.dayNames.join(', ');
   syncInputs();
   render();
 };
