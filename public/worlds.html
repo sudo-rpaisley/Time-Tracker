@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Time Tracker - Worlds</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page worlds-page" id="worldsPage">
+      <header class="page-header">
+        <div>
+          <h2>Worlds</h2>
+          <p class="helper-text">Select a world or create a new one.</p>
+        </div>
+        <button class="primary" id="createWorldButton" type="button">New World</button>
+      </header>
+      <div class="world-grid" id="worldGrid"></div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

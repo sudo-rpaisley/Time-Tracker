@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Time Tracker - Calendar</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page calendar-page">
+      <header class="page-header">
+        <div>
+          <h2>Calendar</h2>
+          <p class="helper-text">Add festivals, milestones, and historical events.</p>
+        </div>
+        <div class="calendar-controls">
+          <button class="ghost" id="calendarPrevButton" type="button">← Prev</button>
+          <div class="calendar-month" id="calendarMonthLabel">Month</div>
+          <button class="ghost" id="calendarNextButton" type="button">Next →</button>
+        </div>
+      </header>
+
+      <div class="calendar-grid" id="calendarGrid"></div>
+
+      <section class="calendar-events">
+        <div class="calendar-form">
+          <h3>Add Event</h3>
+          <div class="input-row">
+            <label>
+              Title
+              <input type="text" id="eventTitleInput" placeholder="e.g. Harvest Festival" />
+            </label>
+            <label>
+              Day
+              <input type="number" id="eventDayInput" min="1" />
+            </label>
+            <label>
+              Month
+              <input type="number" id="eventMonthInput" min="1" />
+            </label>
+            <label>
+              Year
+              <input type="number" id="eventYearInput" min="1" />
+            </label>
+          </div>
+          <label>
+            Description
+            <textarea id="eventDescriptionInput" rows="2" placeholder="Details or notes"></textarea>
+          </label>
+          <button class="primary" id="addEventButton" type="button">Add Event</button>
+        </div>
+
+        <div class="calendar-list">
+          <h3>Events This Month</h3>
+          <ul id="calendarEventList" class="event-list"></ul>
+        </div>
+      </section>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>
