@@ -7,27 +7,60 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app" id="appPage">
+    <nav class="top-nav">
+      <div class="nav-brand">D&amp;D Time Tracker</div>
+      <div class="nav-time" aria-live="polite" id="navTimeDisplay">--:--:--</div>
+      <div class="nav-actions">
+        <button class="ghost" id="openHomeButton" type="button">Home</button>
+        <button class="ghost" id="openWorldsButton" type="button">Worlds</button>
+        <button class="ghost" id="openTrackerButton" type="button">Tracker</button>
+        <button class="ghost" id="openSettingsButton" type="button">Settings</button>
+      </div>
+    </nav>
+
+    <section class="page home-page" id="homePage">
+      <div class="home-hero">
+        <h1>D&amp;D Time &amp; Turn Tracker</h1>
+        <p>
+          Run encounters, track in-world time, and manage initiative across multiple worlds.
+        </p>
+        <div class="button-row">
+          <button class="primary" id="homeGoWorldsButton" type="button">Choose a World</button>
+          <button class="ghost" id="homeGoTrackerButton" type="button">Open Tracker</button>
+        </div>
+      </div>
+      <div class="home-grid">
+        <div class="home-card">
+          <h3>Worlds</h3>
+          <p>Create distinct campaign worlds and swap between them instantly.</p>
+        </div>
+        <div class="home-card">
+          <h3>Combat</h3>
+          <p>Initiative, HP, conditions, and quick encounter drafting at your fingertips.</p>
+        </div>
+        <div class="home-card">
+          <h3>Time</h3>
+          <p>Keep calendar settings, rest durations, and a live clock per world.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page worlds-page" id="worldsPage" hidden>
+      <header class="page-header">
+        <div>
+          <h2>Worlds</h2>
+          <p class="helper-text">Select a world or create a new one.</p>
+        </div>
+        <button class="primary" id="createWorldButton" type="button">New World</button>
+      </header>
+      <div class="world-grid" id="worldGrid"></div>
+    </section>
+
+    <main class="app page tracker-page" id="appPage" hidden>
       <header class="header">
         <div>
           <h1>D&amp;D Time &amp; Turn Tracker</h1>
           <p>Track your in-game time for combat and rests.</p>
-        </div>
-        <div class="header-actions">
-          <label class="world-picker">
-            World
-            <select id="worldSelect" aria-label="Select world"></select>
-          </label>
-          <button class="primary" id="createWorldButton" type="button">New World</button>
-          <button class="ghost" id="deleteWorldButton" type="button">Delete</button>
-          <button
-            class="icon-button settings-button"
-            id="openSettingsButton"
-            type="button"
-            aria-label="Open settings"
-          >
-            ⚙️
-          </button>
         </div>
       </header>
 
@@ -236,7 +269,7 @@
       </div>
     </div>
 
-    <section class="settings-page" id="settingsPage" hidden>
+    <section class="settings-page page" id="settingsPage" hidden>
       <header class="settings-header">
         <div>
           <h2 id="settingsTitle">Calendar Settings</h2>

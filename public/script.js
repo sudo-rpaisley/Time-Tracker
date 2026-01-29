@@ -17,12 +17,19 @@ const combatantPresetSelect = document.getElementById('combatantPreset');
 const addCombatantButton = document.getElementById('addCombatantButton');
 const initiativeTrack = document.getElementById('initiativeTrack');
 const appPage = document.getElementById('appPage');
-const openSettingsButton = document.getElementById('openSettingsButton');
+const homePage = document.getElementById('homePage');
+const worldsPage = document.getElementById('worldsPage');
 const settingsPage = document.getElementById('settingsPage');
+const openHomeButton = document.getElementById('openHomeButton');
+const openWorldsButton = document.getElementById('openWorldsButton');
+const openTrackerButton = document.getElementById('openTrackerButton');
+const openSettingsButton = document.getElementById('openSettingsButton');
+const homeGoWorldsButton = document.getElementById('homeGoWorldsButton');
+const homeGoTrackerButton = document.getElementById('homeGoTrackerButton');
+const navTimeDisplay = document.getElementById('navTimeDisplay');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
-const worldSelect = document.getElementById('worldSelect');
 const createWorldButton = document.getElementById('createWorldButton');
-const deleteWorldButton = document.getElementById('deleteWorldButton');
+const worldGrid = document.getElementById('worldGrid');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
 const hoursPerDayInput = document.getElementById('hoursPerDayInput');
 const daysPerMonthInput = document.getElementById('daysPerMonthInput');
@@ -295,21 +302,55 @@ const setActiveWorld = (worldId) => {
   renderProfile();
   renderCombatLog();
   renderEncounterDraft();
+  renderWorldTiles();
   updateAdvanceLabels();
   updateRoundDisplay();
   saveState();
 };
 
-const renderWorldSelect = () => {
-  worldSelect.innerHTML = '';
+const renderWorldTiles = () => {
+  worldGrid.innerHTML = '';
   Object.values(worlds).forEach((world) => {
-    const option = document.createElement('option');
-    option.value = world.id;
-    option.textContent = world.name;
-    if (world.id === activeWorldId) {
-      option.selected = true;
-    }
-    worldSelect.appendChild(option);
+    const tile = document.createElement('div');
+    tile.className = `world-tile${world.id === activeWorldId ? ' active' : ''}`;
+    tile.dataset.worldId = world.id;
+
+    const name = document.createElement('div');
+    name.className = 'world-name';
+    name.textContent = world.name;
+
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'icon-button';
+    deleteButton.type = 'button';
+    deleteButton.setAttribute('aria-label', `Delete ${world.name}`);
+    deleteButton.textContent = '✕';
+    deleteButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (Object.keys(worlds).length <= 1) {
+        window.alert('Create another world before deleting this one.');
+        return;
+      }
+      const confirmed = window.confirm(`Delete world "${world.name}"?`);
+      if (!confirmed) {
+        return;
+      }
+      delete worlds[world.id];
+      if (activeWorldId === world.id) {
+        activeWorldId = Object.keys(worlds)[0] || null;
+      }
+      saveState();
+      renderWorldTiles();
+      if (activeWorldId) {
+        setActiveWorld(activeWorldId);
+      }
+    });
+
+    tile.append(name, deleteButton);
+    tile.addEventListener('click', () => {
+      setActiveWorld(world.id);
+      showPage('tracker');
+    });
+    worldGrid.appendChild(tile);
   });
 };
 
@@ -625,7 +666,9 @@ const stopAutoClock = () => {
 const render = () => {
   const dateParts = fromTotalSeconds(totalSeconds, calendarSettings);
   dateDisplay.textContent = formatDate(dateParts, calendarSettings);
-  timeDisplay.textContent = formatTime(dateParts);
+  const formattedTime = formatTime(dateParts);
+  timeDisplay.textContent = formattedTime;
+  navTimeDisplay.textContent = formattedTime;
 };
 
 const updateTimeFromInputs = () => {
@@ -799,17 +842,16 @@ const renderProfile = () => {
   profileAvatar.value = '';
 };
 
-const openSettingsPage = () => {
-  appPage.hidden = true;
-  settingsPage.hidden = false;
+const showPage = (page) => {
+  homePage.hidden = page !== 'home';
+  worldsPage.hidden = page !== 'worlds';
+  appPage.hidden = page !== 'tracker';
+  settingsPage.hidden = page !== 'settings';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-const closeSettingsPage = () => {
-  settingsPage.hidden = true;
-  appPage.hidden = false;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+const openSettingsPage = () => showPage('settings');
+const closeSettingsPage = () => showPage('tracker');
 
 const openProfileModal = () => {
   profileModal.classList.add('is-open');
@@ -1014,10 +1056,6 @@ document.addEventListener('keydown', (event) => {
     closeSettingsPage();
   }
 });
-worldSelect.addEventListener('change', () => {
-  stopAutoClock();
-  setActiveWorld(worldSelect.value);
-});
 createWorldButton.addEventListener('click', () => {
   const name = window.prompt('Name the new world');
   if (!name) {
@@ -1026,29 +1064,14 @@ createWorldButton.addEventListener('click', () => {
   const world = createWorld(name.trim());
   worlds[world.id] = world;
   activeWorldId = world.id;
-  renderWorldSelect();
+  renderWorldTiles();
   setActiveWorld(world.id);
 });
-deleteWorldButton.addEventListener('click', () => {
-  if (Object.keys(worlds).length <= 1) {
-    window.alert('Create another world before deleting this one.');
-    return;
-  }
-  const current = getCurrentWorld();
-  if (!current) {
-    return;
-  }
-  const confirmed = window.confirm(`Delete world "${current.name}"?`);
-  if (!confirmed) {
-    return;
-  }
-  delete worlds[current.id];
-  activeWorldId = Object.keys(worlds)[0] || null;
-  renderWorldSelect();
-  if (activeWorldId) {
-    setActiveWorld(activeWorldId);
-  }
-});
+openHomeButton.addEventListener('click', () => showPage('home'));
+openWorldsButton.addEventListener('click', () => showPage('worlds'));
+openTrackerButton.addEventListener('click', () => showPage('tracker'));
+homeGoWorldsButton.addEventListener('click', () => showPage('worlds'));
+homeGoTrackerButton.addEventListener('click', () => showPage('tracker'));
 openSettingsButton.addEventListener('click', openSettingsPage);
 closeSettingsButton.addEventListener('click', closeSettingsPage);
 applySettingsButton.addEventListener('click', () => {
@@ -1175,7 +1198,7 @@ importWorldInput.addEventListener('change', () => {
       };
       worlds[world.id] = world;
       activeWorldId = world.id;
-      renderWorldSelect();
+      renderWorldTiles();
       setActiveWorld(world.id);
     } catch (error) {
       window.alert('Invalid world file.');
@@ -1213,7 +1236,7 @@ const initializeDefaults = () => {
     saveState();
   }
 
-  renderWorldSelect();
+  renderWorldTiles();
   if (activeWorldId) {
     setActiveWorld(activeWorldId);
   }
@@ -1230,6 +1253,7 @@ const initializeDefaults = () => {
   renderCombatLog();
   updateDifficultyLabel();
   renderEncounterDraft();
+  showPage('home');
 };
 
 initializeDefaults();
