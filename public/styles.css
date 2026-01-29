@@ -12,26 +12,161 @@
 body {
   margin: 0;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px;
+  padding: 96px 24px 24px;
   background: radial-gradient(circle at top, #202538 0%, #0f1116 55%);
 }
 
 .app {
-  width: min(900px, 100%);
+  width: min(1100px, 100%);
   display: flex;
   flex-direction: column;
   gap: 32px;
+  margin: 0 auto;
 }
 
-.header {
+.page {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  background: rgba(12, 15, 24, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 20;
+}
+
+.nav-brand {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.nav-time {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f1edff;
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.nav-time:hover {
+  background: rgba(122, 82, 255, 0.15);
+}
+
+.nav-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.home-page {
+  display: grid;
+  gap: 32px;
+}
+
+.home-hero {
+  padding: 32px;
+  border-radius: 24px;
+  background: rgba(18, 21, 31, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.home-hero h1 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.home-hero p {
+  margin: 0 0 24px;
+  color: #c9ccda;
+}
+
+.home-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.home-card {
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(18, 21, 31, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.world-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.world-tile {
+  position: relative;
+  padding: 24px;
+  border-radius: 16px;
+  background: rgba(18, 21, 31, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.world-tile:hover {
+  transform: translateY(-2px);
+  border-color: rgba(122, 82, 255, 0.6);
+}
+
+.world-tile.active {
+  border-color: #7a52ff;
+  box-shadow: 0 16px 32px rgba(122, 82, 255, 0.25);
+}
+
+.world-name {
+  font-size: 1.1rem;
+  font-weight: 600;
   text-align: center;
 }
 
+.world-tile button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
 .settings-button {
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .header h1 {
@@ -44,12 +179,67 @@ body {
   color: #c9ccda;
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.world-picker select {
+  min-width: 160px;
+}
+
 .clock-card {
   padding: 32px;
   border-radius: 24px;
   background: rgba(23, 27, 40, 0.85);
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.party-card {
+  padding: 24px;
+  border-radius: 20px;
+  background: rgba(18, 21, 31, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  display: grid;
+  gap: 16px;
+}
+
+.party-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.party-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.party-list {
+  display: grid;
+  gap: 10px;
+}
+
+.party-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(24, 29, 44, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.party-row span {
+  font-size: 0.95rem;
 }
 
 .date {
@@ -111,7 +301,6 @@ body {
 }
 
 .settings-page {
-  width: min(900px, 100%);
   margin: 0 auto;
   padding: 32px 0 48px;
 }
@@ -231,6 +420,23 @@ button.primary {
   background-color: #7a52ff;
 }
 
+.ghost {
+  background-color: transparent;
+  border: 1px solid #3a4563;
+}
+
+.ghost:hover {
+  background-color: rgba(90, 103, 154, 0.2);
+}
+
+.danger {
+  background-color: #a8384a;
+}
+
+.danger:hover {
+  background-color: #c2485c;
+}
+
 .button-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -279,6 +485,14 @@ button.primary {
   justify-items: center;
   gap: 6px;
   width: 88px;
+}
+
+.combatant-initiative {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(122, 82, 255, 0.2);
+  color: #f1edff;
 }
 
 .combatant-avatar {
@@ -330,12 +544,90 @@ button.primary {
   word-break: break-word;
 }
 
+.round-display {
+  margin-top: 12px;
+  font-size: 1rem;
+  color: #d7daf0;
+}
+
+.clock-speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #cfd3e3;
+}
+
+.combat-log {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  color: #cfd3e3;
+  font-size: 0.95rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.difficulty-label {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  color: #d7daf0;
+  padding-top: 28px;
+}
+
+.encounter-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 8px;
+  color: #cfd3e3;
+}
+
+.encounter-list li {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(24, 29, 44, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #3a4563;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.file-upload input {
+  display: none;
+}
+
 @media (max-width: 600px) {
   body {
-    padding: 16px;
+    padding: 88px 16px 16px;
   }
 
   .clock-card {
     padding: 24px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .top-nav {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

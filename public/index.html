@@ -7,18 +7,95 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app" id="appPage">
-      <header class="header">
+    <nav class="top-nav">
+      <div class="nav-brand">D&amp;D Time Tracker</div>
+      <button class="nav-time" type="button" aria-live="polite" id="navTimeDisplay">
+        --:--:--
+      </button>
+      <div class="nav-actions">
+        <button class="ghost" id="openHomeButton" type="button">Home</button>
+        <button class="ghost" id="openWorldsButton" type="button">Worlds</button>
+        <button class="ghost" id="openTrackerButton" type="button">Tracker</button>
+        <button class="ghost" id="openCombatButton" type="button">Combat</button>
+        <button class="ghost" id="openLogButton" type="button">Log</button>
+        <button class="ghost" id="openSettingsButton" type="button">Settings</button>
+      </div>
+    </nav>
+
+    <section class="page home-page" id="homePage">
+      <div class="home-hero">
         <h1>D&amp;D Time &amp; Turn Tracker</h1>
-        <p>Track your in-game time for combat and rests.</p>
-        <button class="icon-button settings-button" id="openSettingsButton" type="button" aria-label="Open settings">
-          ⚙️
-        </button>
+        <p>
+          Run encounters, track in-world time, and manage initiative across multiple worlds.
+        </p>
+        <div class="button-row">
+          <button class="primary" id="homeGoWorldsButton" type="button">Choose a World</button>
+          <button class="ghost" id="homeGoTrackerButton" type="button">Open Tracker</button>
+        </div>
+      </div>
+      <div class="home-grid">
+        <div class="home-card">
+          <h3>Worlds</h3>
+          <p>Create distinct campaign worlds and swap between them instantly.</p>
+        </div>
+        <div class="home-card">
+          <h3>Combat</h3>
+          <p>Initiative, HP, conditions, and quick encounter drafting at your fingertips.</p>
+        </div>
+        <div class="home-card">
+          <h3>Time</h3>
+          <p>Keep calendar settings, rest durations, and a live clock per world.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page worlds-page" id="worldsPage" hidden>
+      <header class="page-header">
+        <div>
+          <h2>Worlds</h2>
+          <p class="helper-text">Select a world or create a new one.</p>
+        </div>
+        <button class="primary" id="createWorldButton" type="button">New World</button>
+      </header>
+      <div class="world-grid" id="worldGrid"></div>
+    </section>
+
+    <main class="app page tracker-page" id="appPage" hidden>
+      <header class="header">
+        <div>
+          <h1>D&amp;D Time &amp; Turn Tracker</h1>
+          <p>Track your in-game time for combat and rests.</p>
+        </div>
       </header>
 
       <section class="clock-card" aria-live="polite">
         <div class="date" id="dateDisplay">--</div>
         <div class="time" id="timeDisplay">--</div>
+      </section>
+
+      <section class="party-card">
+        <div class="party-header">
+          <div>
+            <h2>Party</h2>
+            <p class="helper-text">Create your player party for quick encounter setup.</p>
+          </div>
+          <button class="primary" id="addPartyMemberButton" type="button">Add Party Member</button>
+        </div>
+        <div class="party-form">
+          <label>
+            Name
+            <input type="text" id="partyMemberName" placeholder="e.g. Aria" />
+          </label>
+          <label>
+            Max HP
+            <input type="number" id="partyMemberMaxHp" min="0" placeholder="e.g. 28" />
+          </label>
+          <label>
+            Initiative
+            <input type="number" id="partyMemberInitiative" min="0" placeholder="e.g. 15" />
+          </label>
+        </div>
+        <div class="party-list" id="partyList"></div>
       </section>
 
       <section class="controls">
@@ -55,13 +132,47 @@
 
         <div class="control-group">
           <h2>Advance Time</h2>
-          <div class="button-row">
-            <button id="nextTurnButton">Next Turn (+6s)</button>
-            <button id="shortRestButton">Short Rest (+1h)</button>
-            <button id="longRestButton">Long Rest (+8h)</button>
+          <div class="input-row">
+            <label>
+              Turn (sec)
+              <input type="number" id="turnSecondsInput" min="1" />
+            </label>
+            <label>
+              Short Rest (hrs)
+              <input type="number" id="shortRestHoursInput" min="1" />
+            </label>
+            <label>
+              Long Rest (hrs)
+              <input type="number" id="longRestHoursInput" min="1" />
+            </label>
           </div>
+          <div class="button-row">
+            <button id="nextTurnButton">Next Turn</button>
+            <button id="shortRestButton">Short Rest</button>
+            <button id="longRestButton">Long Rest</button>
+          </div>
+          <div class="button-row">
+            <button class="ghost" id="toggleClockButton">Start Clock</button>
+            <label class="clock-speed">
+              Speed
+              <input type="number" id="clockSpeedInput" min="1" />
+              <span>x</span>
+            </label>
+          </div>
+          <div class="round-display" id="roundDisplay">Round 1</div>
         </div>
 
+      </section>
+    </main>
+
+    <section class="page combat-page" id="combatPage" hidden>
+      <header class="page-header">
+        <div>
+          <h2>Combat</h2>
+          <p class="helper-text">Manage initiative order and quick encounters.</p>
+        </div>
+      </header>
+      <div class="controls">
         <div class="control-group">
           <h2>Initiative Order</h2>
           <p class="helper-text">
@@ -85,17 +196,58 @@
               <input type="number" id="combatantMaxHp" min="0" placeholder="e.g. 28" />
             </label>
             <label>
+              Initiative
+              <input type="number" id="combatantInitiative" min="0" placeholder="e.g. 15" />
+            </label>
+            <label>
               Preset
               <select id="combatantPreset">
                 <option value="">Custom</option>
               </select>
             </label>
           </div>
-          <button class="primary" id="addCombatantButton">Add Combatant</button>
+          <div class="button-row">
+            <button class="primary" id="addCombatantButton">Add Combatant</button>
+            <button class="ghost" id="addPartyToEncounterButton" type="button">Add Party</button>
+            <button class="ghost" id="rollAllButton" type="button">Roll All</button>
+            <button class="ghost" id="rollNpcsButton" type="button">Roll NPCs</button>
+            <button class="ghost" id="sortInitiativeButton" type="button">Sort by Initiative</button>
+            <button class="ghost" id="clearCombatButton" type="button">Clear Encounter</button>
+          </div>
           <div class="initiative-track" id="initiativeTrack" aria-live="polite"></div>
         </div>
-      </section>
-    </main>
+
+        <div class="control-group">
+          <h2>Quick Encounter</h2>
+          <p class="helper-text">Generate a random encounter based on difficulty.</p>
+          <div class="input-row">
+            <label>
+              Difficulty
+              <input type="range" id="encounterDifficulty" min="1" max="5" value="3" />
+            </label>
+            <div class="difficulty-label" id="encounterDifficultyLabel">Medium</div>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="generateEncounterButton" type="button">Generate Encounter</button>
+            <button class="ghost" id="addEncounterButton" type="button">Add to Initiative</button>
+            <button class="ghost" id="clearEncounterDraftButton" type="button">Clear Suggestion</button>
+          </div>
+          <ul class="encounter-list" id="encounterDraftList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="page log-page" id="logPage" hidden>
+      <header class="page-header">
+        <div>
+          <h2>Combat Log</h2>
+          <p class="helper-text">Review recent activity for this world.</p>
+        </div>
+      </header>
+      <div class="control-group">
+        <ul class="combat-log" id="combatLog"></ul>
+      </div>
+    </section>
 
     <div class="modal" id="profileModal" aria-hidden="true">
       <div class="modal-backdrop" id="profileBackdrop"></div>
@@ -136,6 +288,10 @@
                 Max HP
                 <input type="number" id="profileMaxHp" min="0" />
               </label>
+              <label>
+                Initiative
+                <input type="number" id="profileInitiative" min="0" />
+              </label>
             </div>
             <div class="hp-controls">
               <button type="button" data-hp-change="-1">-1 HP</button>
@@ -148,15 +304,20 @@
               <input type="file" id="profileAvatar" accept="image/*" />
             </label>
             <label>
+              Conditions
+              <input type="text" id="profileConditions" placeholder="e.g. Prone, Poisoned" />
+            </label>
+            <label>
               Notes
               <textarea id="profileNotes" rows="3" placeholder="Conditions, AC, spells, etc."></textarea>
             </label>
+            <button class="danger" type="button" id="removeCombatantButton">Remove Combatant</button>
           </div>
         </div>
       </div>
     </div>
 
-    <section class="settings-page" id="settingsPage" hidden>
+    <section class="settings-page page" id="settingsPage" hidden>
       <header class="settings-header">
         <div>
           <h2 id="settingsTitle">Calendar Settings</h2>
@@ -204,6 +365,17 @@
           />
         </label>
         <button class="primary" id="applySettingsButton" type="button">Apply Settings</button>
+      </div>
+      <div class="settings-card">
+        <h3>World Data</h3>
+        <p class="helper-text">Export or import the current world as JSON.</p>
+        <div class="button-row">
+          <button class="ghost" id="exportWorldButton" type="button">Export World</button>
+          <label class="ghost file-upload">
+            Import World
+            <input type="file" id="importWorldInput" accept="application/json" />
+          </label>
+        </div>
       </div>
     </section>
 
