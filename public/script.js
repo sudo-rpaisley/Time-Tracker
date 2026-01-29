@@ -16,9 +16,9 @@ const combatantMaxHpInput = document.getElementById('combatantMaxHp');
 const combatantPresetSelect = document.getElementById('combatantPreset');
 const addCombatantButton = document.getElementById('addCombatantButton');
 const initiativeTrack = document.getElementById('initiativeTrack');
+const appPage = document.getElementById('appPage');
 const openSettingsButton = document.getElementById('openSettingsButton');
-const settingsModal = document.getElementById('settingsModal');
-const settingsBackdrop = document.getElementById('settingsBackdrop');
+const settingsPage = document.getElementById('settingsPage');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
 const hoursPerDayInput = document.getElementById('hoursPerDayInput');
@@ -421,14 +421,16 @@ const renderProfile = () => {
   profileAvatar.value = '';
 };
 
-const openSettingsModal = () => {
-  settingsModal.classList.add('is-open');
-  settingsModal.setAttribute('aria-hidden', 'false');
+const openSettingsPage = () => {
+  appPage.hidden = true;
+  settingsPage.hidden = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-const closeSettingsModal = () => {
-  settingsModal.classList.remove('is-open');
-  settingsModal.setAttribute('aria-hidden', 'true');
+const closeSettingsPage = () => {
+  settingsPage.hidden = true;
+  appPage.hidden = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 const openProfileModal = () => {
@@ -581,12 +583,11 @@ profileBackdrop.addEventListener('click', closeProfileModal);
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeProfileModal();
-    closeSettingsModal();
+    closeSettingsPage();
   }
 });
-openSettingsButton.addEventListener('click', openSettingsModal);
-closeSettingsButton.addEventListener('click', closeSettingsModal);
-settingsBackdrop.addEventListener('click', closeSettingsModal);
+openSettingsButton.addEventListener('click', openSettingsPage);
+closeSettingsButton.addEventListener('click', closeSettingsPage);
 applySettingsButton.addEventListener('click', () => {
   const monthsInYear = Number(monthsInYearInput.value);
   const hoursPerDay = Number(hoursPerDayInput.value);
@@ -611,7 +612,7 @@ applySettingsButton.addEventListener('click', () => {
   });
   syncInputs();
   render();
-  closeSettingsModal();
+  closeSettingsPage();
 });
 
 monsterPresets.forEach((preset) => {
