@@ -15,8 +15,15 @@
           <h2>Worlds</h2>
           <p class="helper-text">Select a world or create a new one.</p>
         </div>
-        <button class="primary" id="createWorldButton" type="button">New World</button>
+        <div class="button-row">
+          <button class="ghost" id="renameWorldButton" type="button">Rename</button>
+          <button class="primary" id="createWorldButton" type="button">New World</button>
+        </div>
       </header>
+      <label class="world-notes">
+        World Notes
+        <textarea id="worldNotesInput" rows="3" placeholder="Important lore, factions, or session goals."></textarea>
+      </label>
       <div class="world-grid" id="worldGrid"></div>
     </section>
 

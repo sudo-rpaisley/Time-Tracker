@@ -96,9 +96,16 @@ const partyProfileConditionInput = document.getElementById(
 const partyProfileConditionConfirm = document.getElementById(
   'partyProfileConditionConfirm'
 );
+const partyProfileNotes = document.getElementById('partyProfileNotes');
+const partyProfileCopper = document.getElementById('partyProfileCopper');
+const partyProfileSilver = document.getElementById('partyProfileSilver');
+const partyProfileGold = document.getElementById('partyProfileGold');
+const partyProfilePlatinum = document.getElementById('partyProfilePlatinum');
 const removePartyMemberButton = document.getElementById('removePartyMemberButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
+const renameWorldButton = document.getElementById('renameWorldButton');
+const worldNotesInput = document.getElementById('worldNotesInput');
 const encounterDifficulty = document.getElementById('encounterDifficulty');
 const encounterDifficultyLabel = document.getElementById(
   'encounterDifficultyLabel'
@@ -178,6 +185,11 @@ let worldMap = {
   offsetX: 0,
   offsetY: 0,
   markers: []
+};
+let worldNotes = '';
+const updateWorldNotes = (value) => {
+  worldNotes = value;
+  saveState();
 };
 
 let calendarSettings = {
@@ -282,7 +294,8 @@ const createWorld = (name) => ({
   combatActive: false,
   encounterPresets: [],
   worldStats: { ...worldStats },
-  worldMap: { ...worldMap }
+  worldMap: { ...worldMap },
+  worldNotes: ''
 });
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -308,7 +321,8 @@ const saveState = () => {
     combatActive,
     encounterPresets,
     worldStats,
-    worldMap
+    worldMap,
+    worldNotes
   };
   localStorage.setItem(
     STORAGE_KEY,
@@ -430,10 +444,19 @@ const setActiveWorld = (worldId) => {
       ? nextWorld.worldMap.markers
       : []
   };
+  worldNotes = nextWorld.worldNotes || '';
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers.map((member) => ({
       ...member,
-      conditions: normalizeConditions(member.conditions)
+      conditions: normalizeConditions(member.conditions),
+      coins: {
+        copper: Number(member.coins?.copper) || 0,
+        silver: Number(member.coins?.silver) || 0,
+        gold: Number(member.coins?.gold) || 0,
+        platinum: Number(member.coins?.platinum) || 0
+      },
+      notes: member.notes || '',
+      totalDamageTaken: Number(member.totalDamageTaken) || 0
     }))
     : [];
   combatActive = Boolean(nextWorld.combatActive);
@@ -443,6 +466,9 @@ const setActiveWorld = (worldId) => {
     daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
     monthNamesInput.value = calendarSettings.monthNames.join(', ');
     dayNamesInput.value = calendarSettings.dayNames.join(', ');
+  }
+  if (worldNotesInput) {
+    worldNotesInput.value = worldNotes;
   }
   syncInputs();
   syncTimeConfigInputs();
@@ -1626,6 +1652,14 @@ const updatePartyMember = (memberId, updates) => {
     member.id === memberId
       ? (() => {
         const next = { ...member, ...safeUpdates };
+        if (safeUpdates.hasOwnProperty('coins')) {
+          next.coins = {
+            copper: Number(safeUpdates.coins?.copper) || 0,
+            silver: Number(safeUpdates.coins?.silver) || 0,
+            gold: Number(safeUpdates.coins?.gold) || 0,
+            platinum: Number(safeUpdates.coins?.platinum) || 0
+          };
+        }
         if (
           safeUpdates.hasOwnProperty('currentHp') &&
           !__skipDamageTracking &&
@@ -1682,7 +1716,14 @@ const addPartyMember = () => {
     xp: Number.isNaN(xpValue) ? 0 : xpValue,
     level: Number.isNaN(levelValue) ? 1 : Math.max(1, levelValue),
     conditions: [],
-    totalDamageTaken: 0
+    totalDamageTaken: 0,
+    notes: '',
+    coins: {
+      copper: 0,
+      silver: 0,
+      gold: 0,
+      platinum: 0
+    }
   };
   partyMembers = [...partyMembers, newMember];
   partyMemberName.value = '';
@@ -2186,6 +2227,29 @@ const renderPartyProfile = () => {
   if (partyProfileLevel) {
     partyProfileLevel.value = Number.isFinite(selected.level) ? selected.level : 1;
   }
+  if (partyProfileNotes) {
+    partyProfileNotes.value = selected.notes || '';
+  }
+  if (partyProfileCopper) {
+    partyProfileCopper.value = Number.isFinite(selected.coins?.copper)
+      ? selected.coins.copper
+      : 0;
+  }
+  if (partyProfileSilver) {
+    partyProfileSilver.value = Number.isFinite(selected.coins?.silver)
+      ? selected.coins.silver
+      : 0;
+  }
+  if (partyProfileGold) {
+    partyProfileGold.value = Number.isFinite(selected.coins?.gold)
+      ? selected.coins.gold
+      : 0;
+  }
+  if (partyProfilePlatinum) {
+    partyProfilePlatinum.value = Number.isFinite(selected.coins?.platinum)
+      ? selected.coins.platinum
+      : 0;
+  }
   if (partyProfileConditionTags) {
     partyProfileConditionTags.innerHTML = '';
     const conditions = normalizeConditions(selected.conditions);
@@ -2624,6 +2688,53 @@ if (partyProfileName) {
     });
   });
 }
+if (partyProfileNotes) {
+  partyProfileNotes.addEventListener('input', () => {
+    if (!selectedPartyMemberId) {
+      return;
+    }
+    updatePartyMember(selectedPartyMemberId, {
+      notes: partyProfileNotes.value
+    });
+  });
+}
+const updatePartyCoins = (updates) => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  const member = partyMembers.find((entry) => entry.id === selectedPartyMemberId);
+  if (!member) {
+    return;
+  }
+  updatePartyMember(selectedPartyMemberId, {
+    coins: {
+      copper: Math.max(0, updates.copper ?? member.coins?.copper ?? 0),
+      silver: Math.max(0, updates.silver ?? member.coins?.silver ?? 0),
+      gold: Math.max(0, updates.gold ?? member.coins?.gold ?? 0),
+      platinum: Math.max(0, updates.platinum ?? member.coins?.platinum ?? 0)
+    }
+  });
+};
+if (partyProfileCopper) {
+  partyProfileCopper.addEventListener('input', () => {
+    updatePartyCoins({ copper: Number(partyProfileCopper.value) || 0 });
+  });
+}
+if (partyProfileSilver) {
+  partyProfileSilver.addEventListener('input', () => {
+    updatePartyCoins({ silver: Number(partyProfileSilver.value) || 0 });
+  });
+}
+if (partyProfileGold) {
+  partyProfileGold.addEventListener('input', () => {
+    updatePartyCoins({ gold: Number(partyProfileGold.value) || 0 });
+  });
+}
+if (partyProfilePlatinum) {
+  partyProfilePlatinum.addEventListener('input', () => {
+    updatePartyCoins({ platinum: Number(partyProfilePlatinum.value) || 0 });
+  });
+}
 if (partyProfileCurrentHp) {
   partyProfileCurrentHp.addEventListener('input', () => {
     if (!selectedPartyMemberId) {
@@ -2776,6 +2887,33 @@ if (createWorldButton) {
     window.location.href = 'party.html';
   });
 }
+if (renameWorldButton) {
+  renameWorldButton.addEventListener('click', () => {
+    const currentWorld = getCurrentWorld();
+    if (!currentWorld) {
+      return;
+    }
+    const nextName = window.prompt('Rename world', currentWorld.name || '');
+    if (!nextName) {
+      return;
+    }
+    const trimmed = nextName.trim();
+    if (!trimmed) {
+      return;
+    }
+    worlds[activeWorldId] = {
+      ...currentWorld,
+      name: trimmed
+    };
+    saveState();
+    renderWorldTiles();
+  });
+}
+if (worldNotesInput) {
+  worldNotesInput.addEventListener('input', () => {
+    updateWorldNotes(worldNotesInput.value);
+  });
+}
 if (applySettingsButton) {
   applySettingsButton.addEventListener('click', () => {
     const monthsInYear = Number(monthsInYearInput.value);
@@ -2904,7 +3042,8 @@ if (exportWorldButton) {
       combatActive,
       encounterPresets,
       worldStats,
-      worldMap
+      worldMap,
+      worldNotes
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -2971,7 +3110,8 @@ if (importWorldInput) {
             markers: Array.isArray(parsed.worldMap?.markers)
               ? parsed.worldMap.markers
               : []
-          }
+          },
+          worldNotes: parsed.worldNotes || ''
         };
         worlds[world.id] = world;
         activeWorldId = world.id;
