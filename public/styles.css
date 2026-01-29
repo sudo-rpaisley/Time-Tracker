@@ -71,6 +71,25 @@ body {
   flex-wrap: wrap;
 }
 
+.nav-party {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.party-avatar-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nav-party .combatant-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 0.75rem;
+}
+
 .home-page {
   display: grid;
   gap: 32px;

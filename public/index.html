@@ -15,12 +15,13 @@
       <div class="nav-actions">
         <button class="ghost" id="openHomeButton" type="button">Entry</button>
         <button class="ghost" id="openWorldsButton" type="button">Worlds</button>
-        <button class="ghost" id="openTrackerButton" type="button">Tracker</button>
+        <button class="ghost" id="openTrackerButton" type="button">Party</button>
         <button class="ghost" id="openClockButton" type="button">Clock</button>
         <button class="ghost" id="openCombatButton" type="button">Combat</button>
         <button class="ghost" id="openLogButton" type="button">Log</button>
         <button class="ghost" id="openSettingsButton" type="button">Settings</button>
       </div>
+      <div class="nav-party" id="navParty" aria-label="Party members"></div>
     </nav>
 
     <section class="page home-page" id="homePage">
@@ -58,10 +59,10 @@
       <div class="world-grid" id="worldGrid"></div>
     </section>
 
-    <main class="app page tracker-page" id="appPage" hidden>
+    <main class="app page party-page" id="appPage" hidden>
       <header class="header">
         <div>
-          <h1>Party Tracker</h1>
+          <h1>Party</h1>
           <p>Manage party stats for the active world.</p>
         </div>
       </header>
@@ -321,6 +322,45 @@
       </div>
     </div>
 
+    <div class="modal" id="partyProfileModal" aria-hidden="true">
+      <div class="modal-backdrop" id="partyProfileBackdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="partyProfileTitle">
+        <div class="modal-header">
+          <h2 id="partyProfileTitle">Party Member</h2>
+          <button type="button" class="icon-button" id="closePartyProfileButton" aria-label="Close party profile">
+            ✕
+          </button>
+        </div>
+        <p class="helper-text">Adjust party stats for the active world.</p>
+        <div class="profile-card" id="partyProfileCard">
+          <div class="empty-profile" id="emptyPartyProfile">
+            Choose a party member from the navigation bar.
+          </div>
+          <div class="profile-details" id="partyProfileDetails" hidden>
+            <label>
+              Name
+              <input type="text" id="partyProfileName" />
+            </label>
+            <div class="input-row">
+              <label>
+                Current HP
+                <input type="number" id="partyProfileCurrentHp" min="0" />
+              </label>
+              <label>
+                Max HP
+                <input type="number" id="partyProfileMaxHp" min="0" />
+              </label>
+              <label>
+                XP
+                <input type="number" id="partyProfileXp" min="0" />
+              </label>
+            </div>
+            <button class="danger" type="button" id="removePartyMemberButton">Remove Party Member</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <section class="settings-page page" id="settingsPage" hidden>
       <header class="settings-header">
         <div>
@@ -329,7 +369,7 @@
             Customize the calendar for your world. These settings affect how time advances and displays.
           </p>
         </div>
-        <button type="button" class="icon-button" id="closeSettingsButton" aria-label="Back to tracker">
+        <button type="button" class="icon-button" id="closeSettingsButton" aria-label="Back to party">
           ←
         </button>
       </header>

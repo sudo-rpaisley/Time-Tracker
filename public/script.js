@@ -32,6 +32,7 @@ const openLogButton = document.getElementById('openLogButton');
 const openSettingsButton = document.getElementById('openSettingsButton');
 const homeGoWorldsButton = document.getElementById('homeGoWorldsButton');
 const navTimeDisplay = document.getElementById('navTimeDisplay');
+const navParty = document.getElementById('navParty');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const createWorldButton = document.getElementById('createWorldButton');
 const worldGrid = document.getElementById('worldGrid');
@@ -76,6 +77,16 @@ const profileAvatar = document.getElementById('profileAvatar');
 const profileConditions = document.getElementById('profileConditions');
 const profileNotes = document.getElementById('profileNotes');
 const removeCombatantButton = document.getElementById('removeCombatantButton');
+const partyProfileModal = document.getElementById('partyProfileModal');
+const partyProfileBackdrop = document.getElementById('partyProfileBackdrop');
+const closePartyProfileButton = document.getElementById('closePartyProfileButton');
+const emptyPartyProfile = document.getElementById('emptyPartyProfile');
+const partyProfileDetails = document.getElementById('partyProfileDetails');
+const partyProfileName = document.getElementById('partyProfileName');
+const partyProfileCurrentHp = document.getElementById('partyProfileCurrentHp');
+const partyProfileMaxHp = document.getElementById('partyProfileMaxHp');
+const partyProfileXp = document.getElementById('partyProfileXp');
+const removePartyMemberButton = document.getElementById('removePartyMemberButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
 const encounterDifficulty = document.getElementById('encounterDifficulty');
@@ -106,6 +117,7 @@ let combatants = [];
 let currentCombatantIndex = 0;
 let draggedCombatantId = null;
 let selectedCombatantId = null;
+let selectedPartyMemberId = null;
 let combatLogEntries = [];
 let roundNumber = 1;
 let autoClockTimer = null;
@@ -295,10 +307,17 @@ const setActiveWorld = (worldId) => {
   combatants = Array.isArray(nextWorld.combatants) ? nextWorld.combatants : [];
   currentCombatantIndex = nextWorld.currentCombatantIndex ?? 0;
   selectedCombatantId = nextWorld.selectedCombatantId ?? null;
+  selectedPartyMemberId = null;
   calendarSettings = normalizeCalendarSettings(
     nextWorld.calendarSettings || calendarSettings
   );
   timeConfig = normalizeTimeConfig(nextWorld.timeConfig || timeConfig);
+  timeConfig = {
+    ...timeConfig,
+    turnSeconds: 6,
+    shortRestHours: 1,
+    longRestHours: 8
+  };
   roundNumber = nextWorld.roundNumber ?? 1;
   combatLogEntries = Array.isArray(nextWorld.combatLogEntries)
     ? nextWorld.combatLogEntries
@@ -368,7 +387,7 @@ const renderWorldTiles = () => {
     tile.append(name, deleteButton);
     tile.addEventListener('click', () => {
       setActiveWorld(world.id);
-      showPage('tracker');
+      showPage('party');
     });
     worldGrid.appendChild(tile);
   });
@@ -503,6 +522,14 @@ const logEvent = (message) => {
   saveState();
 };
 
+const getInitials = (name) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || '?';
+
 const renderCombatLog = () => {
   combatLog.innerHTML = '';
   if (combatLogEntries.length === 0) {
@@ -603,6 +630,32 @@ const renderPartyList = () => {
     row.append(name, hp, hpControls, xp, xpControls, removeButton);
     partyList.appendChild(row);
   });
+  renderPartyNav();
+};
+
+const renderPartyNav = () => {
+  navParty.innerHTML = '';
+  if (partyMembers.length === 0) {
+    return;
+  }
+  partyMembers.forEach((member) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'party-avatar-button';
+    button.setAttribute('aria-label', `Open ${member.name} profile`);
+
+    const avatar = document.createElement('div');
+    avatar.className = 'combatant-avatar';
+    avatar.textContent = getInitials(member.name);
+
+    button.appendChild(avatar);
+    button.addEventListener('click', () => {
+      selectedPartyMemberId = member.id;
+      renderPartyProfile();
+      openPartyProfileModal();
+    });
+    navParty.appendChild(button);
+  });
 };
 
 const updatePartyMember = (memberId, updates) => {
@@ -610,6 +663,20 @@ const updatePartyMember = (memberId, updates) => {
     member.id === memberId ? { ...member, ...updates } : member
   );
   renderPartyList();
+  renderPartyProfile();
+  saveState();
+};
+
+const removeSelectedPartyMember = () => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  partyMembers = partyMembers.filter(
+    (member) => member.id !== selectedPartyMemberId
+  );
+  selectedPartyMemberId = null;
+  renderPartyList();
+  renderPartyProfile();
   saveState();
 };
 
@@ -863,14 +930,6 @@ const toggleLiveClock = () => {
   }
 };
 
-const getInitials = (name) =>
-  name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || '?';
-
 const renderInitiative = () => {
   initiativeTrack.innerHTML = '';
 
@@ -1011,10 +1070,28 @@ const renderProfile = () => {
   profileAvatar.value = '';
 };
 
+const renderPartyProfile = () => {
+  const selected = partyMembers.find(
+    (member) => member.id === selectedPartyMemberId
+  );
+  if (!selected) {
+    emptyPartyProfile.hidden = false;
+    partyProfileDetails.hidden = true;
+    return;
+  }
+  emptyPartyProfile.hidden = true;
+  partyProfileDetails.hidden = false;
+  partyProfileName.value = selected.name;
+  partyProfileCurrentHp.value =
+    Number.isFinite(selected.currentHp) ? selected.currentHp : '';
+  partyProfileMaxHp.value = Number.isFinite(selected.maxHp) ? selected.maxHp : '';
+  partyProfileXp.value = Number.isFinite(selected.xp) ? selected.xp : '';
+};
+
 const showPage = (page) => {
   homePage.hidden = page !== 'home';
   worldsPage.hidden = page !== 'worlds';
-  appPage.hidden = page !== 'tracker';
+  appPage.hidden = page !== 'party';
   clockPage.hidden = page !== 'clock';
   combatPage.hidden = page !== 'combat';
   logPage.hidden = page !== 'log';
@@ -1023,7 +1100,7 @@ const showPage = (page) => {
 };
 
 const openSettingsPage = () => showPage('settings');
-const closeSettingsPage = () => showPage('tracker');
+const closeSettingsPage = () => showPage('party');
 
 const openProfileModal = () => {
   profileModal.classList.add('is-open');
@@ -1033,6 +1110,16 @@ const openProfileModal = () => {
 const closeProfileModal = () => {
   profileModal.classList.remove('is-open');
   profileModal.setAttribute('aria-hidden', 'true');
+};
+
+const openPartyProfileModal = () => {
+  partyProfileModal.classList.add('is-open');
+  partyProfileModal.setAttribute('aria-hidden', 'false');
+};
+
+const closePartyProfileModal = () => {
+  partyProfileModal.classList.remove('is-open');
+  partyProfileModal.setAttribute('aria-hidden', 'true');
 };
 
 const updateSelectedCombatant = (updates) => {
@@ -1208,6 +1295,53 @@ profileAvatar.addEventListener('change', () => {
   };
   reader.readAsDataURL(file);
 });
+partyProfileName.addEventListener('input', () => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  updatePartyMember(selectedPartyMemberId, {
+    name: partyProfileName.value.trim() || 'Unnamed'
+  });
+});
+partyProfileCurrentHp.addEventListener('input', () => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  const value = partyProfileCurrentHp.value.trim();
+  const parsed = Number(value);
+  updatePartyMember(selectedPartyMemberId, {
+    currentHp: value === '' || Number.isNaN(parsed) ? null : parsed
+  });
+});
+partyProfileMaxHp.addEventListener('input', () => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  const value = partyProfileMaxHp.value.trim();
+  const parsed = Number(value);
+  const nextMax = value === '' || Number.isNaN(parsed) ? null : parsed;
+  const current = partyMembers.find(
+    (member) => member.id === selectedPartyMemberId
+  );
+  const nextCurrent =
+    current && nextMax !== null && Number.isFinite(current.currentHp)
+      ? Math.min(current.currentHp, nextMax)
+      : current?.currentHp ?? null;
+  updatePartyMember(selectedPartyMemberId, {
+    maxHp: nextMax,
+    currentHp: nextCurrent
+  });
+});
+partyProfileXp.addEventListener('input', () => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  const value = partyProfileXp.value.trim();
+  const parsed = Number(value);
+  updatePartyMember(selectedPartyMemberId, {
+    xp: value === '' || Number.isNaN(parsed) ? 0 : Math.max(0, parsed)
+  });
+});
 profileCard.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-hp-change]');
   if (!button) {
@@ -1226,9 +1360,16 @@ profileCard.addEventListener('click', (event) => {
 removeCombatantButton.addEventListener('click', removeSelectedCombatant);
 closeProfileButton.addEventListener('click', closeProfileModal);
 profileBackdrop.addEventListener('click', closeProfileModal);
+closePartyProfileButton.addEventListener('click', closePartyProfileModal);
+partyProfileBackdrop.addEventListener('click', closePartyProfileModal);
+removePartyMemberButton.addEventListener('click', () => {
+  removeSelectedPartyMember();
+  closePartyProfileModal();
+});
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeProfileModal();
+    closePartyProfileModal();
     closeSettingsPage();
   }
 });
@@ -1245,7 +1386,7 @@ createWorldButton.addEventListener('click', () => {
 });
 openHomeButton.addEventListener('click', () => showPage('home'));
 openWorldsButton.addEventListener('click', () => showPage('worlds'));
-openTrackerButton.addEventListener('click', () => showPage('tracker'));
+openTrackerButton.addEventListener('click', () => showPage('party'));
 openClockButton.addEventListener('click', () => showPage('clock'));
 openCombatButton.addEventListener('click', () => showPage('combat'));
 openLogButton.addEventListener('click', () => showPage('log'));
