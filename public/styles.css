@@ -229,7 +229,7 @@ body {
 
 .party-row {
   display: grid;
-  grid-template-columns: 1.5fr 1fr auto;
+  grid-template-columns: 1.4fr 1fr auto 1fr auto auto;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
@@ -239,6 +239,23 @@ body {
 }
 
 .party-row span {
+  font-size: 0.95rem;
+}
+
+.stat-block {
+  font-size: 0.9rem;
+  color: #d7daf0;
+}
+
+.stat-controls {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.stat-controls button {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #263255;
   font-size: 0.95rem;
 }
 

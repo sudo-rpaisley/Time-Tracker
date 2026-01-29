@@ -37,6 +37,7 @@ const createWorldButton = document.getElementById('createWorldButton');
 const worldGrid = document.getElementById('worldGrid');
 const partyMemberName = document.getElementById('partyMemberName');
 const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
+const partyMemberXp = document.getElementById('partyMemberXp');
 const addPartyMemberButton = document.getElementById('addPartyMemberButton');
 const partyList = document.getElementById('partyList');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
@@ -534,8 +535,59 @@ const renderPartyList = () => {
     const name = document.createElement('span');
     name.textContent = member.name;
 
-    const hp = document.createElement('span');
-    hp.textContent = `HP ${member.maxHp ?? '—'}`;
+    const hp = document.createElement('div');
+    hp.className = 'stat-block';
+    const hpValue = Number.isFinite(member.currentHp)
+      ? member.currentHp
+      : member.maxHp ?? 0;
+    const hpMax = Number.isFinite(member.maxHp) ? member.maxHp : 0;
+    hp.textContent = `HP ${hpValue}/${hpMax}`;
+
+    const hpControls = document.createElement('div');
+    hpControls.className = 'stat-controls';
+    const hpMinus = document.createElement('button');
+    hpMinus.type = 'button';
+    hpMinus.textContent = '−';
+    hpMinus.setAttribute('aria-label', `Decrease ${member.name} HP`);
+    hpMinus.addEventListener('click', () => {
+      updatePartyMember(member.id, {
+        currentHp: Math.max(0, (member.currentHp ?? hpMax ?? 0) - 1)
+      });
+    });
+    const hpPlus = document.createElement('button');
+    hpPlus.type = 'button';
+    hpPlus.textContent = '+';
+    hpPlus.setAttribute('aria-label', `Increase ${member.name} HP`);
+    hpPlus.addEventListener('click', () => {
+      const next = (member.currentHp ?? hpMax ?? 0) + 1;
+      updatePartyMember(member.id, {
+        currentHp: hpMax ? Math.min(next, hpMax) : next
+      });
+    });
+    hpControls.append(hpMinus, hpPlus);
+
+    const xp = document.createElement('div');
+    xp.className = 'stat-block';
+    const xpValue = Number.isFinite(member.xp) ? member.xp : 0;
+    xp.textContent = `XP ${xpValue}`;
+
+    const xpControls = document.createElement('div');
+    xpControls.className = 'stat-controls';
+    const xpMinus = document.createElement('button');
+    xpMinus.type = 'button';
+    xpMinus.textContent = '−';
+    xpMinus.setAttribute('aria-label', `Decrease ${member.name} XP`);
+    xpMinus.addEventListener('click', () => {
+      updatePartyMember(member.id, { xp: Math.max(0, xpValue - 1) });
+    });
+    const xpPlus = document.createElement('button');
+    xpPlus.type = 'button';
+    xpPlus.textContent = '+';
+    xpPlus.setAttribute('aria-label', `Increase ${member.name} XP`);
+    xpPlus.addEventListener('click', () => {
+      updatePartyMember(member.id, { xp: xpValue + 1 });
+    });
+    xpControls.append(xpMinus, xpPlus);
 
     const removeButton = document.createElement('button');
     removeButton.className = 'icon-button';
@@ -548,9 +600,17 @@ const renderPartyList = () => {
       saveState();
     });
 
-    row.append(name, hp, removeButton);
+    row.append(name, hp, hpControls, xp, xpControls, removeButton);
     partyList.appendChild(row);
   });
+};
+
+const updatePartyMember = (memberId, updates) => {
+  partyMembers = partyMembers.map((member) =>
+    member.id === memberId ? { ...member, ...updates } : member
+  );
+  renderPartyList();
+  saveState();
 };
 
 const addPartyMember = () => {
@@ -560,14 +620,19 @@ const addPartyMember = () => {
     return;
   }
   const maxHpValue = Number(partyMemberMaxHp.value);
+  const xpValue = Number(partyMemberXp.value);
+  const maxHp = Number.isNaN(maxHpValue) ? null : maxHpValue;
   const newMember = {
     id: crypto.randomUUID(),
     name,
-    maxHp: Number.isNaN(maxHpValue) ? null : maxHpValue
+    maxHp,
+    currentHp: maxHp,
+    xp: Number.isNaN(xpValue) ? 0 : xpValue
   };
   partyMembers = [...partyMembers, newMember];
   partyMemberName.value = '';
   partyMemberMaxHp.value = '';
+  partyMemberXp.value = '';
   partyMemberName.focus();
   renderPartyList();
   saveState();
@@ -582,7 +647,7 @@ const addPartyToEncounter = () => {
     name: member.name,
     type: 'player',
     maxHp: member.maxHp,
-    currentHp: member.maxHp,
+    currentHp: member.currentHp ?? member.maxHp,
     initiative: null,
     conditions: '',
     notes: '',
