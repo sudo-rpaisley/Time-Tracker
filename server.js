@@ -25,10 +25,30 @@ const server = http.createServer((req, res) => {
     }
 
     const ext = path.extname(filePath);
+    if (ext === '.html') {
+      const rendered = renderIncludes(data.toString(), publicDir);
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(rendered);
+      return;
+    }
     res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
     res.end(data);
   });
 });
+
+const renderIncludes = (content, baseDir) => {
+  const includeRegex = /@@include\(['"](.+?)['"]\)/g;
+  let result = content;
+  let match = includeRegex.exec(content);
+  while (match) {
+    const includePath = path.join(baseDir, match[1]);
+    const includeContent = fs.readFileSync(includePath, 'utf8');
+    const renderedInclude = renderIncludes(includeContent, baseDir);
+    result = result.replace(match[0], renderedInclude);
+    match = includeRegex.exec(content);
+  }
+  return result;
+};
 
 server.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
