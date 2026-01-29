@@ -32,7 +32,6 @@ const partyMemberName = document.getElementById('partyMemberName');
 const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
 const partyMemberXp = document.getElementById('partyMemberXp');
 const partyMemberLevel = document.getElementById('partyMemberLevel');
-const partyMemberConditions = document.getElementById('partyMemberConditions');
 const addPartyMemberButton = document.getElementById('addPartyMemberButton');
 const partyList = document.getElementById('partyList');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
@@ -81,7 +80,20 @@ const partyProfileCurrentHp = document.getElementById('partyProfileCurrentHp');
 const partyProfileMaxHp = document.getElementById('partyProfileMaxHp');
 const partyProfileXp = document.getElementById('partyProfileXp');
 const partyProfileLevel = document.getElementById('partyProfileLevel');
-const partyProfileConditions = document.getElementById('partyProfileConditions');
+const partyProfileConditionAdd = document.getElementById('partyProfileConditionAdd');
+const partyProfileConditionTags = document.getElementById('partyProfileConditionTags');
+const partyProfileConditionPopover = document.getElementById(
+  'partyProfileConditionPopover'
+);
+const partyProfileConditionSelect = document.getElementById(
+  'partyProfileConditionSelect'
+);
+const partyProfileConditionInput = document.getElementById(
+  'partyProfileConditionInput'
+);
+const partyProfileConditionConfirm = document.getElementById(
+  'partyProfileConditionConfirm'
+);
 const removePartyMemberButton = document.getElementById('removePartyMemberButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
@@ -322,7 +334,10 @@ const setActiveWorld = (worldId) => {
     ? nextWorld.encounterDraft
     : [];
   partyMembers = Array.isArray(nextWorld.partyMembers)
-    ? nextWorld.partyMembers
+    ? nextWorld.partyMembers.map((member) => ({
+      ...member,
+      conditions: normalizeConditions(member.conditions)
+    }))
     : [];
   if (monthsInYearInput) {
     monthsInYearInput.value = calendarSettings.monthsInYear;
@@ -547,6 +562,12 @@ const closeXpMenus = () => {
   });
 };
 
+const closeConditionPopovers = () => {
+  document.querySelectorAll('.condition-popover.is-open').forEach((popover) => {
+    popover.classList.remove('is-open');
+  });
+};
+
 const renderCombatLog = () => {
   if (!combatLog) {
     return;
@@ -564,6 +585,46 @@ const renderCombatLog = () => {
     item.textContent = entry;
     combatLog.appendChild(item);
   });
+};
+
+const normalizeConditions = (conditions) => {
+  if (Array.isArray(conditions)) {
+    return conditions.map((condition) => String(condition).trim()).filter(Boolean);
+  }
+  if (typeof conditions === 'string') {
+    return conditions
+      .split(',')
+      .map((condition) => condition.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const addConditionToMember = (memberId, value) => {
+  const condition = String(value || '').trim();
+  if (!condition) {
+    return;
+  }
+  const member = partyMembers.find((entry) => entry.id === memberId);
+  if (!member) {
+    return;
+  }
+  const conditions = normalizeConditions(member.conditions);
+  if (conditions.includes(condition)) {
+    return;
+  }
+  updatePartyMember(memberId, { conditions: [...conditions, condition] });
+};
+
+const removeConditionFromMember = (memberId, condition) => {
+  const member = partyMembers.find((entry) => entry.id === memberId);
+  if (!member) {
+    return;
+  }
+  const conditions = normalizeConditions(member.conditions).filter(
+    (entry) => entry !== condition
+  );
+  updatePartyMember(memberId, { conditions });
 };
 
 const renderPartyList = () => {
@@ -589,12 +650,94 @@ const renderPartyList = () => {
     const name = document.createElement('span');
     name.textContent = member.name;
     nameGroup.appendChild(name);
-    if (member.conditions) {
-      const conditions = document.createElement('span');
-      conditions.className = 'party-conditions';
-      conditions.textContent = member.conditions;
-      nameGroup.appendChild(conditions);
-    }
+
+    const conditionRow = document.createElement('div');
+    conditionRow.className = 'condition-row';
+    const conditionTags = document.createElement('div');
+    conditionTags.className = 'condition-tags';
+    const conditionAdd = document.createElement('button');
+    conditionAdd.type = 'button';
+    conditionAdd.className = 'ghost condition-add';
+    conditionAdd.setAttribute('aria-label', `Add condition for ${member.name}`);
+    conditionAdd.textContent = '+';
+
+    const conditionPopover = document.createElement('div');
+    conditionPopover.className = 'condition-popover';
+    const conditionSelectLabel = document.createElement('label');
+    conditionSelectLabel.textContent = 'Choose a condition';
+    const conditionSelect = document.createElement('select');
+    [
+      '',
+      'Blinded',
+      'Charmed',
+      'Deafened',
+      'Exhaustion',
+      'Frightened',
+      'Grappled',
+      'Incapacitated',
+      'Invisible',
+      'Paralyzed',
+      'Petrified',
+      'Poisoned',
+      'Prone',
+      'Restrained',
+      'Stunned',
+      'Unconscious'
+    ].forEach((optionValue) => {
+      const option = document.createElement('option');
+      option.value = optionValue;
+      option.textContent = optionValue || 'Select';
+      conditionSelect.appendChild(option);
+    });
+    conditionSelectLabel.appendChild(conditionSelect);
+    const conditionInputLabel = document.createElement('label');
+    conditionInputLabel.textContent = 'Or type custom';
+    const conditionInput = document.createElement('input');
+    conditionInput.type = 'text';
+    conditionInput.placeholder = 'e.g. Burning';
+    conditionInputLabel.appendChild(conditionInput);
+    const conditionConfirm = document.createElement('button');
+    conditionConfirm.type = 'button';
+    conditionConfirm.className = 'primary';
+    conditionConfirm.textContent = 'Add Condition';
+    conditionConfirm.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const value = conditionInput.value.trim() || conditionSelect.value;
+      addConditionToMember(member.id, value);
+      conditionInput.value = '';
+      conditionSelect.value = '';
+      conditionPopover.classList.remove('is-open');
+    });
+    conditionPopover.append(
+      conditionSelectLabel,
+      conditionInputLabel,
+      conditionConfirm
+    );
+
+    const memberConditions = normalizeConditions(member.conditions);
+    memberConditions.forEach((condition) => {
+      const tag = document.createElement('span');
+      tag.className = 'condition-tag';
+      tag.textContent = condition;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'condition-remove';
+      remove.setAttribute('aria-label', `Remove ${condition}`);
+      remove.textContent = '✕';
+      remove.addEventListener('click', () => {
+        removeConditionFromMember(member.id, condition);
+      });
+      tag.appendChild(remove);
+      conditionTags.appendChild(tag);
+    });
+
+    conditionAdd.addEventListener('click', (event) => {
+      event.stopPropagation();
+      conditionPopover.classList.toggle('is-open');
+    });
+
+    conditionRow.append(conditionTags, conditionAdd, conditionPopover);
+    nameGroup.appendChild(conditionRow);
 
     const hpGroup = document.createElement('div');
     hpGroup.className = 'stat-group';
@@ -812,7 +955,6 @@ const addPartyMember = () => {
   const maxHpValue = Number(partyMemberMaxHp.value);
   const xpValue = Number(partyMemberXp.value);
   const levelValue = Number(partyMemberLevel?.value);
-  const conditionsValue = partyMemberConditions?.value.trim();
   const maxHp = Number.isNaN(maxHpValue) ? null : maxHpValue;
   const newMember = {
     id: crypto.randomUUID(),
@@ -821,7 +963,7 @@ const addPartyMember = () => {
     currentHp: maxHp,
     xp: Number.isNaN(xpValue) ? 0 : xpValue,
     level: Number.isNaN(levelValue) ? 1 : Math.max(1, levelValue),
-    conditions: conditionsValue || ''
+    conditions: []
   };
   partyMembers = [...partyMembers, newMember];
   partyMemberName.value = '';
@@ -829,9 +971,6 @@ const addPartyMember = () => {
   partyMemberXp.value = '';
   if (partyMemberLevel) {
     partyMemberLevel.value = '';
-  }
-  if (partyMemberConditions) {
-    partyMemberConditions.value = '';
   }
   partyMemberName.focus();
   renderPartyList();
@@ -874,7 +1013,7 @@ const addPartyToEncounter = () => {
     maxHp: member.maxHp,
     currentHp: member.currentHp ?? member.maxHp,
     initiative: null,
-    conditions: '',
+    conditions: normalizeConditions(member.conditions).join(', '),
     notes: '',
     avatar: null
   }));
@@ -1323,8 +1462,24 @@ const renderPartyProfile = () => {
   if (partyProfileLevel) {
     partyProfileLevel.value = Number.isFinite(selected.level) ? selected.level : 1;
   }
-  if (partyProfileConditions) {
-    partyProfileConditions.value = selected.conditions ?? '';
+  if (partyProfileConditionTags) {
+    partyProfileConditionTags.innerHTML = '';
+    const conditions = normalizeConditions(selected.conditions);
+    conditions.forEach((condition) => {
+      const tag = document.createElement('span');
+      tag.className = 'condition-tag';
+      tag.textContent = condition;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'condition-remove';
+      remove.setAttribute('aria-label', `Remove ${condition}`);
+      remove.textContent = '✕';
+      remove.addEventListener('click', () => {
+        removeConditionFromMember(selectedPartyMemberId, condition);
+      });
+      tag.appendChild(remove);
+      partyProfileConditionTags.appendChild(tag);
+    });
   }
 };
 
@@ -1647,14 +1802,29 @@ if (partyProfileLevel) {
     });
   });
 }
-if (partyProfileConditions) {
-  partyProfileConditions.addEventListener('input', () => {
+if (partyProfileConditionAdd) {
+  partyProfileConditionAdd.addEventListener('click', (event) => {
+    event.stopPropagation();
+    partyProfileConditionPopover?.classList.toggle('is-open');
+  });
+}
+if (partyProfileConditionConfirm) {
+  partyProfileConditionConfirm.addEventListener('click', (event) => {
+    event.preventDefault();
     if (!selectedPartyMemberId) {
       return;
     }
-    updatePartyMember(selectedPartyMemberId, {
-      conditions: partyProfileConditions.value.trim()
-    });
+    const value =
+      partyProfileConditionInput?.value.trim() ||
+      partyProfileConditionSelect?.value;
+    addConditionToMember(selectedPartyMemberId, value);
+    if (partyProfileConditionInput) {
+      partyProfileConditionInput.value = '';
+    }
+    if (partyProfileConditionSelect) {
+      partyProfileConditionSelect.value = '';
+    }
+    partyProfileConditionPopover?.classList.remove('is-open');
   });
 }
 if (profileCard) {
@@ -1704,6 +1874,12 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('click', (event) => {
   if (!event.target.closest('.xp-menu') && !event.target.closest('.xp-plus')) {
     closeXpMenus();
+  }
+  if (
+    !event.target.closest('.condition-popover') &&
+    !event.target.closest('.condition-add')
+  ) {
+    closeConditionPopovers();
   }
 });
 if (createWorldButton) {

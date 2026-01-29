@@ -103,10 +103,41 @@
             <input type="number" id="partyProfileLevel" min="1" />
           </label>
         </div>
-        <label>
-          Conditions
-          <input type="text" id="partyProfileConditions" placeholder="e.g. Prone, Exhaustion" />
-        </label>
+        <div class="condition-section">
+          <div class="condition-header">
+            <span>Conditions</span>
+            <button type="button" class="ghost condition-add" id="partyProfileConditionAdd">+</button>
+          </div>
+          <div class="condition-tags" id="partyProfileConditionTags"></div>
+          <div class="condition-popover" id="partyProfileConditionPopover">
+            <label>
+              Choose a condition
+              <select id="partyProfileConditionSelect">
+                <option value="">Select</option>
+                <option value="Blinded">Blinded</option>
+                <option value="Charmed">Charmed</option>
+                <option value="Deafened">Deafened</option>
+                <option value="Exhaustion">Exhaustion</option>
+                <option value="Frightened">Frightened</option>
+                <option value="Grappled">Grappled</option>
+                <option value="Incapacitated">Incapacitated</option>
+                <option value="Invisible">Invisible</option>
+                <option value="Paralyzed">Paralyzed</option>
+                <option value="Petrified">Petrified</option>
+                <option value="Poisoned">Poisoned</option>
+                <option value="Prone">Prone</option>
+                <option value="Restrained">Restrained</option>
+                <option value="Stunned">Stunned</option>
+                <option value="Unconscious">Unconscious</option>
+              </select>
+            </label>
+            <label>
+              Or type custom
+              <input type="text" id="partyProfileConditionInput" placeholder="e.g. Burning" />
+            </label>
+            <button type="button" class="primary" id="partyProfileConditionConfirm">Add Condition</button>
+          </div>
+        </div>
         <button class="danger" type="button" id="removePartyMemberButton">Remove Party Member</button>
       </div>
     </div>
