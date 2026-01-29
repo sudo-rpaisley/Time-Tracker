@@ -78,6 +78,12 @@ body {
   font-size: 1.2rem;
 }
 
+.helper-text {
+  margin: -8px 0 16px;
+  color: #aeb3c8;
+  font-size: 0.95rem;
+}
+
 .input-row {
   display: grid;
   gap: 12px;
@@ -93,13 +99,24 @@ label {
   color: #cfd3e3;
 }
 
-input {
+input,
+select {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid #2b3246;
   background-color: #131826;
   color: inherit;
   font-size: 1rem;
+}
+
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #9aa5c5 50%),
+    linear-gradient(135deg, #9aa5c5 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(50% - 4px),
+    calc(100% - 14px) calc(50% - 4px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
 }
 
 button {
@@ -130,6 +147,51 @@ button.primary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
+}
+
+.initiative-track {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.combatant {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 88px;
+}
+
+.combatant-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  background: #2f3b5f;
+  color: #f6f7fb;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.combatant.npc .combatant-avatar {
+  background: #5a2f3a;
+}
+
+.combatant.current .combatant-avatar {
+  transform: scale(1.15);
+  box-shadow: 0 12px 24px rgba(122, 82, 255, 0.4);
+  border: 2px solid #7a52ff;
+}
+
+.combatant-name {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #d7daf0;
+  word-break: break-word;
 }
 
 @media (max-width: 600px) {

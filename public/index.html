@@ -42,6 +42,28 @@
             <button id="longRestButton">Long Rest (+8h)</button>
           </div>
         </div>
+
+        <div class="control-group">
+          <h2>Initiative Order</h2>
+          <p class="helper-text">
+            Add players or NPCs, then click Next Turn to advance the current combatant.
+          </p>
+          <div class="input-row">
+            <label>
+              Name
+              <input type="text" id="combatantName" placeholder="e.g. Aria" />
+            </label>
+            <label>
+              Type
+              <select id="combatantType">
+                <option value="player">Player</option>
+                <option value="npc">NPC</option>
+              </select>
+            </label>
+          </div>
+          <button class="primary" id="addCombatantButton">Add Combatant</button>
+          <div class="initiative-track" id="initiativeTrack" aria-live="polite"></div>
+        </div>
       </section>
     </main>
 
