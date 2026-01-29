@@ -228,7 +228,6 @@ let timeConfig = {
   clockSpeed: 1
 };
 
-const STORAGE_KEY = 'time-tracker-state';
 let worlds = {};
 let activeWorldId = null;
 
@@ -327,26 +326,29 @@ const saveState = () => {
     worldMap,
     worldNotes
   };
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({ worlds, activeWorldId })
-  );
+  fetch('/api/state', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ worlds, activeWorldId })
+  }).catch((error) => {
+    console.error('Failed to save state', error);
+  });
 };
 
-const loadState = () => {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) {
-    return false;
-  }
+const loadState = async () => {
   try {
-    const parsed = JSON.parse(stored);
+    const response = await fetch('/api/state');
+    if (!response.ok) {
+      return false;
+    }
+    const parsed = await response.json();
     if (parsed && parsed.worlds && parsed.activeWorldId) {
       worlds = parsed.worlds;
       activeWorldId = parsed.activeWorldId;
       return true;
     }
   } catch (error) {
-    console.error('Failed to parse stored data', error);
+    console.error('Failed to load stored data', error);
   }
   return false;
 };
@@ -3211,8 +3213,8 @@ if (combatantPresetSelect) {
   });
 }
 
-const initializeDefaults = () => {
-  const loaded = loadState();
+const initializeDefaults = async () => {
+  const loaded = await loadState();
   if (!loaded) {
     const defaultWorld = createWorld('Default World');
     worlds[defaultWorld.id] = defaultWorld;
@@ -3261,6 +3263,7 @@ const initializeDefaults = () => {
   renderEncounterPresets();
 };
 
-initializeDefaults();
-renderInitiative();
-renderProfile();
+initializeDefaults().then(() => {
+  renderInitiative();
+  renderProfile();
+});
