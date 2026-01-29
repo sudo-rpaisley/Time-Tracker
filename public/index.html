@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Time &amp; Turn Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <h1>D&amp;D Time &amp; Turn Tracker</h1>
+        <p>Track your in-game time for combat and rests.</p>
+      </header>
+
+      <section class="clock-card" aria-live="polite">
+        <div class="date" id="dateDisplay">--</div>
+        <div class="time" id="timeDisplay">--</div>
+      </section>
+
+      <section class="controls">
+        <div class="control-group">
+          <h2>Set Current Time</h2>
+          <div class="input-row">
+            <label>
+              Date
+              <input type="date" id="dateInput" />
+            </label>
+            <label>
+              Time
+              <input type="time" id="timeInput" step="1" />
+            </label>
+          </div>
+          <button class="primary" id="setTimeButton">Set Time &amp; Date</button>
+        </div>
+
+        <div class="control-group">
+          <h2>Advance Time</h2>
+          <div class="button-row">
+            <button id="nextTurnButton">Next Turn (+6s)</button>
+            <button id="shortRestButton">Short Rest (+1h)</button>
+            <button id="longRestButton">Long Rest (+8h)</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

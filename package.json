@@ -1,0 +1,11 @@
+{
+  "name": "time-tracker",
+  "version": "1.0.0",
+  "description": "D&D time and turn tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT"
+}
