@@ -1115,6 +1115,17 @@ button.primary {
   font-size: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
   white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.timeline-details {
+  display: none;
+  color: #cfd3e3;
+}
+
+.timeline-item.is-open .timeline-details {
+  display: block;
 }
 
 .map-tags {

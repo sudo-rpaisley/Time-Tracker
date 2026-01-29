@@ -235,6 +235,9 @@ let activeWorldId = null;
 const EVENT_TYPES = [
   { value: 'all', label: 'All Events' },
   { value: 'general', label: 'General' },
+  { value: 'lore', label: 'World Lore' },
+  { value: 'player', label: 'Player Created' },
+  { value: 'deadline', label: 'Upcoming Deadline' },
   { value: 'festival', label: 'Festival' },
   { value: 'milestone', label: 'Milestone' },
   { value: 'quest', label: 'Quest' },
@@ -441,7 +444,10 @@ const setActiveWorld = (worldId) => {
     offsetX: Number(nextWorld.worldMap?.offsetX) || 0,
     offsetY: Number(nextWorld.worldMap?.offsetY) || 0,
     markers: Array.isArray(nextWorld.worldMap?.markers)
-      ? nextWorld.worldMap.markers
+      ? nextWorld.worldMap.markers.map((marker) => ({
+        ...marker,
+        url: marker.url || ''
+      }))
       : []
   };
   worldNotes = nextWorld.worldNotes || '';
@@ -895,16 +901,21 @@ const renderCalendarEventsList = () => {
     title.className = 'event-title';
     title.textContent = `${event.title} (Day ${event.day})`;
 
-    const description = document.createElement('div');
-    description.className = 'event-description';
-    description.textContent = event.description || 'No description provided.';
+  const description = document.createElement('div');
+  description.className = 'event-description';
+  description.textContent = event.description || 'No description provided.';
 
-    const meta = document.createElement('div');
-    meta.className = 'timeline-meta';
-    const tag = document.createElement('span');
-    tag.className = 'timeline-tag';
-    tag.textContent = getEventTypeLabel(event.type || 'general');
-    meta.appendChild(tag);
+  const meta = document.createElement('div');
+  meta.className = 'timeline-meta';
+  const dateText = document.createElement('span');
+  dateText.textContent = formatDate(
+    { year: event.year, month: event.month, day: event.day, dayOfWeekIndex: null },
+    calendarSettings
+  );
+  const tag = document.createElement('span');
+  tag.className = 'timeline-tag';
+  tag.textContent = getEventTypeLabel(event.type || 'general');
+  meta.append(dateText, tag);
 
     content.append(title, description, meta);
 
@@ -1025,11 +1036,33 @@ const renderTimeline = () => {
     title.className = 'timeline-title';
     title.textContent = event.title;
 
-    const description = document.createElement('div');
-    description.className = 'event-description';
-    description.textContent = event.description || 'No description provided.';
+    const details = document.createElement('div');
+    details.className = 'timeline-details';
+    details.textContent = event.description || 'No description provided.';
 
-    item.append(meta, title, description);
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'ghost';
+    toggle.textContent = 'View Details';
+    toggle.addEventListener('click', () => {
+      const isOpen = item.classList.toggle('is-open');
+      toggle.textContent = isOpen ? 'Hide Details' : 'View Details';
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost';
+    remove.textContent = 'Delete';
+    remove.addEventListener('click', () => {
+      calendarEvents = calendarEvents.filter((entry) => entry.id !== event.id);
+      renderCalendar();
+      renderTimeline();
+      saveState();
+    });
+    actions.append(toggle, remove);
+
+    item.append(meta, title, actions, details);
     timelineList.appendChild(item);
   });
 };
@@ -1154,11 +1187,14 @@ const addMapMarker = (event) => {
   if (!label) {
     return;
   }
+  const url = window
+    .prompt('Optional wiki URL for this location', '')
+    ?.trim() || '';
   const x = ((event.clientX - rect.left) / rect.width) * 100;
   const y = ((event.clientY - rect.top) / rect.height) * 100;
   worldMap.markers = [
     ...worldMap.markers,
-    { id: crypto.randomUUID(), label: label.trim(), x, y }
+    { id: crypto.randomUUID(), label: label.trim(), url, x, y }
   ];
   renderWorldMap();
   saveState();
@@ -1177,11 +1213,16 @@ const renderWorldMap = () => {
   mapMarkers.style.transform = transform;
   mapMarkers.innerHTML = '';
   worldMap.markers.forEach((marker) => {
-    const pin = document.createElement('div');
+    const pin = document.createElement('button');
     pin.className = 'map-marker';
     pin.textContent = marker.label;
     pin.style.left = `${marker.x}%`;
     pin.style.top = `${marker.y}%`;
+    if (marker.url) {
+      pin.addEventListener('click', () => {
+        window.open(marker.url, '_blank', 'noopener');
+      });
+    }
     mapMarkers.appendChild(pin);
   });
   if (mapTagList) {
@@ -1196,6 +1237,39 @@ const renderWorldMap = () => {
         const item = document.createElement('li');
         const name = document.createElement('span');
         name.textContent = marker.label;
+
+        const actions = document.createElement('div');
+        actions.className = 'button-row';
+
+        const link = document.createElement('a');
+        link.className = 'ghost nav-link';
+        link.textContent = marker.url ? 'Wiki' : 'No Wiki';
+        link.href = marker.url || '#';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.addEventListener('click', (event) => {
+          if (!marker.url) {
+            event.preventDefault();
+          }
+        });
+
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'ghost';
+        edit.textContent = 'Edit';
+        edit.addEventListener('click', () => {
+          const nextLabel = window.prompt('Edit label', marker.label) || marker.label;
+          const nextUrl =
+            window.prompt('Edit wiki URL', marker.url || '')?.trim() || '';
+          worldMap.markers = worldMap.markers.map((entry) =>
+            entry.id === marker.id
+              ? { ...entry, label: nextLabel.trim(), url: nextUrl }
+              : entry
+          );
+          renderWorldMap();
+          saveState();
+        });
+
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'ghost';
@@ -1205,7 +1279,9 @@ const renderWorldMap = () => {
           renderWorldMap();
           saveState();
         });
-        item.append(name, remove);
+
+        actions.append(link, edit, remove);
+        item.append(name, actions);
         mapTagList.appendChild(item);
       });
     }
