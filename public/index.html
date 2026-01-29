@@ -13,9 +13,10 @@
         --:--:--
       </button>
       <div class="nav-actions">
-        <button class="ghost" id="openHomeButton" type="button">Home</button>
+        <button class="ghost" id="openHomeButton" type="button">Entry</button>
         <button class="ghost" id="openWorldsButton" type="button">Worlds</button>
         <button class="ghost" id="openTrackerButton" type="button">Tracker</button>
+        <button class="ghost" id="openClockButton" type="button">Clock</button>
         <button class="ghost" id="openCombatButton" type="button">Combat</button>
         <button class="ghost" id="openLogButton" type="button">Log</button>
         <button class="ghost" id="openSettingsButton" type="button">Settings</button>
@@ -24,13 +25,10 @@
 
     <section class="page home-page" id="homePage">
       <div class="home-hero">
-        <h1>D&amp;D Time &amp; Turn Tracker</h1>
-        <p>
-          Run encounters, track in-world time, and manage initiative across multiple worlds.
-        </p>
+        <h1>Entry</h1>
+        <p>Choose a world to manage its clock, party, and combat tools.</p>
         <div class="button-row">
           <button class="primary" id="homeGoWorldsButton" type="button">Choose a World</button>
-          <button class="ghost" id="homeGoTrackerButton" type="button">Open Tracker</button>
         </div>
       </div>
       <div class="home-grid">
@@ -43,7 +41,7 @@
           <p>Initiative, HP, conditions, and quick encounter drafting at your fingertips.</p>
         </div>
         <div class="home-card">
-          <h3>Time</h3>
+          <h3>Clock</h3>
           <p>Keep calendar settings, rest durations, and a live clock per world.</p>
         </div>
       </div>
@@ -63,15 +61,10 @@
     <main class="app page tracker-page" id="appPage" hidden>
       <header class="header">
         <div>
-          <h1>D&amp;D Time &amp; Turn Tracker</h1>
-          <p>Track your in-game time for combat and rests.</p>
+          <h1>Party Tracker</h1>
+          <p>Keep your party roster ready for encounters.</p>
         </div>
       </header>
-
-      <section class="clock-card" aria-live="polite">
-        <div class="date" id="dateDisplay">--</div>
-        <div class="time" id="timeDisplay">--</div>
-      </section>
 
       <section class="party-card">
         <div class="party-header">
@@ -90,14 +83,22 @@
             Max HP
             <input type="number" id="partyMemberMaxHp" min="0" placeholder="e.g. 28" />
           </label>
-          <label>
-            Initiative
-            <input type="number" id="partyMemberInitiative" min="0" placeholder="e.g. 15" />
-          </label>
         </div>
         <div class="party-list" id="partyList"></div>
       </section>
+    </main>
 
+    <section class="page clock-page" id="clockPage" hidden>
+      <header class="page-header">
+        <div>
+          <h2>Clock</h2>
+          <p class="helper-text">Set the world clock, rests, and pacing.</p>
+        </div>
+      </header>
+      <section class="clock-card" aria-live="polite">
+        <div class="date" id="dateDisplay">--</div>
+        <div class="time" id="timeDisplay">--</div>
+      </section>
       <section class="controls">
         <div class="control-group">
           <h2>Set Current Time</h2>
@@ -161,9 +162,8 @@
           </div>
           <div class="round-display" id="roundDisplay">Round 1</div>
         </div>
-
       </section>
-    </main>
+    </section>
 
     <section class="page combat-page" id="combatPage" hidden>
       <header class="page-header">

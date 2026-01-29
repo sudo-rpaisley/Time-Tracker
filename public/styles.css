@@ -229,7 +229,7 @@ body {
 
 .party-row {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr auto;
+  grid-template-columns: 1.5fr 1fr auto;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;

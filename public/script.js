@@ -22,23 +22,21 @@ const worldsPage = document.getElementById('worldsPage');
 const settingsPage = document.getElementById('settingsPage');
 const combatPage = document.getElementById('combatPage');
 const logPage = document.getElementById('logPage');
+const clockPage = document.getElementById('clockPage');
 const openHomeButton = document.getElementById('openHomeButton');
 const openWorldsButton = document.getElementById('openWorldsButton');
 const openTrackerButton = document.getElementById('openTrackerButton');
+const openClockButton = document.getElementById('openClockButton');
 const openCombatButton = document.getElementById('openCombatButton');
 const openLogButton = document.getElementById('openLogButton');
 const openSettingsButton = document.getElementById('openSettingsButton');
 const homeGoWorldsButton = document.getElementById('homeGoWorldsButton');
-const homeGoTrackerButton = document.getElementById('homeGoTrackerButton');
 const navTimeDisplay = document.getElementById('navTimeDisplay');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const createWorldButton = document.getElementById('createWorldButton');
 const worldGrid = document.getElementById('worldGrid');
 const partyMemberName = document.getElementById('partyMemberName');
 const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
-const partyMemberInitiative = document.getElementById(
-  'partyMemberInitiative'
-);
 const addPartyMemberButton = document.getElementById('addPartyMemberButton');
 const partyList = document.getElementById('partyList');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
@@ -539,9 +537,6 @@ const renderPartyList = () => {
     const hp = document.createElement('span');
     hp.textContent = `HP ${member.maxHp ?? '—'}`;
 
-    const initiative = document.createElement('span');
-    initiative.textContent = `Init ${member.initiative ?? '—'}`;
-
     const removeButton = document.createElement('button');
     removeButton.className = 'icon-button';
     removeButton.type = 'button';
@@ -553,7 +548,7 @@ const renderPartyList = () => {
       saveState();
     });
 
-    row.append(name, hp, initiative, removeButton);
+    row.append(name, hp, removeButton);
     partyList.appendChild(row);
   });
 };
@@ -565,17 +560,14 @@ const addPartyMember = () => {
     return;
   }
   const maxHpValue = Number(partyMemberMaxHp.value);
-  const initiativeValue = Number(partyMemberInitiative.value);
   const newMember = {
     id: crypto.randomUUID(),
     name,
-    maxHp: Number.isNaN(maxHpValue) ? null : maxHpValue,
-    initiative: Number.isNaN(initiativeValue) ? null : initiativeValue
+    maxHp: Number.isNaN(maxHpValue) ? null : maxHpValue
   };
   partyMembers = [...partyMembers, newMember];
   partyMemberName.value = '';
   partyMemberMaxHp.value = '';
-  partyMemberInitiative.value = '';
   partyMemberName.focus();
   renderPartyList();
   saveState();
@@ -591,7 +583,7 @@ const addPartyToEncounter = () => {
     type: 'player',
     maxHp: member.maxHp,
     currentHp: member.maxHp,
-    initiative: member.initiative,
+    initiative: null,
     conditions: '',
     notes: '',
     avatar: null
@@ -958,6 +950,7 @@ const showPage = (page) => {
   homePage.hidden = page !== 'home';
   worldsPage.hidden = page !== 'worlds';
   appPage.hidden = page !== 'tracker';
+  clockPage.hidden = page !== 'clock';
   combatPage.hidden = page !== 'combat';
   logPage.hidden = page !== 'log';
   settingsPage.hidden = page !== 'settings';
@@ -1188,10 +1181,10 @@ createWorldButton.addEventListener('click', () => {
 openHomeButton.addEventListener('click', () => showPage('home'));
 openWorldsButton.addEventListener('click', () => showPage('worlds'));
 openTrackerButton.addEventListener('click', () => showPage('tracker'));
+openClockButton.addEventListener('click', () => showPage('clock'));
 openCombatButton.addEventListener('click', () => showPage('combat'));
 openLogButton.addEventListener('click', () => showPage('log'));
 homeGoWorldsButton.addEventListener('click', () => showPage('worlds'));
-homeGoTrackerButton.addEventListener('click', () => showPage('tracker'));
 openSettingsButton.addEventListener('click', openSettingsPage);
 closeSettingsButton.addEventListener('click', closeSettingsPage);
 applySettingsButton.addEventListener('click', () => {
