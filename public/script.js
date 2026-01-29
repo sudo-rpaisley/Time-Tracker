@@ -826,7 +826,32 @@ const addPartyToEncounter = () => {
   if (partyMembers.length === 0) {
     return;
   }
-  const newCombatants = partyMembers.map((member) => ({
+  const existingPartyNames = new Set(
+    combatants
+      .filter((combatant) => combatant.type === 'player')
+      .map((combatant) => combatant.name)
+  );
+  const remainingParty = partyMembers.filter(
+    (member) => !existingPartyNames.has(member.name)
+  );
+  if (remainingParty.length === 0) {
+    const confirmed = window.confirm(
+      'Party are already present. Do you want to add them again?'
+    );
+    if (!confirmed) {
+      return;
+    }
+  } else if (remainingParty.length < partyMembers.length) {
+    const confirmed = window.confirm(
+      'Some party members are already present. Add the remaining party members?'
+    );
+    if (!confirmed) {
+      return;
+    }
+  }
+  const membersToAdd =
+    remainingParty.length === 0 ? partyMembers : remainingParty;
+  const newCombatants = membersToAdd.map((member) => ({
     id: crypto.randomUUID(),
     name: member.name,
     type: 'player',
@@ -1144,7 +1169,26 @@ const renderInitiative = () => {
     initiative.textContent =
       Number.isFinite(combatant.initiative) ? `Init ${combatant.initiative}` : 'Init —';
 
-    container.append(avatar, name, initiative);
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'combatant-remove';
+    removeButton.setAttribute('aria-label', `Remove ${combatant.name}`);
+    removeButton.textContent = '✕';
+    removeButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      combatants = combatants.filter((entry) => entry.id !== combatant.id);
+      if (currentCombatantIndex >= combatants.length) {
+        currentCombatantIndex = 0;
+      }
+      if (selectedCombatantId === combatant.id) {
+        selectedCombatantId = combatants[currentCombatantIndex]?.id ?? null;
+      }
+      renderInitiative();
+      renderProfile();
+      saveState();
+    });
+
+    container.append(avatar, name, initiative, removeButton);
     container.addEventListener('click', () => {
       currentCombatantIndex = index;
       selectedCombatantId = combatant.id;
