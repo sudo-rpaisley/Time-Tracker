@@ -30,6 +30,13 @@ const navTimeDisplay = document.getElementById('navTimeDisplay');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const createWorldButton = document.getElementById('createWorldButton');
 const worldGrid = document.getElementById('worldGrid');
+const partyMemberName = document.getElementById('partyMemberName');
+const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
+const partyMemberInitiative = document.getElementById(
+  'partyMemberInitiative'
+);
+const addPartyMemberButton = document.getElementById('addPartyMemberButton');
+const partyList = document.getElementById('partyList');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
 const hoursPerDayInput = document.getElementById('hoursPerDayInput');
 const daysPerMonthInput = document.getElementById('daysPerMonthInput');
@@ -47,6 +54,9 @@ const rollAllButton = document.getElementById('rollAllButton');
 const rollNpcsButton = document.getElementById('rollNpcsButton');
 const sortInitiativeButton = document.getElementById('sortInitiativeButton');
 const clearCombatButton = document.getElementById('clearCombatButton');
+const addPartyToEncounterButton = document.getElementById(
+  'addPartyToEncounterButton'
+);
 const combatLog = document.getElementById('combatLog');
 const profileModal = document.getElementById('profileModal');
 const profileBackdrop = document.getElementById('profileBackdrop');
@@ -97,6 +107,7 @@ let combatLogEntries = [];
 let roundNumber = 1;
 let autoClockTimer = null;
 let encounterDraft = [];
+let partyMembers = [];
 
 let calendarSettings = {
   monthsInYear: 12,
@@ -182,7 +193,8 @@ const createWorld = (name) => ({
   timeConfig: { ...timeConfig },
   roundNumber: 1,
   combatLogEntries: [],
-  encounterDraft: []
+  encounterDraft: [],
+  partyMembers: []
 });
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -201,7 +213,8 @@ const saveState = () => {
     timeConfig,
     roundNumber,
     combatLogEntries,
-    encounterDraft
+    encounterDraft,
+    partyMembers
   };
   localStorage.setItem(
     STORAGE_KEY,
@@ -290,6 +303,9 @@ const setActiveWorld = (worldId) => {
   encounterDraft = Array.isArray(nextWorld.encounterDraft)
     ? nextWorld.encounterDraft
     : [];
+  partyMembers = Array.isArray(nextWorld.partyMembers)
+    ? nextWorld.partyMembers
+    : [];
   monthsInYearInput.value = calendarSettings.monthsInYear;
   hoursPerDayInput.value = calendarSettings.hoursPerDay;
   daysPerMonthInput.value = calendarSettings.daysPerMonth.join(', ');
@@ -302,6 +318,7 @@ const setActiveWorld = (worldId) => {
   renderProfile();
   renderCombatLog();
   renderEncounterDraft();
+  renderPartyList();
   renderWorldTiles();
   updateAdvanceLabels();
   updateRoundDisplay();
@@ -497,6 +514,89 @@ const renderCombatLog = () => {
     item.textContent = entry;
     combatLog.appendChild(item);
   });
+};
+
+const renderPartyList = () => {
+  partyList.innerHTML = '';
+  if (partyMembers.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'helper-text';
+    empty.textContent = 'No party members yet.';
+    partyList.appendChild(empty);
+    return;
+  }
+  partyMembers.forEach((member) => {
+    const row = document.createElement('div');
+    row.className = 'party-row';
+
+    const name = document.createElement('span');
+    name.textContent = member.name;
+
+    const hp = document.createElement('span');
+    hp.textContent = `HP ${member.maxHp ?? '—'}`;
+
+    const initiative = document.createElement('span');
+    initiative.textContent = `Init ${member.initiative ?? '—'}`;
+
+    const removeButton = document.createElement('button');
+    removeButton.className = 'icon-button';
+    removeButton.type = 'button';
+    removeButton.textContent = '✕';
+    removeButton.setAttribute('aria-label', `Remove ${member.name}`);
+    removeButton.addEventListener('click', () => {
+      partyMembers = partyMembers.filter((entry) => entry.id !== member.id);
+      renderPartyList();
+      saveState();
+    });
+
+    row.append(name, hp, initiative, removeButton);
+    partyList.appendChild(row);
+  });
+};
+
+const addPartyMember = () => {
+  const name = partyMemberName.value.trim();
+  if (!name) {
+    partyMemberName.focus();
+    return;
+  }
+  const maxHpValue = Number(partyMemberMaxHp.value);
+  const initiativeValue = Number(partyMemberInitiative.value);
+  const newMember = {
+    id: crypto.randomUUID(),
+    name,
+    maxHp: Number.isNaN(maxHpValue) ? null : maxHpValue,
+    initiative: Number.isNaN(initiativeValue) ? null : initiativeValue
+  };
+  partyMembers = [...partyMembers, newMember];
+  partyMemberName.value = '';
+  partyMemberMaxHp.value = '';
+  partyMemberInitiative.value = '';
+  partyMemberName.focus();
+  renderPartyList();
+  saveState();
+};
+
+const addPartyToEncounter = () => {
+  if (partyMembers.length === 0) {
+    return;
+  }
+  const newCombatants = partyMembers.map((member) => ({
+    id: crypto.randomUUID(),
+    name: member.name,
+    type: 'player',
+    maxHp: member.maxHp,
+    currentHp: member.maxHp,
+    initiative: member.initiative,
+    conditions: '',
+    notes: '',
+    avatar: null
+  }));
+  combatants = [...combatants, ...newCombatants];
+  renderInitiative();
+  renderProfile();
+  logEvent('Party added to initiative.');
+  saveState();
 };
 
 const difficultyLabels = ['Easy', 'Easy', 'Medium', 'Hard', 'Deadly'];
@@ -988,6 +1088,13 @@ rollNpcsButton.addEventListener('click', () =>
 );
 sortInitiativeButton.addEventListener('click', sortCombatantsByInitiative);
 clearCombatButton.addEventListener('click', clearEncounter);
+addPartyToEncounterButton.addEventListener('click', addPartyToEncounter);
+addPartyMemberButton.addEventListener('click', addPartyMember);
+partyMemberName.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    addPartyMember();
+  }
+});
 profileName.addEventListener('input', () => {
   updateSelectedCombatant({ name: profileName.value.trim() || 'Unnamed' });
 });
@@ -1194,6 +1301,9 @@ importWorldInput.addEventListener('change', () => {
           : [],
         encounterDraft: Array.isArray(parsed.encounterDraft)
           ? parsed.encounterDraft
+          : [],
+        partyMembers: Array.isArray(parsed.partyMembers)
+          ? parsed.partyMembers
           : []
       };
       worlds[world.id] = world;
@@ -1253,6 +1363,7 @@ const initializeDefaults = () => {
   renderCombatLog();
   updateDifficultyLabel();
   renderEncounterDraft();
+  renderPartyList();
   showPage('home');
 };
 

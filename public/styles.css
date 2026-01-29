@@ -190,6 +190,49 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
+.party-card {
+  padding: 24px;
+  border-radius: 20px;
+  background: rgba(18, 21, 31, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  display: grid;
+  gap: 16px;
+}
+
+.party-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.party-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.party-list {
+  display: grid;
+  gap: 10px;
+}
+
+.party-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(24, 29, 44, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.party-row span {
+  font-size: 0.95rem;
+}
+
 .date {
   font-size: clamp(1.1rem, 2.5vw, 1.4rem);
   text-transform: uppercase;
