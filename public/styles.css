@@ -513,6 +513,9 @@ button.primary {
   gap: 8px;
   color: #cfd3e3;
   font-size: 0.95rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .difficulty-label {
