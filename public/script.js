@@ -59,6 +59,16 @@ const removeCombatantButton = document.getElementById('removeCombatantButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
 
+const timeInputs = [
+  yearInput,
+  monthInput,
+  dayInput,
+  hourInput,
+  minuteInput,
+  secondInput
+];
+let isEditingTimeInputs = false;
+
 let totalSeconds = 0;
 let combatants = [];
 let currentCombatantIndex = 0;
@@ -373,6 +383,9 @@ const formatTime = (dateParts) =>
   `${pad(dateParts.hour)}:${pad(dateParts.minute)}:${pad(dateParts.second)}`;
 
 const syncInputs = () => {
+  if (isEditingTimeInputs) {
+    return;
+  }
   const dateParts = fromTotalSeconds(totalSeconds, calendarSettings);
   yearInput.value = dateParts.year;
   monthInput.value = dateParts.month;
@@ -397,6 +410,10 @@ const updateAdvanceLabels = () => {
 
 const updateRoundDisplay = () => {
   roundDisplay.textContent = `Round ${roundNumber}`;
+};
+
+const updateTimeEditingState = () => {
+  isEditingTimeInputs = timeInputs.includes(document.activeElement);
 };
 
 const logEvent = (message) => {
@@ -776,6 +793,12 @@ const advanceCombatant = () => {
 };
 
 setTimeButton.addEventListener('click', updateTimeFromInputs);
+timeInputs.forEach((input) => {
+  input.addEventListener('focus', updateTimeEditingState);
+  input.addEventListener('blur', () => {
+    window.setTimeout(updateTimeEditingState, 0);
+  });
+});
 nextTurnButton.addEventListener('click', () => {
   adjustTime(timeConfig.turnSeconds * 1000);
   advanceCombatant();
