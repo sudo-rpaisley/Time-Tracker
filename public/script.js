@@ -32,6 +32,7 @@ const partyMemberName = document.getElementById('partyMemberName');
 const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
 const partyMemberXp = document.getElementById('partyMemberXp');
 const partyMemberLevel = document.getElementById('partyMemberLevel');
+const partyMemberConditions = document.getElementById('partyMemberConditions');
 const addPartyMemberButton = document.getElementById('addPartyMemberButton');
 const partyList = document.getElementById('partyList');
 const monthsInYearInput = document.getElementById('monthsInYearInput');
@@ -80,6 +81,7 @@ const partyProfileCurrentHp = document.getElementById('partyProfileCurrentHp');
 const partyProfileMaxHp = document.getElementById('partyProfileMaxHp');
 const partyProfileXp = document.getElementById('partyProfileXp');
 const partyProfileLevel = document.getElementById('partyProfileLevel');
+const partyProfileConditions = document.getElementById('partyProfileConditions');
 const removePartyMemberButton = document.getElementById('removePartyMemberButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
@@ -582,8 +584,17 @@ const renderPartyList = () => {
     const row = document.createElement('div');
     row.className = 'party-row';
 
+    const nameGroup = document.createElement('div');
+    nameGroup.className = 'party-name';
     const name = document.createElement('span');
     name.textContent = member.name;
+    nameGroup.appendChild(name);
+    if (member.conditions) {
+      const conditions = document.createElement('span');
+      conditions.className = 'party-conditions';
+      conditions.textContent = member.conditions;
+      nameGroup.appendChild(conditions);
+    }
 
     const hpGroup = document.createElement('div');
     hpGroup.className = 'stat-group';
@@ -730,7 +741,7 @@ const renderPartyList = () => {
       saveState();
     });
 
-    row.append(name, hpGroup, xpGroup, levelGroup, removeButton);
+    row.append(nameGroup, hpGroup, xpGroup, levelGroup, removeButton);
     partyList.appendChild(row);
   });
   renderPartyNav();
@@ -801,6 +812,7 @@ const addPartyMember = () => {
   const maxHpValue = Number(partyMemberMaxHp.value);
   const xpValue = Number(partyMemberXp.value);
   const levelValue = Number(partyMemberLevel?.value);
+  const conditionsValue = partyMemberConditions?.value.trim();
   const maxHp = Number.isNaN(maxHpValue) ? null : maxHpValue;
   const newMember = {
     id: crypto.randomUUID(),
@@ -808,7 +820,8 @@ const addPartyMember = () => {
     maxHp,
     currentHp: maxHp,
     xp: Number.isNaN(xpValue) ? 0 : xpValue,
-    level: Number.isNaN(levelValue) ? 1 : Math.max(1, levelValue)
+    level: Number.isNaN(levelValue) ? 1 : Math.max(1, levelValue),
+    conditions: conditionsValue || ''
   };
   partyMembers = [...partyMembers, newMember];
   partyMemberName.value = '';
@@ -816,6 +829,9 @@ const addPartyMember = () => {
   partyMemberXp.value = '';
   if (partyMemberLevel) {
     partyMemberLevel.value = '';
+  }
+  if (partyMemberConditions) {
+    partyMemberConditions.value = '';
   }
   partyMemberName.focus();
   renderPartyList();
@@ -1307,6 +1323,9 @@ const renderPartyProfile = () => {
   if (partyProfileLevel) {
     partyProfileLevel.value = Number.isFinite(selected.level) ? selected.level : 1;
   }
+  if (partyProfileConditions) {
+    partyProfileConditions.value = selected.conditions ?? '';
+  }
 };
 
 const openProfileModal = () => {
@@ -1625,6 +1644,16 @@ if (partyProfileLevel) {
     const parsed = Number(value);
     updatePartyMember(selectedPartyMemberId, {
       level: value === '' || Number.isNaN(parsed) ? 1 : Math.max(1, parsed)
+    });
+  });
+}
+if (partyProfileConditions) {
+  partyProfileConditions.addEventListener('input', () => {
+    if (!selectedPartyMemberId) {
+      return;
+    }
+    updatePartyMember(selectedPartyMemberId, {
+      conditions: partyProfileConditions.value.trim()
     });
   });
 }

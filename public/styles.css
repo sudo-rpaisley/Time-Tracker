@@ -295,6 +295,17 @@ body {
   font-size: 0.95rem;
 }
 
+.party-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.party-conditions {
+  font-size: 0.75rem;
+  color: #aeb3c8;
+}
+
 .stat-group {
   display: flex;
   flex-direction: column;
