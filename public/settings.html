@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Settings</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="settings-page page" id="settingsPage">
+      <header class="settings-header">
+        <div>
+          <h2 id="settingsTitle">Calendar Settings</h2>
+          <p class="helper-text">
+            Customize the calendar for your world. These settings affect how time advances and displays.
+          </p>
+        </div>
+        <a class="icon-button nav-link" href="party.html" aria-label="Back to party">←</a>
+      </header>
+      <div class="settings-card">
+        <div class="input-row">
+          <label>
+            Months per Year
+            <input type="number" id="monthsInYearInput" min="1" />
+          </label>
+          <label>
+            Hours per Day
+            <input type="number" id="hoursPerDayInput" min="1" />
+          </label>
+        </div>
+        <label>
+          Days per Month (comma-separated)
+          <input
+            type="text"
+            id="daysPerMonthInput"
+            placeholder="e.g. 31,28,31,30,31,30,31,31,30,31,30,31"
+          />
+        </label>
+        <label>
+          Month Names (comma-separated)
+          <input
+            type="text"
+            id="monthNamesInput"
+            placeholder="e.g. January,February,March"
+          />
+        </label>
+        <label>
+          Day Names (comma-separated)
+          <input
+            type="text"
+            id="dayNamesInput"
+            placeholder="e.g. Monday,Tuesday,Wednesday"
+          />
+        </label>
+        <button class="primary" id="applySettingsButton" type="button">Apply Settings</button>
+      </div>
+      <div class="settings-card">
+        <h3>World Data</h3>
+        <p class="helper-text">Export or import the current world as JSON.</p>
+        <div class="button-row">
+          <button class="ghost" id="exportWorldButton" type="button">Export World</button>
+          <label class="ghost file-upload">
+            Import World
+            <input type="file" id="importWorldInput" accept="application/json" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

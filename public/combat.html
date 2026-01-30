@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Combat</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page combat-page" id="combatPage">
+      <header class="page-header">
+        <div>
+          <h2>Combat</h2>
+          <p class="helper-text">Manage initiative order and quick encounters.</p>
+        </div>
+      </header>
+      <div class="controls">
+        <div class="control-group">
+          <h2>Initiative Order</h2>
+          <p class="helper-text">
+            Add players or NPCs, then click Next Turn to advance the current combatant.
+            Drag avatars to reorder initiative.
+          </p>
+          <div class="button-row">
+            <button class="primary" id="startCombatButton" type="button">Start Combat</button>
+            <button class="ghost" id="combatNextTurnButton" type="button">Next Turn (+6s)</button>
+          </div>
+          <div class="input-row">
+            <label>
+              Name
+              <input type="text" id="combatantName" placeholder="e.g. Aria" />
+            </label>
+            <label>
+              Type
+              <select id="combatantType">
+                <option value="player">Player</option>
+                <option value="npc">NPC</option>
+              </select>
+            </label>
+            <label>
+              Max HP
+              <input type="number" id="combatantMaxHp" min="0" placeholder="e.g. 28" />
+            </label>
+            <label>
+              Initiative
+              <input type="number" id="combatantInitiative" min="0" placeholder="e.g. 15" />
+            </label>
+            <label>
+              Preset
+              <select id="combatantPreset">
+                <option value="">Custom</option>
+              </select>
+            </label>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="addCombatantButton">Add Combatant</button>
+            <button class="ghost" id="addPartyToEncounterButton" type="button">Add Party</button>
+            <button class="ghost" id="rollAllButton" type="button">Roll All</button>
+            <button class="ghost" id="rollNpcsButton" type="button">Roll NPCs</button>
+            <button class="ghost" id="sortInitiativeButton" type="button">Sort by Initiative</button>
+            <button class="ghost" id="clearCombatButton" type="button">Clear Encounter</button>
+          </div>
+          <div class="initiative-track" id="initiativeTrack" aria-live="polite"></div>
+        </div>
+
+        <div class="control-group">
+          <h2>Round History</h2>
+          <ul class="round-history" id="roundHistoryList"></ul>
+        </div>
+
+        <div class="control-group">
+          <h2>Quick Encounter</h2>
+          <p class="helper-text">Generate a random encounter based on difficulty.</p>
+          <div class="input-row">
+            <label>
+              Difficulty
+              <input type="range" id="encounterDifficulty" min="1" max="5" value="3" />
+            </label>
+            <div class="difficulty-label" id="encounterDifficultyLabel">Medium</div>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="generateEncounterButton" type="button">Generate Encounter</button>
+            <button class="ghost" id="addEncounterButton" type="button">Add to Initiative</button>
+            <button class="ghost" id="clearEncounterDraftButton" type="button">Clear Suggestion</button>
+          </div>
+          <ul class="encounter-list" id="encounterDraftList"></ul>
+        </div>
+
+        <div class="control-group">
+          <h2>Encounter Presets</h2>
+          <p class="helper-text">Save encounter drafts to reuse across sessions.</p>
+          <div class="input-row">
+            <label>
+              Preset Name
+              <input type="text" id="encounterPresetName" placeholder="e.g. Goblin ambush" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="saveEncounterPresetButton" type="button">
+              Save Preset
+            </button>
+          </div>
+          <ul class="encounter-list" id="encounterPresetList"></ul>
+        </div>
+      </div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>
