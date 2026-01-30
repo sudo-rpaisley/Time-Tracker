@@ -279,3 +279,33 @@
     </div>
   </div>
 </div>
+
+<div class="modal" id="interactionModal" aria-hidden="true">
+  <div class="modal-backdrop" id="interactionBackdrop"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="interactionTitle">
+    <div class="modal-header">
+      <h2 id="interactionTitle">Resolve Interaction</h2>
+      <button type="button" class="icon-button" id="closeInteractionButton" aria-label="Close interaction">
+        ✕
+      </button>
+    </div>
+    <p class="helper-text" id="interactionSummary"></p>
+    <label>
+      Action
+      <select id="interactionTypeInput">
+        <option value="attack">Attack</option>
+        <option value="heal">Heal</option>
+        <option value="buff">Buff</option>
+        <option value="assist">Assist</option>
+      </select>
+    </label>
+    <label>
+      Notes
+      <textarea id="interactionNotesInput" rows="2" placeholder="Optional notes"></textarea>
+    </label>
+    <div class="button-row">
+      <button type="button" class="ghost" id="cancelInteractionButton">Cancel</button>
+      <button type="button" class="primary" id="confirmInteractionButton">Log Interaction</button>
+    </div>
+  </div>
+</div>

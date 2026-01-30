@@ -1109,6 +1109,19 @@ button.primary {
   outline-offset: 4px;
 }
 
+.initiative-drop-zone {
+  width: 12px;
+  height: 72px;
+  border-radius: 999px;
+  border: 1px dashed transparent;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.initiative-drop-zone.is-active {
+  border-color: rgba(122, 82, 255, 0.8);
+  background-color: rgba(122, 82, 255, 0.15);
+}
+
 .combatant-remove {
   position: absolute;
   top: -6px;

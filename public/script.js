@@ -79,6 +79,14 @@ const worldEditError = document.getElementById('worldEditError');
 const confirmWorldEditButton = document.getElementById('confirmWorldEditButton');
 const cancelWorldEditButton = document.getElementById('cancelWorldEditButton');
 const deleteWorldButton = document.getElementById('deleteWorldButton');
+const interactionModal = document.getElementById('interactionModal');
+const interactionBackdrop = document.getElementById('interactionBackdrop');
+const closeInteractionButton = document.getElementById('closeInteractionButton');
+const interactionSummary = document.getElementById('interactionSummary');
+const interactionTypeInput = document.getElementById('interactionTypeInput');
+const interactionNotesInput = document.getElementById('interactionNotesInput');
+const cancelInteractionButton = document.getElementById('cancelInteractionButton');
+const confirmInteractionButton = document.getElementById('confirmInteractionButton');
 const profileCard = document.getElementById('profileCard');
 const emptyProfile = document.getElementById('emptyProfile');
 const profileDetails = document.getElementById('profileDetails');
@@ -337,6 +345,8 @@ let activeWorldId = null;
 let worldEditTargetId = null;
 let worldCoverImage = '';
 let worldEditCoverImage = '';
+let interactionSourceId = null;
+let interactionTargetId = null;
 
 const EVENT_TYPES = [
   { value: 'all', label: 'All Events' },
@@ -3230,6 +3240,54 @@ const adjustTime = (milliseconds) => {
   saveState();
 };
 
+const openInteractionModal = (sourceId, targetId) => {
+  if (!interactionModal || !interactionSummary || !interactionTypeInput) {
+    return false;
+  }
+  const source = combatants.find((entry) => entry.id === sourceId);
+  const target = combatants.find((entry) => entry.id === targetId);
+  if (!source || !target) {
+    return false;
+  }
+  interactionSourceId = sourceId;
+  interactionTargetId = targetId;
+  interactionSummary.textContent = `${source.name} → ${target.name}`;
+  interactionTypeInput.value = 'attack';
+  if (interactionNotesInput) {
+    interactionNotesInput.value = '';
+  }
+  interactionModal.classList.add('is-open');
+  interactionModal.setAttribute('aria-hidden', 'false');
+  return true;
+};
+
+const closeInteractionModal = () => {
+  if (!interactionModal) {
+    return;
+  }
+  interactionModal.classList.remove('is-open');
+  interactionModal.setAttribute('aria-hidden', 'true');
+  interactionSourceId = null;
+  interactionTargetId = null;
+};
+
+const logInteraction = () => {
+  if (!interactionSourceId || !interactionTargetId) {
+    return false;
+  }
+  const source = combatants.find((entry) => entry.id === interactionSourceId);
+  const target = combatants.find((entry) => entry.id === interactionTargetId);
+  if (!source || !target) {
+    return false;
+  }
+  const action = interactionTypeInput?.value || 'attack';
+  const notes = interactionNotesInput?.value.trim();
+  const noteText = notes ? ` (${notes})` : '';
+  logEvent(`${source.name} ${action}s ${target.name}${noteText}.`);
+  saveState();
+  return true;
+};
+
 const toggleLiveClock = () => {
   if (autoClockTimer) {
     stopAutoClock();
@@ -3252,7 +3310,57 @@ const renderInitiative = () => {
     return;
   }
 
+  const handleDropAtIndex = (targetIndex) => {
+    if (!draggedCombatantId) {
+      return;
+    }
+    const fromIndex = combatants.findIndex(
+      (item) => item.id === draggedCombatantId
+    );
+    if (fromIndex === -1 || targetIndex === fromIndex) {
+      return;
+    }
+    const [moved] = combatants.splice(fromIndex, 1);
+    const adjustedIndex = fromIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    combatants.splice(adjustedIndex, 0, moved);
+    if (currentCombatantIndex === fromIndex) {
+      currentCombatantIndex = adjustedIndex;
+    } else if (
+      currentCombatantIndex >= Math.min(fromIndex, adjustedIndex) &&
+      currentCombatantIndex <= Math.max(fromIndex, adjustedIndex)
+    ) {
+      if (fromIndex < adjustedIndex) {
+        currentCombatantIndex -= 1;
+      } else {
+        currentCombatantIndex += 1;
+      }
+    }
+    renderInitiative();
+    renderProfile();
+    saveState();
+  };
+
+  const createDropZone = (targetIndex) => {
+    const dropZone = document.createElement('div');
+    dropZone.className = 'initiative-drop-zone';
+    dropZone.setAttribute('aria-hidden', 'true');
+    dropZone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      dropZone.classList.add('is-active');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('is-active');
+    });
+    dropZone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dropZone.classList.remove('is-active');
+      handleDropAtIndex(targetIndex);
+    });
+    return dropZone;
+  };
+
   combatants.forEach((combatant, index) => {
+    initiativeTrack.appendChild(createDropZone(index));
     const container = document.createElement('div');
     container.className = `combatant ${combatant.type}${
       index === currentCombatantIndex ? ' current' : ''
@@ -3334,6 +3442,9 @@ const renderInitiative = () => {
       initiativeTrack
         .querySelectorAll('.combatant.drag-over')
         .forEach((element) => element.classList.remove('drag-over'));
+      initiativeTrack
+        .querySelectorAll('.initiative-drop-zone.is-active')
+        .forEach((element) => element.classList.remove('is-active'));
     });
     container.addEventListener('dragover', (event) => {
       event.preventDefault();
@@ -3348,34 +3459,11 @@ const renderInitiative = () => {
       if (!draggedCombatantId || draggedCombatantId === combatant.id) {
         return;
       }
-      const fromIndex = combatants.findIndex(
-        (item) => item.id === draggedCombatantId
-      );
-      const toIndex = combatants.findIndex(
-        (item) => item.id === combatant.id
-      );
-      if (fromIndex === -1 || toIndex === -1) {
-        return;
-      }
-      const [moved] = combatants.splice(fromIndex, 1);
-      combatants.splice(toIndex, 0, moved);
-      if (currentCombatantIndex === fromIndex) {
-        currentCombatantIndex = toIndex;
-      } else if (
-        currentCombatantIndex >= Math.min(fromIndex, toIndex) &&
-        currentCombatantIndex <= Math.max(fromIndex, toIndex)
-      ) {
-        if (fromIndex < toIndex) {
-          currentCombatantIndex -= 1;
-        } else {
-          currentCombatantIndex += 1;
-        }
-      }
-      renderInitiative();
-      renderProfile();
+      openInteractionModal(draggedCombatantId, combatant.id);
     });
     initiativeTrack.appendChild(container);
   });
+  initiativeTrack.appendChild(createDropZone(combatants.length));
 };
 
 const renderProfile = () => {
@@ -4568,6 +4656,22 @@ if (deleteWorldButton) {
     }
   });
 }
+if (confirmInteractionButton) {
+  confirmInteractionButton.addEventListener('click', () => {
+    if (logInteraction()) {
+      closeInteractionModal();
+    }
+  });
+}
+if (cancelInteractionButton) {
+  cancelInteractionButton.addEventListener('click', closeInteractionModal);
+}
+if (closeInteractionButton) {
+  closeInteractionButton.addEventListener('click', closeInteractionModal);
+}
+if (interactionBackdrop) {
+  interactionBackdrop.addEventListener('click', closeInteractionModal);
+}
 if (confirmWorldButton) {
   confirmWorldButton.addEventListener('click', () => {
     if (!worldNameInput) {
@@ -4607,6 +4711,7 @@ document.addEventListener('keydown', (event) => {
     closePartyProfileModal();
     closeWorldModal();
     closeWorldEditModal();
+    closeInteractionModal();
   }
 });
 document.addEventListener('click', (event) => {
