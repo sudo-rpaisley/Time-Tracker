@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Campaign Planner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page campaign-page">
+      <header class="page-header">
+        <div>
+          <h2>Campaign Planner</h2>
+          <p class="helper-text">Keep session notes and milestones tied to your timeline.</p>
+        </div>
+      </header>
+
+      <div class="controls">
+        <div class="quest-card">
+          <h3>Add Session Note</h3>
+          <div class="input-row">
+            <label>
+              Title
+              <input type="text" id="sessionNoteTitleInput" placeholder="e.g. Session 12" />
+            </label>
+            <label>
+              Link to Timeline Event
+              <select id="sessionNoteEventSelect"></select>
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea
+              id="sessionNoteNotesInput"
+              rows="3"
+              placeholder="Highlights, unresolved threads, or player decisions."
+            ></textarea>
+          </label>
+          <button class="primary" id="addSessionNoteButton" type="button">Add Note</button>
+        </div>
+
+        <div class="quest-card">
+          <h3>Add Milestone</h3>
+          <div class="input-row">
+            <label>
+              Title
+              <input type="text" id="milestoneTitleInput" placeholder="e.g. Secure the Sunstone" />
+            </label>
+            <label>
+              Status
+              <select id="milestoneStatusInput">
+                <option value="planned">Planned</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </label>
+          </div>
+          <div class="input-row">
+            <label>
+              Target Day
+              <input type="number" id="milestoneDayInput" min="1" />
+            </label>
+            <label>
+              Month
+              <input type="number" id="milestoneMonthInput" min="1" />
+            </label>
+            <label>
+              Year
+              <input type="number" id="milestoneYearInput" min="1" />
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea
+              id="milestoneNotesInput"
+              rows="2"
+              placeholder="Dependencies, rewards, or scope."
+            ></textarea>
+          </label>
+          <button class="primary" id="addMilestoneButton" type="button">Add Milestone</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <h3>Session Notes</h3>
+          <ul class="quest-list" id="sessionNoteList"></ul>
+        </div>
+        <div class="control-group">
+          <h3>Campaign Milestones</h3>
+          <ul class="quest-list" id="milestoneList"></ul>
+        </div>
+      </div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

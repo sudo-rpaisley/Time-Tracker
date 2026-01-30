@@ -3,22 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>D&amp;D Tracker - Log</title>
+    <title>D&amp;D Tracker - Timeline</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     @@include('partials/nav.html')
 
-    <section class="page log-page" id="logPage">
+    <section class="page timeline-page">
       <header class="page-header">
         <div>
-          <h2>Combat Log</h2>
-          <p class="helper-text">Review recent activity for this world.</p>
+          <h2>World Timeline</h2>
+          <p class="helper-text">Review every recorded event across the campaign.</p>
         </div>
+        <label class="filter-control">
+          Filter
+          <select id="timelineFilterSelect"></select>
+        </label>
       </header>
-      <div class="control-group">
-        <ul class="combat-log" id="combatLog"></ul>
-      </div>
+
+      <ul class="timeline-list" id="timelineList"></ul>
     </section>
 
     @@include('partials/modals.html')

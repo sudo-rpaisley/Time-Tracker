@@ -105,6 +105,42 @@
         </div>
         <div class="condition-section">
           <div class="condition-header">
+            <span>Death Saves</span>
+          </div>
+          <div class="input-row">
+            <label class="death-save">
+              <input type="checkbox" id="partyDeathSaveSuccess1" />
+              Success 1
+            </label>
+            <label class="death-save">
+              <input type="checkbox" id="partyDeathSaveSuccess2" />
+              Success 2
+            </label>
+            <label class="death-save">
+              <input type="checkbox" id="partyDeathSaveSuccess3" />
+              Success 3
+            </label>
+          </div>
+          <div class="input-row">
+            <label class="death-save">
+              <input type="checkbox" id="partyDeathSaveFail1" />
+              Fail 1
+            </label>
+            <label class="death-save">
+              <input type="checkbox" id="partyDeathSaveFail2" />
+              Fail 2
+            </label>
+            <label class="death-save">
+              <input type="checkbox" id="partyDeathSaveFail3" />
+              Fail 3
+            </label>
+          </div>
+          <button class="ghost" type="button" id="resetPartyDeathSavesButton">
+            Reset Death Saves
+          </button>
+        </div>
+        <div class="condition-section">
+          <div class="condition-header">
             <span>Conditions</span>
             <button type="button" class="ghost condition-add" id="partyProfileConditionAdd">+</button>
           </div>
@@ -135,8 +171,58 @@
               Or type custom
               <input type="text" id="partyProfileConditionInput" placeholder="e.g. Burning" />
             </label>
+            <div class="input-row">
+              <label>
+                Duration
+                <input type="number" id="partyProfileConditionDuration" min="1" />
+              </label>
+              <label>
+                Unit
+                <select id="partyProfileConditionUnit">
+                  <option value="">None</option>
+                  <option value="rounds">Rounds</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select>
+              </label>
+              <label>
+                Ruleset Tag
+                <select id="partyProfileConditionRule">
+                  <option value="">None</option>
+                  <option value="Save ends">Save ends</option>
+                  <option value="End of turn">End of turn</option>
+                  <option value="Start of turn">Start of turn</option>
+                  <option value="Short rest">Short rest</option>
+                  <option value="Long rest">Long rest</option>
+                  <option value="Until cured">Until cured</option>
+                  <option value="Ongoing">Ongoing</option>
+                </select>
+              </label>
+            </div>
             <button type="button" class="primary" id="partyProfileConditionConfirm">Add Condition</button>
           </div>
+        </div>
+        <label>
+          Important Notes
+          <textarea id="partyProfileNotes" rows="3" placeholder="Allies, goals, backstory notes, etc."></textarea>
+        </label>
+        <div class="input-row">
+          <label>
+            Copper
+            <input type="number" id="partyProfileCopper" min="0" />
+          </label>
+          <label>
+            Silver
+            <input type="number" id="partyProfileSilver" min="0" />
+          </label>
+          <label>
+            Gold
+            <input type="number" id="partyProfileGold" min="0" />
+          </label>
+          <label>
+            Platinum
+            <input type="number" id="partyProfilePlatinum" min="0" />
+          </label>
         </div>
         <button class="danger" type="button" id="removePartyMemberButton">Remove Party Member</button>
       </div>

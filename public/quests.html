@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Quest Board</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page quest-page">
+      <header class="page-header">
+        <div>
+          <h2>Quest Board</h2>
+          <p class="helper-text">Track active, completed, and upcoming quests.</p>
+        </div>
+      </header>
+
+      <div class="quest-card">
+        <h3>Add Quest</h3>
+        <div class="input-row">
+          <label>
+            Title
+            <input type="text" id="questTitleInput" placeholder="e.g. Recover the Sunstone" />
+          </label>
+          <label>
+            Status
+            <select id="questStatusInput">
+              <option value="open">Open</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </label>
+        </div>
+        <div class="input-row">
+          <label>
+            Deadline Day
+            <input type="number" id="questDeadlineDayInput" min="1" />
+          </label>
+          <label>
+            Month
+            <input type="number" id="questDeadlineMonthInput" min="1" />
+          </label>
+          <label>
+            Year
+            <input type="number" id="questDeadlineYearInput" min="1" />
+          </label>
+        </div>
+        <label>
+          Notes
+          <textarea id="questNotesInput" rows="2" placeholder="Important details or hooks"></textarea>
+        </label>
+        <button class="primary" id="addQuestButton" type="button">Add Quest</button>
+      </div>
+
+      <ul class="quest-list" id="questList"></ul>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

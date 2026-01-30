@@ -4,6 +4,7 @@ const path = require('path');
 
 const port = process.env.PORT || 3000;
 const publicDir = path.join(__dirname, 'public');
+const dataFile = path.join(__dirname, 'data.json');
 
 const mimeTypes = {
   '.html': 'text/html',
@@ -13,6 +14,46 @@ const mimeTypes = {
 };
 
 const server = http.createServer((req, res) => {
+  if (req.url === '/api/state') {
+    if (req.method === 'GET') {
+      fs.readFile(dataFile, 'utf8', (err, data) => {
+        if (err) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({}));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(data);
+      });
+      return;
+    }
+
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        try {
+          JSON.parse(body);
+          fs.writeFile(dataFile, body, 'utf8', (err) => {
+            if (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Failed to save state' }));
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true }));
+          });
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+        }
+      });
+      return;
+    }
+  }
+
   const requestedPath = req.url === '/' ? '/index.html' : req.url;
   const safePath = path.normalize(requestedPath).replace(/^\.\.(\/|\\)/, '');
   const filePath = path.join(publicDir, safePath);

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Rumors</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page rumors-page">
+      <header class="page-header">
+        <div>
+          <h2>Rumor &amp; Hook Generator</h2>
+          <p class="helper-text">Seed upcoming hooks and track who has heard them.</p>
+        </div>
+      </header>
+
+      <div class="quest-card">
+        <h3>Add Rumor</h3>
+        <div class="input-row">
+          <label>
+            Title
+            <input type="text" id="rumorTitleInput" placeholder="e.g. Lost caravan on the ridge" />
+          </label>
+          <label>
+            Source
+            <input type="text" id="rumorSourceInput" placeholder="e.g. Tavern patron" />
+          </label>
+          <label>
+            Urgency
+            <select id="rumorUrgencyInput">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+          <label>
+            Tags
+            <input type="text" id="rumorTagsInput" placeholder="e.g. caravan, mountains" />
+          </label>
+        </div>
+        <label>
+          Notes
+          <textarea id="rumorNotesInput" rows="2" placeholder="Add details or twists."></textarea>
+        </label>
+        <label>
+          <input type="checkbox" id="rumorRevealedInput" />
+          Revealed to party
+        </label>
+        <div class="button-row">
+          <button class="ghost" id="generateRumorButton" type="button">Generate Hook</button>
+          <button class="primary" id="addRumorButton" type="button">Add Rumor</button>
+        </div>
+      </div>
+
+      <ul class="quest-list" id="rumorList"></ul>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>
