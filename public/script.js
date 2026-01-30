@@ -1072,6 +1072,60 @@ const renderCalendarEventsList = () => {
     item.append(content, remove);
     calendarEventList.appendChild(item);
   });
+  renderPartyNav();
+};
+
+const renderPartyNav = () => {
+  if (!navParty) {
+    return;
+  }
+  navParty.innerHTML = '';
+  if (partyMembers.length === 0) {
+    return;
+  }
+  partyMembers.forEach((member) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'party-avatar-button';
+    button.setAttribute('aria-label', `Open ${member.name} profile`);
+
+    const avatar = document.createElement('div');
+    avatar.className = 'combatant-avatar';
+    avatar.textContent = getInitials(member.name);
+
+    button.appendChild(avatar);
+    button.addEventListener('click', () => {
+      selectedPartyMemberId = member.id;
+      renderPartyProfile();
+      openPartyProfileModal();
+    });
+    navParty.appendChild(button);
+  });
+};
+
+const updatePartyMember = (memberId, updates) => {
+  if (!memberId) {
+    return;
+  }
+  partyMembers = partyMembers.map((member) =>
+    member.id === memberId ? { ...member, ...updates } : member
+  );
+  renderPartyList();
+  renderPartyProfile();
+  saveState();
+};
+
+const removeSelectedPartyMember = () => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  partyMembers = partyMembers.filter(
+    (member) => member.id !== selectedPartyMemberId
+  );
+  selectedPartyMemberId = null;
+  renderPartyList();
+  renderPartyProfile();
+  saveState();
 };
 
 const addCalendarEvent = () => {

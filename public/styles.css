@@ -209,6 +209,59 @@ body.world-selected .nav-no-world {
   font-size: 0.75rem;
 }
 
+.nav-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background-color: #2c3e6b;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: #3a5192;
+  transform: translateY(-1px);
+}
+
+.nav-link.primary {
+  background-color: #7a52ff;
+  color: #f6f7fb;
+}
+
+.nav-link.ghost {
+  background-color: transparent;
+  border: 1px solid #3a4563;
+}
+
+.nav-link.ghost:hover {
+  background-color: rgba(90, 103, 154, 0.2);
+}
+
+.nav-party {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.party-avatar-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nav-party .combatant-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 0.75rem;
+}
+
 .home-page {
   display: grid;
   gap: 32px;
