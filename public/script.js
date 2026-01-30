@@ -6335,10 +6335,6 @@ const initializeDefaults = async () => {
   renderWorldTiles();
   if (activeWorldId) {
     setActiveWorld(activeWorldId);
-    if (window.location.pathname.endsWith('/worlds.html')) {
-      window.location.href = 'party.html';
-      return;
-    }
   } else {
     setWorldSelectedState(false);
   }
