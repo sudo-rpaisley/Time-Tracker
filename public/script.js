@@ -392,6 +392,23 @@ const createWorld = (name) => ({
   encounterPlans: []
 });
 
+const requestWorldCreation = () => {
+  const name = window.prompt('Name the new world');
+  if (!name) {
+    return;
+  }
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return;
+  }
+  const world = createWorld(trimmed);
+  worlds[world.id] = world;
+  activeWorldId = world.id;
+  renderWorldTiles();
+  setActiveWorld(world.id);
+  window.location.href = 'party.html';
+};
+
 const getCurrentWorld = () => worlds[activeWorldId];
 
 const setWorldSelectedState = (isSelected) => {
@@ -641,7 +658,37 @@ const renderWorldTiles = () => {
     return;
   }
   worldGrid.innerHTML = '';
-  Object.values(worlds).forEach((world) => {
+  const worldList = Object.values(worlds);
+  if (worldList.length === 0) {
+    const emptyTile = document.createElement('div');
+    emptyTile.className = 'world-tile world-tile--empty';
+    emptyTile.setAttribute('role', 'button');
+    emptyTile.setAttribute('tabindex', '0');
+    emptyTile.setAttribute('aria-label', 'Create your first world');
+
+    const title = document.createElement('div');
+    title.className = 'world-name';
+    title.textContent = 'Create your first world';
+
+    const helper = document.createElement('div');
+    helper.className = 'world-helper';
+    helper.textContent = 'Start a new campaign and jump right in.';
+
+    emptyTile.append(title, helper);
+    emptyTile.addEventListener('click', () => {
+      requestWorldCreation();
+    });
+    emptyTile.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        requestWorldCreation();
+      }
+    });
+    worldGrid.appendChild(emptyTile);
+    return;
+  }
+
+  worldList.forEach((world) => {
     const tile = document.createElement('div');
     tile.className = `world-tile${world.id === activeWorldId ? ' active' : ''}`;
     tile.dataset.worldId = world.id;
@@ -6042,16 +6089,7 @@ if (leaveWorldButton) {
 }
 if (createWorldButton) {
   createWorldButton.addEventListener('click', () => {
-    const name = window.prompt('Name the new world');
-    if (!name) {
-      return;
-    }
-    const world = createWorld(name.trim());
-    worlds[world.id] = world;
-    activeWorldId = world.id;
-    renderWorldTiles();
-    setActiveWorld(world.id);
-    window.location.href = 'party.html';
+    requestWorldCreation();
   });
 }
 if (renameWorldButton) {

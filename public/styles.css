@@ -272,6 +272,14 @@ body.world-selected .nav-no-world {
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
+.world-tile--empty {
+  border-style: dashed;
+  border-color: rgba(122, 82, 255, 0.5);
+  background: rgba(18, 21, 31, 0.6);
+  gap: 8px;
+  text-align: center;
+}
+
 .world-tile:hover {
   transform: translateY(-2px);
   border-color: rgba(122, 82, 255, 0.6);
@@ -286,6 +294,11 @@ body.world-selected .nav-no-world {
   font-size: 1.1rem;
   font-weight: 600;
   text-align: center;
+}
+
+.world-helper {
+  font-size: 0.9rem;
+  color: #c9ccda;
 }
 
 .world-tile button {
