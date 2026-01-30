@@ -9,17 +9,20 @@
     </button>
     <div class="nav-actions">
       <a class="ghost nav-link" id="openHomeButton" href="index.html">Entry</a>
+      <a class="ghost nav-link" id="openWorldsButton" href="worlds.html">Worlds</a>
 
-      <div class="nav-dropdown">
+      <div class="nav-dropdown nav-requires-world">
         <button class="ghost nav-link nav-trigger" type="button">World</button>
         <div class="nav-menu">
-          <a class="ghost nav-link" id="openWorldsButton" href="worlds.html">Worlds</a>
           <a class="ghost nav-link" id="openSettingsButton" href="settings.html">Settings</a>
           <a class="ghost nav-link" id="openMapButton" href="map.html">Map</a>
+          <button class="ghost nav-link nav-leave" id="leaveWorldButton" type="button">
+            Leave World
+          </button>
         </div>
       </div>
 
-      <div class="nav-dropdown">
+      <div class="nav-dropdown nav-requires-world">
         <button class="ghost nav-link nav-trigger" type="button">Play</button>
         <div class="nav-menu">
           <a class="ghost nav-link" id="openTrackerButton" href="party.html">Party</a>
@@ -30,7 +33,7 @@
         </div>
       </div>
 
-      <div class="nav-dropdown">
+      <div class="nav-dropdown nav-requires-world">
         <button class="ghost nav-link nav-trigger" type="button">Time</button>
         <div class="nav-menu">
           <a class="ghost nav-link" id="openClockButton" href="clock.html">Clock</a>
@@ -40,7 +43,7 @@
         </div>
       </div>
 
-      <div class="nav-dropdown">
+      <div class="nav-dropdown nav-requires-world">
         <button class="ghost nav-link nav-trigger" type="button">Campaign</button>
         <div class="nav-menu">
           <a class="ghost nav-link" id="openQuestButton" href="quests.html">Quests</a>

@@ -28,6 +28,7 @@ const navParty = document.getElementById('navParty');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const createWorldButton = document.getElementById('createWorldButton');
 const worldGrid = document.getElementById('worldGrid');
+const leaveWorldButton = document.getElementById('leaveWorldButton');
 const partyMemberName = document.getElementById('partyMemberName');
 const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
 const partyMemberXp = document.getElementById('partyMemberXp');
@@ -393,38 +394,41 @@ const createWorld = (name) => ({
 
 const getCurrentWorld = () => worlds[activeWorldId];
 
+const setWorldSelectedState = (isSelected) => {
+  document.body.classList.toggle('world-selected', Boolean(isSelected));
+};
+
 const saveState = () => {
-  if (!activeWorldId) {
-    return;
+  if (activeWorldId && worlds[activeWorldId]) {
+    worlds[activeWorldId] = {
+      ...worlds[activeWorldId],
+      totalSeconds,
+      combatants,
+      currentCombatantIndex,
+      selectedCombatantId,
+      calendarSettings,
+      timeConfig,
+      roundNumber,
+      combatLogEntries,
+      encounterDraft,
+      partyMembers,
+      roundHistoryEntries,
+      calendarEvents,
+      combatActive,
+      encounterPresets,
+      worldStats,
+      worldMap,
+      worldNotes,
+      questBoard,
+      downtimeEntries,
+      npcDirectory,
+      factionRoster,
+      rumorBoard,
+      sessionNotes,
+      campaignMilestones,
+      encounterPlans
+    };
   }
-  worlds[activeWorldId] = {
-    ...worlds[activeWorldId],
-    totalSeconds,
-    combatants,
-    currentCombatantIndex,
-    selectedCombatantId,
-    calendarSettings,
-    timeConfig,
-    roundNumber,
-    combatLogEntries,
-    encounterDraft,
-    partyMembers,
-    roundHistoryEntries,
-    calendarEvents,
-    combatActive,
-    encounterPresets,
-    worldStats,
-    worldMap,
-    worldNotes,
-    questBoard,
-    downtimeEntries,
-    npcDirectory,
-    factionRoster,
-    rumorBoard,
-    sessionNotes,
-    campaignMilestones,
-    encounterPlans
-  };
   fetch('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -441,7 +445,11 @@ const loadState = async () => {
       return false;
     }
     const parsed = await response.json();
-    if (parsed && parsed.worlds && parsed.activeWorldId) {
+    if (
+      parsed &&
+      parsed.worlds &&
+      Object.prototype.hasOwnProperty.call(parsed, 'activeWorldId')
+    ) {
       worlds = parsed.worlds;
       activeWorldId = parsed.activeWorldId;
       return true;
@@ -500,6 +508,7 @@ const setActiveWorld = (worldId) => {
   }
   stopAutoClock();
   activeWorldId = worldId;
+  setWorldSelectedState(true);
   calendarView = null;
   totalSeconds = nextWorld.totalSeconds ?? 0;
   combatants = Array.isArray(nextWorld.combatants) ? nextWorld.combatants : [];
@@ -4250,6 +4259,14 @@ document.addEventListener('click', (event) => {
     closeConditionPopovers();
   }
 });
+if (leaveWorldButton) {
+  leaveWorldButton.addEventListener('click', () => {
+    activeWorldId = null;
+    setWorldSelectedState(false);
+    saveState();
+    window.location.href = 'index.html';
+  });
+}
 if (createWorldButton) {
   createWorldButton.addEventListener('click', () => {
     const name = window.prompt('Name the new world');
@@ -4558,6 +4575,8 @@ const initializeDefaults = async () => {
   renderWorldTiles();
   if (activeWorldId) {
     setActiveWorld(activeWorldId);
+  } else {
+    setWorldSelectedState(false);
   }
 
   if (monthsInYearInput) {

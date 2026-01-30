@@ -86,6 +86,21 @@ body {
   justify-content: flex-end;
 }
 
+.nav-leave {
+  width: 100%;
+  justify-content: flex-start;
+  color: #f6c6c6;
+  border-color: rgba(255, 122, 122, 0.4);
+}
+
+.nav-leave:hover {
+  background-color: rgba(255, 122, 122, 0.12);
+}
+
+body:not(.world-selected) .nav-requires-world {
+  display: none;
+}
+
 .nav-dropdown {
   position: relative;
   padding-bottom: 8px;
@@ -235,7 +250,7 @@ body {
 .world-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .world-tile {
