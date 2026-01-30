@@ -61,6 +61,13 @@ const combatLog = document.getElementById('combatLog');
 const profileModal = document.getElementById('profileModal');
 const profileBackdrop = document.getElementById('profileBackdrop');
 const closeProfileButton = document.getElementById('closeProfileButton');
+const worldModal = document.getElementById('worldModal');
+const worldModalBackdrop = document.getElementById('worldModalBackdrop');
+const closeWorldModalButton = document.getElementById('closeWorldModalButton');
+const worldNameInput = document.getElementById('worldNameInput');
+const worldModalError = document.getElementById('worldModalError');
+const confirmWorldButton = document.getElementById('confirmWorldButton');
+const cancelWorldButton = document.getElementById('cancelWorldButton');
 const profileCard = document.getElementById('profileCard');
 const emptyProfile = document.getElementById('emptyProfile');
 const profileDetails = document.getElementById('profileDetails');
@@ -407,14 +414,43 @@ const createWorld = (name) => ({
   encounterPlans: []
 });
 
-const requestWorldCreation = () => {
-  const name = window.prompt('Name the new world');
-  if (!name) {
+const openWorldModal = () => {
+  if (!worldModal || !worldNameInput) {
+    return false;
+  }
+  worldModal.classList.add('is-open');
+  worldModal.setAttribute('aria-hidden', 'false');
+  if (worldModalError) {
+    worldModalError.textContent = '';
+  }
+  worldNameInput.value = '';
+  setTimeout(() => {
+    worldNameInput.focus();
+  }, 0);
+  return true;
+};
+
+const closeWorldModal = () => {
+  if (!worldModal) {
     return;
   }
+  worldModal.classList.remove('is-open');
+  worldModal.setAttribute('aria-hidden', 'true');
+  if (worldModalError) {
+    worldModalError.textContent = '';
+  }
+};
+
+const createWorldFromName = (name) => {
   const trimmed = name.trim();
   if (!trimmed) {
-    return;
+    if (worldModalError) {
+      worldModalError.textContent = 'Please enter a world name.';
+    }
+    if (worldNameInput) {
+      worldNameInput.focus();
+    }
+    return false;
   }
   const world = createWorld(trimmed);
   worlds[world.id] = world;
@@ -422,6 +458,18 @@ const requestWorldCreation = () => {
   renderWorldTiles();
   setActiveWorld(world.id);
   window.location.href = 'party.html';
+  return true;
+};
+
+const requestWorldCreation = () => {
+  if (openWorldModal()) {
+    return;
+  }
+  const name = window.prompt('Name the new world');
+  if (!name) {
+    return;
+  }
+  createWorldFromName(name);
 };
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -6071,6 +6119,42 @@ if (closePartyProfileButton) {
 if (partyProfileBackdrop) {
   partyProfileBackdrop.addEventListener('click', closePartyProfileModal);
 }
+if (closeWorldModalButton) {
+  closeWorldModalButton.addEventListener('click', closeWorldModal);
+}
+if (worldModalBackdrop) {
+  worldModalBackdrop.addEventListener('click', closeWorldModal);
+}
+if (cancelWorldButton) {
+  cancelWorldButton.addEventListener('click', closeWorldModal);
+}
+if (confirmWorldButton) {
+  confirmWorldButton.addEventListener('click', () => {
+    if (!worldNameInput) {
+      return;
+    }
+    const created = createWorldFromName(worldNameInput.value);
+    if (created) {
+      closeWorldModal();
+    }
+  });
+}
+if (worldNameInput) {
+  worldNameInput.addEventListener('input', () => {
+    if (worldModalError) {
+      worldModalError.textContent = '';
+    }
+  });
+  worldNameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const created = createWorldFromName(worldNameInput.value);
+      if (created) {
+        closeWorldModal();
+      }
+    }
+  });
+}
 if (removePartyMemberButton) {
   removePartyMemberButton.addEventListener('click', () => {
     removeSelectedPartyMember();
@@ -6081,6 +6165,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeProfileModal();
     closePartyProfileModal();
+    closeWorldModal();
   }
 });
 document.addEventListener('click', (event) => {
