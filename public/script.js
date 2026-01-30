@@ -348,6 +348,7 @@ let worldCoverImage = '';
 let worldEditCoverImage = '';
 let interactionSourceId = null;
 let interactionTargetId = null;
+const isAutoClockEnabled = () => localStorage.getItem('autoClockEnabled') === 'true';
 
 const EVENT_TYPES = [
   { value: 'all', label: 'All Events' },
@@ -3185,6 +3186,7 @@ const startAutoClock = () => {
   if (toggleClockButton) {
     toggleClockButton.textContent = 'Pause Clock';
   }
+  localStorage.setItem('autoClockEnabled', 'true');
   autoClockTimer = window.setInterval(() => {
     adjustTime(1000 * timeConfig.clockSpeed);
   }, 1000);
@@ -3199,6 +3201,7 @@ const stopAutoClock = () => {
   if (toggleClockButton) {
     toggleClockButton.textContent = 'Start Clock';
   }
+  localStorage.setItem('autoClockEnabled', 'false');
 };
 
 const render = () => {
@@ -5065,6 +5068,9 @@ const initializeDefaults = async () => {
     setActiveWorld(activeWorldId);
   } else {
     setWorldSelectedState(false);
+  }
+  if (activeWorldId && isAutoClockEnabled()) {
+    startAutoClock();
   }
 
   if (monthsInYearInput) {
