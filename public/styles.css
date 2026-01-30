@@ -103,6 +103,10 @@ body:not(.world-selected) .nav-requires-world {
   display: none;
 }
 
+body.world-selected .nav-no-world {
+  display: none;
+}
+
 .nav-dropdown {
   position: relative;
   padding-bottom: 8px;
