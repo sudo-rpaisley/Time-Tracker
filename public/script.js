@@ -101,6 +101,15 @@ const partyProfileCopper = document.getElementById('partyProfileCopper');
 const partyProfileSilver = document.getElementById('partyProfileSilver');
 const partyProfileGold = document.getElementById('partyProfileGold');
 const partyProfilePlatinum = document.getElementById('partyProfilePlatinum');
+const partyDeathSaveSuccess1 = document.getElementById('partyDeathSaveSuccess1');
+const partyDeathSaveSuccess2 = document.getElementById('partyDeathSaveSuccess2');
+const partyDeathSaveSuccess3 = document.getElementById('partyDeathSaveSuccess3');
+const partyDeathSaveFail1 = document.getElementById('partyDeathSaveFail1');
+const partyDeathSaveFail2 = document.getElementById('partyDeathSaveFail2');
+const partyDeathSaveFail3 = document.getElementById('partyDeathSaveFail3');
+const resetPartyDeathSavesButton = document.getElementById(
+  'resetPartyDeathSavesButton'
+);
 const removePartyMemberButton = document.getElementById('removePartyMemberButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
@@ -464,7 +473,11 @@ const setActiveWorld = (worldId) => {
         platinum: Number(member.coins?.platinum) || 0
       },
       notes: member.notes || '',
-      totalDamageTaken: Number(member.totalDamageTaken) || 0
+      totalDamageTaken: Number(member.totalDamageTaken) || 0,
+      deathSaves: {
+        success: Number(member.deathSaves?.success) || 0,
+        fail: Number(member.deathSaves?.fail) || 0
+      }
     }))
     : [];
   combatActive = Boolean(nextWorld.combatActive);
@@ -1801,6 +1814,10 @@ const addPartyMember = () => {
       silver: 0,
       gold: 0,
       platinum: 0
+    },
+    deathSaves: {
+      success: 0,
+      fail: 0
     }
   };
   partyMembers = [...partyMembers, newMember];
@@ -2328,6 +2345,32 @@ const renderPartyProfile = () => {
       ? selected.coins.platinum
       : 0;
   }
+  const successCount = Math.min(
+    3,
+    Math.max(0, Number(selected.deathSaves?.success) || 0)
+  );
+  const failCount = Math.min(
+    3,
+    Math.max(0, Number(selected.deathSaves?.fail) || 0)
+  );
+  if (partyDeathSaveSuccess1) {
+    partyDeathSaveSuccess1.checked = successCount >= 1;
+  }
+  if (partyDeathSaveSuccess2) {
+    partyDeathSaveSuccess2.checked = successCount >= 2;
+  }
+  if (partyDeathSaveSuccess3) {
+    partyDeathSaveSuccess3.checked = successCount >= 3;
+  }
+  if (partyDeathSaveFail1) {
+    partyDeathSaveFail1.checked = failCount >= 1;
+  }
+  if (partyDeathSaveFail2) {
+    partyDeathSaveFail2.checked = failCount >= 2;
+  }
+  if (partyDeathSaveFail3) {
+    partyDeathSaveFail3.checked = failCount >= 3;
+  }
   if (partyProfileConditionTags) {
     partyProfileConditionTags.innerHTML = '';
     const conditions = normalizeConditions(selected.conditions);
@@ -2793,6 +2836,30 @@ const updatePartyCoins = (updates) => {
     }
   });
 };
+const updatePartyDeathSaves = (successCount, failCount) => {
+  if (!selectedPartyMemberId) {
+    return;
+  }
+  updatePartyMember(selectedPartyMemberId, {
+    deathSaves: {
+      success: Math.min(3, Math.max(0, successCount)),
+      fail: Math.min(3, Math.max(0, failCount))
+    }
+  });
+};
+const syncPartyDeathSavesFromInputs = () => {
+  const successCount = [
+    partyDeathSaveSuccess1,
+    partyDeathSaveSuccess2,
+    partyDeathSaveSuccess3
+  ].filter((input) => input?.checked).length;
+  const failCount = [
+    partyDeathSaveFail1,
+    partyDeathSaveFail2,
+    partyDeathSaveFail3
+  ].filter((input) => input?.checked).length;
+  updatePartyDeathSaves(successCount, failCount);
+};
 if (partyProfileCopper) {
   partyProfileCopper.addEventListener('input', () => {
     updatePartyCoins({ copper: Number(partyProfileCopper.value) || 0 });
@@ -2811,6 +2878,29 @@ if (partyProfileGold) {
 if (partyProfilePlatinum) {
   partyProfilePlatinum.addEventListener('input', () => {
     updatePartyCoins({ platinum: Number(partyProfilePlatinum.value) || 0 });
+  });
+}
+if (partyDeathSaveSuccess1) {
+  partyDeathSaveSuccess1.addEventListener('change', syncPartyDeathSavesFromInputs);
+}
+if (partyDeathSaveSuccess2) {
+  partyDeathSaveSuccess2.addEventListener('change', syncPartyDeathSavesFromInputs);
+}
+if (partyDeathSaveSuccess3) {
+  partyDeathSaveSuccess3.addEventListener('change', syncPartyDeathSavesFromInputs);
+}
+if (partyDeathSaveFail1) {
+  partyDeathSaveFail1.addEventListener('change', syncPartyDeathSavesFromInputs);
+}
+if (partyDeathSaveFail2) {
+  partyDeathSaveFail2.addEventListener('change', syncPartyDeathSavesFromInputs);
+}
+if (partyDeathSaveFail3) {
+  partyDeathSaveFail3.addEventListener('change', syncPartyDeathSavesFromInputs);
+}
+if (resetPartyDeathSavesButton) {
+  resetPartyDeathSavesButton.addEventListener('click', () => {
+    updatePartyDeathSaves(0, 0);
   });
 }
 if (partyProfileCurrentHp) {

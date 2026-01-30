@@ -1119,6 +1119,18 @@ button.primary {
   cursor: pointer;
 }
 
+.death-save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #cfd3e3;
+  font-size: 0.9rem;
+}
+
+.death-save input {
+  accent-color: #7a52ff;
+}
+
 .timeline-details {
   display: none;
   color: #cfd3e3;
