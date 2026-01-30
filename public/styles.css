@@ -48,6 +48,8 @@ body {
 .nav-brand {
   font-weight: 600;
   letter-spacing: 0.03em;
+  text-decoration: none;
+  color: inherit;
 }
 
 .nav-left {
