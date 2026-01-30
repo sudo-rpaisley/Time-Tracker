@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Downtime</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page downtime-page">
+      <header class="page-header">
+        <div>
+          <h2>Downtime Tracker</h2>
+          <p class="helper-text">Log downtime activities and their durations.</p>
+        </div>
+      </header>
+
+      <div class="quest-card">
+        <h3>Add Downtime Activity</h3>
+        <div class="input-row">
+          <label>
+            Character
+            <input type="text" id="downtimeCharacterInput" placeholder="e.g. Aria" />
+          </label>
+          <label>
+            Activity
+            <input type="text" id="downtimeActivityInput" placeholder="e.g. Crafting potions" />
+          </label>
+        </div>
+        <div class="input-row">
+          <label>
+            Start Day
+            <input type="number" id="downtimeStartDayInput" min="1" />
+          </label>
+          <label>
+            Month
+            <input type="number" id="downtimeStartMonthInput" min="1" />
+          </label>
+          <label>
+            Year
+            <input type="number" id="downtimeStartYearInput" min="1" />
+          </label>
+        </div>
+        <div class="input-row">
+          <label>
+            End Day
+            <input type="number" id="downtimeEndDayInput" min="1" />
+          </label>
+          <label>
+            Month
+            <input type="number" id="downtimeEndMonthInput" min="1" />
+          </label>
+          <label>
+            Year
+            <input type="number" id="downtimeEndYearInput" min="1" />
+          </label>
+        </div>
+        <label>
+          Notes
+          <textarea id="downtimeNotesInput" rows="2" placeholder="Supplies used, outcomes, etc."></textarea>
+        </label>
+        <button class="primary" id="addDowntimeButton" type="button">
+          Add Downtime
+        </button>
+      </div>
+
+      <ul class="quest-list" id="downtimeList"></ul>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

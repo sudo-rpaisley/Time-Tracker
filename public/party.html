@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Party</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <main class="app page party-page" id="appPage">
+      <header class="header">
+        <div>
+          <h1>Party</h1>
+          <p>Manage party stats for the active world.</p>
+        </div>
+      </header>
+
+      <section class="party-card">
+        <div class="party-header">
+          <div>
+            <h2>Party</h2>
+            <p class="helper-text">Create your player party for quick encounter setup.</p>
+          </div>
+          <button class="primary" id="addPartyMemberButton" type="button">Add Party Member</button>
+        </div>
+        <div class="party-form">
+          <label>
+            Name
+            <input type="text" id="partyMemberName" placeholder="e.g. Aria" />
+          </label>
+          <label>
+            Max HP
+            <input type="number" id="partyMemberMaxHp" min="0" placeholder="e.g. 28" />
+          </label>
+          <label>
+            Starting XP
+            <input type="number" id="partyMemberXp" min="0" placeholder="e.g. 1200" />
+          </label>
+          <label>
+            Level
+            <input type="number" id="partyMemberLevel" min="1" placeholder="e.g. 5" />
+          </label>
+        </div>
+        <div class="party-list" id="partyList"></div>
+      </section>
+    </main>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

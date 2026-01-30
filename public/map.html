@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Map</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page map-page">
+      <header class="page-header">
+        <div>
+          <h2>World Map</h2>
+          <p class="helper-text">Upload a map, pan/zoom, and tag locations.</p>
+        </div>
+        <div class="map-controls">
+          <label class="file-upload">
+            <input type="file" id="mapImageInput" accept="image/*" />
+            Upload Map
+          </label>
+          <label>
+            Zoom
+            <input type="range" id="mapZoomInput" min="0.5" max="2" step="0.1" />
+          </label>
+          <button class="ghost" id="mapResetButton" type="button">Reset View</button>
+        </div>
+      </header>
+
+      <div class="map-container">
+        <div class="map-viewport" id="mapViewport">
+          <img class="map-image" id="mapImage" alt="World map" />
+          <div class="map-markers" id="mapMarkers"></div>
+        </div>
+      </div>
+
+      <section class="map-tags">
+        <h3>Map Tags</h3>
+        <ul class="stats-list" id="mapTagList"></ul>
+      </section>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

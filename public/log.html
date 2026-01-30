@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Log</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page log-page" id="logPage">
+      <header class="page-header">
+        <div>
+          <h2>Combat Log</h2>
+          <p class="helper-text">Review recent activity for this world.</p>
+        </div>
+      </header>
+      <div class="control-group">
+        <ul class="combat-log" id="combatLog"></ul>
+      </div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>
