@@ -529,6 +529,16 @@ const deleteWorld = () => {
   if (!worldEditTargetId) {
     return false;
   }
+  const targetWorld = worlds[worldEditTargetId];
+  if (!targetWorld) {
+    return false;
+  }
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${targetWorld.name}"?`
+  );
+  if (!confirmed) {
+    return false;
+  }
   if (Object.keys(worlds).length <= 1) {
     if (worldEditError) {
       worldEditError.textContent = 'Create another world before deleting this one.';
@@ -563,10 +573,8 @@ const createWorldFromName = (name) => {
   }
   const world = createWorld(trimmed);
   worlds[world.id] = world;
-  activeWorldId = world.id;
   renderWorldTiles();
-  setActiveWorld(world.id);
-  window.location.href = 'party.html';
+  saveState();
   return true;
 };
 
