@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Encounter Builder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page encounters-page">
+      <header class="page-header">
+        <div>
+          <h2>Encounter Builder</h2>
+          <p class="helper-text">Draft encounters with creatures, notes, and threat level.</p>
+        </div>
+      </header>
+
+      <div class="quest-card">
+        <h3>Add Encounter Plan</h3>
+        <div class="input-row">
+          <label>
+            Title
+            <input type="text" id="encounterPlanTitleInput" placeholder="e.g. Goblin ambush" />
+          </label>
+          <label>
+            Threat Level
+            <select id="encounterPlanThreatInput">
+              <option value="trivial">Trivial</option>
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+              <option value="deadly">Deadly</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          Creature Roster (one per line)
+          <textarea
+            id="encounterPlanRosterInput"
+            rows="3"
+            placeholder="e.g. 3x Goblins\n1x Goblin Boss"
+          ></textarea>
+        </label>
+        <label>
+          Notes
+          <textarea
+            id="encounterPlanNotesInput"
+            rows="2"
+            placeholder="Terrain, tactics, or special rules."
+          ></textarea>
+        </label>
+        <button class="primary" id="addEncounterPlanButton" type="button">
+          Add Encounter Plan
+        </button>
+      </div>
+
+      <ul class="quest-list" id="encounterPlanList"></ul>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1041,6 +1041,21 @@ button.primary {
   font-size: 0.75rem;
 }
 
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.note-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: #cfd3e3;
+  font-size: 0.9rem;
+}
+
 .stats-grid {
   display: grid;
   gap: 24px;

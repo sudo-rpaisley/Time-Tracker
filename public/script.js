@@ -100,6 +100,7 @@ const partyProfileConditionDuration = document.getElementById(
   'partyProfileConditionDuration'
 );
 const partyProfileConditionUnit = document.getElementById('partyProfileConditionUnit');
+const partyProfileConditionRule = document.getElementById('partyProfileConditionRule');
 const partyProfileNotes = document.getElementById('partyProfileNotes');
 const partyProfileCopper = document.getElementById('partyProfileCopper');
 const partyProfileSilver = document.getElementById('partyProfileSilver');
@@ -180,6 +181,48 @@ const downtimeEndYearInput = document.getElementById('downtimeEndYearInput');
 const downtimeNotesInput = document.getElementById('downtimeNotesInput');
 const addDowntimeButton = document.getElementById('addDowntimeButton');
 const downtimeList = document.getElementById('downtimeList');
+const npcNameInput = document.getElementById('npcNameInput');
+const npcRoleInput = document.getElementById('npcRoleInput');
+const npcStatusInput = document.getElementById('npcStatusInput');
+const npcFactionInput = document.getElementById('npcFactionInput');
+const npcNotesInput = document.getElementById('npcNotesInput');
+const addNpcButton = document.getElementById('addNpcButton');
+const npcList = document.getElementById('npcList');
+const factionNameInput = document.getElementById('factionNameInput');
+const factionInfluenceInput = document.getElementById('factionInfluenceInput');
+const factionAlignmentInput = document.getElementById('factionAlignmentInput');
+const factionNotesInput = document.getElementById('factionNotesInput');
+const addFactionButton = document.getElementById('addFactionButton');
+const factionList = document.getElementById('factionList');
+const factionOptions = document.getElementById('factionOptions');
+const rumorTitleInput = document.getElementById('rumorTitleInput');
+const rumorSourceInput = document.getElementById('rumorSourceInput');
+const rumorUrgencyInput = document.getElementById('rumorUrgencyInput');
+const rumorTagsInput = document.getElementById('rumorTagsInput');
+const rumorNotesInput = document.getElementById('rumorNotesInput');
+const rumorRevealedInput = document.getElementById('rumorRevealedInput');
+const addRumorButton = document.getElementById('addRumorButton');
+const generateRumorButton = document.getElementById('generateRumorButton');
+const rumorList = document.getElementById('rumorList');
+const sessionNoteTitleInput = document.getElementById('sessionNoteTitleInput');
+const sessionNoteEventSelect = document.getElementById('sessionNoteEventSelect');
+const sessionNoteNotesInput = document.getElementById('sessionNoteNotesInput');
+const addSessionNoteButton = document.getElementById('addSessionNoteButton');
+const sessionNoteList = document.getElementById('sessionNoteList');
+const milestoneTitleInput = document.getElementById('milestoneTitleInput');
+const milestoneStatusInput = document.getElementById('milestoneStatusInput');
+const milestoneDayInput = document.getElementById('milestoneDayInput');
+const milestoneMonthInput = document.getElementById('milestoneMonthInput');
+const milestoneYearInput = document.getElementById('milestoneYearInput');
+const milestoneNotesInput = document.getElementById('milestoneNotesInput');
+const addMilestoneButton = document.getElementById('addMilestoneButton');
+const milestoneList = document.getElementById('milestoneList');
+const encounterPlanTitleInput = document.getElementById('encounterPlanTitleInput');
+const encounterPlanThreatInput = document.getElementById('encounterPlanThreatInput');
+const encounterPlanRosterInput = document.getElementById('encounterPlanRosterInput');
+const encounterPlanNotesInput = document.getElementById('encounterPlanNotesInput');
+const addEncounterPlanButton = document.getElementById('addEncounterPlanButton');
+const encounterPlanList = document.getElementById('encounterPlanList');
 
 const timeInputs = [
   yearInput,
@@ -221,6 +264,12 @@ let worldMap = {
 let worldNotes = '';
 let questBoard = [];
 let downtimeEntries = [];
+let npcDirectory = [];
+let factionRoster = [];
+let rumorBoard = [];
+let sessionNotes = [];
+let campaignMilestones = [];
+let encounterPlans = [];
 const updateWorldNotes = (value) => {
   worldNotes = value;
   saveState();
@@ -333,7 +382,13 @@ const createWorld = (name) => ({
   worldMap: { ...worldMap },
   worldNotes: '',
   questBoard: [],
-  downtimeEntries: []
+  downtimeEntries: [],
+  npcDirectory: [],
+  factionRoster: [],
+  rumorBoard: [],
+  sessionNotes: [],
+  campaignMilestones: [],
+  encounterPlans: []
 });
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -362,7 +417,13 @@ const saveState = () => {
     worldMap,
     worldNotes,
     questBoard,
-    downtimeEntries
+    downtimeEntries,
+    npcDirectory,
+    factionRoster,
+    rumorBoard,
+    sessionNotes,
+    campaignMilestones,
+    encounterPlans
   };
   fetch('/api/state', {
     method: 'POST',
@@ -495,6 +556,18 @@ const setActiveWorld = (worldId) => {
   downtimeEntries = Array.isArray(nextWorld.downtimeEntries)
     ? nextWorld.downtimeEntries
     : [];
+  npcDirectory = Array.isArray(nextWorld.npcDirectory) ? nextWorld.npcDirectory : [];
+  factionRoster = Array.isArray(nextWorld.factionRoster)
+    ? nextWorld.factionRoster
+    : [];
+  rumorBoard = Array.isArray(nextWorld.rumorBoard) ? nextWorld.rumorBoard : [];
+  sessionNotes = Array.isArray(nextWorld.sessionNotes) ? nextWorld.sessionNotes : [];
+  campaignMilestones = Array.isArray(nextWorld.campaignMilestones)
+    ? nextWorld.campaignMilestones
+    : [];
+  encounterPlans = Array.isArray(nextWorld.encounterPlans)
+    ? nextWorld.encounterPlans
+    : [];
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers.map((member) => ({
       ...member,
@@ -545,6 +618,12 @@ const setActiveWorld = (worldId) => {
   renderEncounterPresets();
   renderQuestBoard();
   renderDowntimeTracker();
+  renderNpcDirectory();
+  renderFactionRoster();
+  renderRumorBoard();
+  renderSessionNotes();
+  renderCampaignMilestones();
+  renderEncounterPlans();
   saveState();
 };
 
@@ -977,6 +1056,7 @@ const renderCalendarEventsList = () => {
       calendarEvents = calendarEvents.filter((entry) => entry.id !== event.id);
       renderCalendar();
       renderTimeline();
+      renderSessionNotes();
       saveState();
     });
 
@@ -1014,6 +1094,7 @@ const addCalendarEvent = () => {
   eventDescriptionInput.value = '';
   renderCalendar();
   renderTimeline();
+  renderSessionNotes();
   saveState();
 };
 
@@ -1108,6 +1189,7 @@ const renderTimeline = () => {
       calendarEvents = calendarEvents.filter((entry) => entry.id !== event.id);
       renderCalendar();
       renderTimeline();
+      renderSessionNotes();
       saveState();
     });
     actions.append(toggle, remove);
@@ -1317,6 +1399,489 @@ const renderDowntimeTracker = () => {
   });
 };
 
+const parseTags = (value) =>
+  String(value || '')
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+const getCurrentDateParts = () => fromTotalSeconds(totalSeconds, calendarSettings);
+
+const formatOptionalDate = (date) => {
+  if (!date || !date.day || !date.month || !date.year) {
+    return 'No date set.';
+  }
+  return formatDate(date, calendarSettings);
+};
+
+const getCalendarEventById = (eventId) =>
+  calendarEvents.find((event) => event.id === eventId);
+
+const updateFactionOptions = () => {
+  if (!factionOptions) {
+    return;
+  }
+  factionOptions.innerHTML = '';
+  factionRoster
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((faction) => {
+      const option = document.createElement('option');
+      option.value = faction.name;
+      factionOptions.appendChild(option);
+    });
+};
+
+const renderNpcDirectory = () => {
+  if (!npcList) {
+    return;
+  }
+  npcList.innerHTML = '';
+  updateFactionOptions();
+  if (npcDirectory.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No NPCs tracked yet.';
+    npcList.appendChild(item);
+    return;
+  }
+  npcDirectory
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((npc) => {
+      const item = document.createElement('li');
+      item.className = 'quest-item';
+
+      const header = document.createElement('div');
+      header.className = 'quest-header';
+      const title = document.createElement('span');
+      title.textContent = npc.name;
+      const status = document.createElement('span');
+      status.className = 'timeline-tag';
+      status.textContent = npc.status || 'active';
+      header.append(title, status);
+
+      const meta = document.createElement('div');
+      meta.className = 'timeline-meta';
+      const role = document.createElement('span');
+      role.textContent = npc.role ? `Role: ${npc.role}` : 'Role: —';
+      const faction = document.createElement('span');
+      faction.textContent = npc.faction ? `Faction: ${npc.faction}` : 'Faction: —';
+      meta.append(role, faction);
+
+      const notes = document.createElement('div');
+      notes.textContent = npc.notes || 'No notes recorded.';
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row';
+      const toggleStatus = document.createElement('button');
+      toggleStatus.type = 'button';
+      toggleStatus.className = 'ghost';
+      toggleStatus.textContent = 'Cycle Status';
+      toggleStatus.addEventListener('click', () => {
+        const statuses = ['active', 'missing', 'deceased'];
+        const currentIndex = statuses.indexOf(npc.status || 'active');
+        const nextStatus = statuses[(currentIndex + 1) % statuses.length];
+        npcDirectory = npcDirectory.map((entry) =>
+          entry.id === npc.id ? { ...entry, status: nextStatus } : entry
+        );
+        renderNpcDirectory();
+        saveState();
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'ghost';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => {
+        npcDirectory = npcDirectory.filter((entry) => entry.id !== npc.id);
+        renderNpcDirectory();
+        saveState();
+      });
+      actions.append(toggleStatus, remove);
+
+      item.append(header, meta, notes, actions);
+      npcList.appendChild(item);
+    });
+};
+
+const renderFactionRoster = () => {
+  if (!factionList) {
+    return;
+  }
+  factionList.innerHTML = '';
+  if (factionRoster.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No factions recorded yet.';
+    factionList.appendChild(item);
+    updateFactionOptions();
+    return;
+  }
+  factionRoster
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((faction) => {
+      const item = document.createElement('li');
+      item.className = 'quest-item';
+
+      const header = document.createElement('div');
+      header.className = 'quest-header';
+      const title = document.createElement('span');
+      title.textContent = faction.name;
+      const influence = document.createElement('span');
+      influence.className = 'timeline-tag';
+      influence.textContent = faction.influence || 'medium';
+      header.append(title, influence);
+
+      const meta = document.createElement('div');
+      meta.className = 'timeline-meta';
+      const alignment = document.createElement('span');
+      alignment.textContent = faction.alignment
+        ? `Alignment: ${faction.alignment}`
+        : 'Alignment: —';
+      meta.append(alignment);
+
+      const notes = document.createElement('div');
+      notes.textContent = faction.notes || 'No notes recorded.';
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'ghost';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => {
+        factionRoster = factionRoster.filter((entry) => entry.id !== faction.id);
+        renderFactionRoster();
+        renderNpcDirectory();
+        saveState();
+      });
+      actions.append(remove);
+
+      item.append(header, meta, notes, actions);
+      factionList.appendChild(item);
+    });
+  updateFactionOptions();
+};
+
+const generateRumorHook = () => {
+  const leads = [
+    'A courier whispers about',
+    'A tavern keeper warns of',
+    'A scout reports',
+    'A priest confesses',
+    'A veteran recalls'
+  ];
+  const subjects = [
+    'a hidden vault',
+    'a missing heir',
+    'a cursed relic',
+    'a secret alliance',
+    'a rogue mage'
+  ];
+  const twists = [
+    'in the marshlands',
+    'beneath the old keep',
+    'on the borderlands',
+    'within the merchant guild',
+    'near the fallen lighthouse'
+  ];
+  const lead = leads[Math.floor(Math.random() * leads.length)];
+  const subject = subjects[Math.floor(Math.random() * subjects.length)];
+  const twist = twists[Math.floor(Math.random() * twists.length)];
+  return {
+    title: `${subject.charAt(0).toUpperCase()}${subject.slice(1)}`,
+    source: lead.replace('A ', ''),
+    notes: `${lead} ${subject} ${twist}.`,
+    tags: [subject.split(' ')[1] || 'hook', twist.split(' ').pop() || 'mystery']
+  };
+};
+
+const renderRumorBoard = () => {
+  if (!rumorList) {
+    return;
+  }
+  rumorList.innerHTML = '';
+  if (rumorBoard.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No rumors recorded yet.';
+    rumorList.appendChild(item);
+    return;
+  }
+  rumorBoard.forEach((rumor) => {
+    const item = document.createElement('li');
+    item.className = 'quest-item';
+
+    const header = document.createElement('div');
+    header.className = 'quest-header';
+    const title = document.createElement('span');
+    title.textContent = rumor.title;
+    const urgency = document.createElement('span');
+    urgency.className = 'timeline-tag';
+    urgency.textContent = rumor.urgency || 'medium';
+    header.append(title, urgency);
+
+    const meta = document.createElement('div');
+    meta.className = 'timeline-meta';
+    const source = document.createElement('span');
+    source.textContent = rumor.source ? `Source: ${rumor.source}` : 'Source: —';
+    const status = document.createElement('span');
+    status.textContent = rumor.revealed ? 'Revealed' : 'Hidden';
+    meta.append(source, status);
+
+    const tags = document.createElement('div');
+    tags.className = 'tag-row';
+    (rumor.tags || []).forEach((tagValue) => {
+      const tag = document.createElement('span');
+      tag.className = 'timeline-tag';
+      tag.textContent = tagValue;
+      tags.appendChild(tag);
+    });
+
+    const notes = document.createElement('div');
+    notes.textContent = rumor.notes || 'No notes recorded.';
+
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'ghost';
+    toggle.textContent = rumor.revealed ? 'Hide' : 'Reveal';
+    toggle.addEventListener('click', () => {
+      rumorBoard = rumorBoard.map((entry) =>
+        entry.id === rumor.id ? { ...entry, revealed: !entry.revealed } : entry
+      );
+      renderRumorBoard();
+      saveState();
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      rumorBoard = rumorBoard.filter((entry) => entry.id !== rumor.id);
+      renderRumorBoard();
+      saveState();
+    });
+    actions.append(toggle, remove);
+
+    item.append(header, meta);
+    if (tags.childElementCount > 0) {
+      item.append(tags);
+    }
+    item.append(notes, actions);
+    rumorList.appendChild(item);
+  });
+};
+
+const renderSessionNotes = () => {
+  if (!sessionNoteList) {
+    return;
+  }
+  if (sessionNoteEventSelect) {
+    sessionNoteEventSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'No linked event';
+    sessionNoteEventSelect.appendChild(defaultOption);
+    buildTimelineEvents().forEach((event) => {
+      const option = document.createElement('option');
+      option.value = event.id;
+      option.textContent = `${formatDate(
+        { year: event.year, month: event.month, day: event.day, dayOfWeekIndex: null },
+        calendarSettings
+      )} — ${event.title}`;
+      sessionNoteEventSelect.appendChild(option);
+    });
+  }
+
+  sessionNoteList.innerHTML = '';
+  if (sessionNotes.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No session notes recorded yet.';
+    sessionNoteList.appendChild(item);
+    return;
+  }
+  sessionNotes
+    .slice()
+    .sort((a, b) => (b.createdAtKey || '').localeCompare(a.createdAtKey || ''))
+    .forEach((note) => {
+      const item = document.createElement('li');
+      item.className = 'quest-item';
+
+      const header = document.createElement('div');
+      header.className = 'quest-header';
+      const title = document.createElement('span');
+      title.textContent = note.title;
+      const tag = document.createElement('span');
+      tag.className = 'timeline-tag';
+      tag.textContent = note.eventId ? 'Linked' : 'Standalone';
+      header.append(title, tag);
+
+      const meta = document.createElement('div');
+      meta.className = 'timeline-meta';
+      const created = document.createElement('span');
+      created.textContent = note.createdAt
+        ? `Logged: ${formatOptionalDate(note.createdAt)}`
+        : 'Logged: —';
+      meta.append(created);
+
+      const linkedEvent = note.eventId ? getCalendarEventById(note.eventId) : null;
+      if (linkedEvent) {
+        const link = document.createElement('span');
+        link.textContent = `Linked to: ${linkedEvent.title}`;
+        meta.appendChild(link);
+      }
+
+      const notes = document.createElement('div');
+      notes.textContent = note.notes || 'No notes recorded.';
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'ghost';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => {
+        sessionNotes = sessionNotes.filter((entry) => entry.id !== note.id);
+        renderSessionNotes();
+        saveState();
+      });
+      actions.append(remove);
+
+      item.append(header, meta, notes, actions);
+      sessionNoteList.appendChild(item);
+    });
+};
+
+const renderCampaignMilestones = () => {
+  if (!milestoneList) {
+    return;
+  }
+  milestoneList.innerHTML = '';
+  if (campaignMilestones.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No milestones recorded yet.';
+    milestoneList.appendChild(item);
+    return;
+  }
+  campaignMilestones.forEach((milestone) => {
+    const item = document.createElement('li');
+    item.className = 'quest-item';
+
+    const header = document.createElement('div');
+    header.className = 'quest-header';
+    const title = document.createElement('span');
+    title.textContent = milestone.title;
+    const status = document.createElement('span');
+    status.className = 'timeline-tag';
+    status.textContent = milestone.status || 'planned';
+    header.append(title, status);
+
+    const meta = document.createElement('div');
+    meta.className = 'timeline-meta';
+    const target = document.createElement('span');
+    target.textContent = formatOptionalDate(milestone.targetDate);
+    meta.append(target);
+
+    const notes = document.createElement('div');
+    notes.textContent = milestone.notes || 'No notes recorded.';
+
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'ghost';
+    toggle.textContent =
+      milestone.status === 'completed' ? 'Reopen' : 'Mark Complete';
+    toggle.addEventListener('click', () => {
+      const nextStatus =
+        milestone.status === 'completed' ? 'planned' : 'completed';
+      campaignMilestones = campaignMilestones.map((entry) =>
+        entry.id === milestone.id ? { ...entry, status: nextStatus } : entry
+      );
+      renderCampaignMilestones();
+      saveState();
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      campaignMilestones = campaignMilestones.filter(
+        (entry) => entry.id !== milestone.id
+      );
+      renderCampaignMilestones();
+      saveState();
+    });
+    actions.append(toggle, remove);
+
+    item.append(header, meta, notes, actions);
+    milestoneList.appendChild(item);
+  });
+};
+
+const renderEncounterPlans = () => {
+  if (!encounterPlanList) {
+    return;
+  }
+  encounterPlanList.innerHTML = '';
+  if (encounterPlans.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No encounter plans created yet.';
+    encounterPlanList.appendChild(item);
+    return;
+  }
+  encounterPlans.forEach((plan) => {
+    const item = document.createElement('li');
+    item.className = 'quest-item';
+
+    const header = document.createElement('div');
+    header.className = 'quest-header';
+    const title = document.createElement('span');
+    title.textContent = plan.title;
+    const threat = document.createElement('span');
+    threat.className = 'timeline-tag';
+    threat.textContent = plan.threat || 'medium';
+    header.append(title, threat);
+
+    const notes = document.createElement('div');
+    notes.textContent = plan.notes || 'No notes recorded.';
+
+    const roster = document.createElement('ul');
+    roster.className = 'note-list';
+    (plan.roster || []).forEach((entry) => {
+      const row = document.createElement('li');
+      row.textContent = entry;
+      roster.appendChild(row);
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      encounterPlans = encounterPlans.filter((entry) => entry.id !== plan.id);
+      renderEncounterPlans();
+      saveState();
+    });
+    actions.append(remove);
+
+    item.append(header, notes);
+    if (roster.childElementCount > 0) {
+      item.appendChild(roster);
+    }
+    item.append(actions);
+    encounterPlanList.appendChild(item);
+  });
+};
+
 const handleMapDragStart = (event) => {
   if (!mapViewport) {
     return;
@@ -1522,13 +2087,14 @@ const normalizeConditions = (conditions) => {
           return null;
         }
         if (typeof condition === 'string') {
-          return { name: condition.trim(), duration: null, unit: null };
+          return { name: condition.trim(), duration: null, unit: null, rule: null };
         }
         if (typeof condition === 'object') {
           return {
             name: String(condition.name || '').trim(),
             duration: Number.isFinite(condition.duration) ? condition.duration : null,
-            unit: condition.unit || null
+            unit: condition.unit || null,
+            rule: condition.rule ? String(condition.rule).trim() : null
           };
         }
         return null;
@@ -1540,7 +2106,7 @@ const normalizeConditions = (conditions) => {
       .split(',')
       .map((condition) => condition.trim())
       .filter(Boolean)
-      .map((name) => ({ name, duration: null, unit: null }));
+      .map((name) => ({ name, duration: null, unit: null, rule: null }));
   }
   return [];
 };
@@ -1550,13 +2116,19 @@ const formatConditionLabel = (condition) => {
     return '';
   }
   const name = condition.name;
-  if (condition.duration && condition.unit) {
-    return `${name} • ${condition.duration} ${condition.unit}`;
+  const timeLabel =
+    condition.duration && condition.unit
+      ? `${condition.duration} ${condition.unit}`
+      : null;
+  const ruleLabel = condition.rule || null;
+  const extras = [timeLabel, ruleLabel].filter(Boolean);
+  if (extras.length > 0) {
+    return `${name} • ${extras.join(' • ')}`;
   }
   return name;
 };
 
-const addConditionToMember = (memberId, value, duration, unit) => {
+const addConditionToMember = (memberId, value, duration, unit, rule) => {
   const condition = String(value || '').trim();
   if (!condition) {
     return;
@@ -1569,13 +2141,14 @@ const addConditionToMember = (memberId, value, duration, unit) => {
   const normalized = String(condition || '').trim();
   const durationValue = Number.isFinite(duration) ? duration : null;
   const unitValue = durationValue ? unit : null;
+  const ruleValue = rule ? String(rule).trim() : null;
   if (conditions.some((entry) => entry.name === normalized)) {
     return;
   }
   updatePartyMember(memberId, {
     conditions: [
       ...conditions,
-      { name: normalized, duration: durationValue, unit: unitValue }
+      { name: normalized, duration: durationValue, unit: unitValue, rule: ruleValue }
     ]
   });
 };
@@ -1586,7 +2159,9 @@ const removeConditionFromMember = (memberId, conditionKey) => {
     return;
   }
   const conditions = normalizeConditions(member.conditions).filter((entry) => {
-    const key = `${entry.name}|${entry.duration || ''}|${entry.unit || ''}`;
+    const key = `${entry.name}|${entry.duration || ''}|${entry.unit || ''}|${
+      entry.rule || ''
+    }`;
     return key !== conditionKey;
   });
   updatePartyMember(memberId, { conditions });
@@ -1686,7 +2261,26 @@ const renderPartyList = () => {
       unitSelect.appendChild(option);
     });
     unitLabel.appendChild(unitSelect);
-    durationRow.append(durationLabel, unitLabel);
+    const ruleLabel = document.createElement('label');
+    ruleLabel.textContent = 'Ruleset Tag';
+    const ruleSelect = document.createElement('select');
+    [
+      { value: '', label: 'None' },
+      { value: 'Save ends', label: 'Save ends' },
+      { value: 'End of turn', label: 'End of turn' },
+      { value: 'Start of turn', label: 'Start of turn' },
+      { value: 'Short rest', label: 'Short rest' },
+      { value: 'Long rest', label: 'Long rest' },
+      { value: 'Until cured', label: 'Until cured' },
+      { value: 'Ongoing', label: 'Ongoing' }
+    ].forEach((optionData) => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      ruleSelect.appendChild(option);
+    });
+    ruleLabel.appendChild(ruleSelect);
+    durationRow.append(durationLabel, unitLabel, ruleLabel);
 
     const conditionConfirm = document.createElement('button');
     conditionConfirm.type = 'button';
@@ -1698,11 +2292,13 @@ const renderPartyList = () => {
       const durationValue = Number(durationInput.value);
       const duration = Number.isNaN(durationValue) ? null : durationValue;
       const unit = unitSelect.value || null;
-      addConditionToMember(member.id, value, duration, unit);
+      const rule = ruleSelect.value || null;
+      addConditionToMember(member.id, value, duration, unit, rule);
       conditionInput.value = '';
       conditionSelect.value = '';
       durationInput.value = '';
       unitSelect.value = '';
+      ruleSelect.value = '';
       conditionPopover.classList.remove('is-open');
     });
     conditionPopover.append(
@@ -1717,7 +2313,9 @@ const renderPartyList = () => {
       const tag = document.createElement('span');
       tag.className = 'condition-tag';
       tag.textContent = formatConditionLabel(condition);
-      const key = `${condition.name}|${condition.duration || ''}|${condition.unit || ''}`;
+      const key = `${condition.name}|${condition.duration || ''}|${condition.unit || ''}|${
+        condition.rule || ''
+      }`;
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'condition-remove';
@@ -2611,7 +3209,9 @@ const renderPartyProfile = () => {
       const tag = document.createElement('span');
       tag.className = 'condition-tag';
       tag.textContent = formatConditionLabel(condition);
-      const key = `${condition.name}|${condition.duration || ''}|${condition.unit || ''}`;
+      const key = `${condition.name}|${condition.duration || ''}|${condition.unit || ''}|${
+        condition.rule || ''
+      }`;
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'condition-remove';
@@ -3257,6 +3857,248 @@ if (addDowntimeButton) {
     saveState();
   });
 }
+if (addNpcButton) {
+  addNpcButton.addEventListener('click', () => {
+    if (!npcNameInput) {
+      return;
+    }
+    const name = npcNameInput.value.trim();
+    if (!name) {
+      npcNameInput.focus();
+      return;
+    }
+    const npc = {
+      id: crypto.randomUUID(),
+      name,
+      role: npcRoleInput?.value.trim() || '',
+      status: npcStatusInput?.value || 'active',
+      faction: npcFactionInput?.value.trim() || '',
+      notes: npcNotesInput?.value.trim() || ''
+    };
+    npcDirectory = [...npcDirectory, npc];
+    npcNameInput.value = '';
+    if (npcRoleInput) {
+      npcRoleInput.value = '';
+    }
+    if (npcStatusInput) {
+      npcStatusInput.value = 'active';
+    }
+    if (npcFactionInput) {
+      npcFactionInput.value = '';
+    }
+    if (npcNotesInput) {
+      npcNotesInput.value = '';
+    }
+    renderNpcDirectory();
+    saveState();
+  });
+}
+if (addFactionButton) {
+  addFactionButton.addEventListener('click', () => {
+    if (!factionNameInput) {
+      return;
+    }
+    const name = factionNameInput.value.trim();
+    if (!name) {
+      factionNameInput.focus();
+      return;
+    }
+    const faction = {
+      id: crypto.randomUUID(),
+      name,
+      influence: factionInfluenceInput?.value || 'medium',
+      alignment: factionAlignmentInput?.value.trim() || '',
+      notes: factionNotesInput?.value.trim() || ''
+    };
+    factionRoster = [...factionRoster, faction];
+    factionNameInput.value = '';
+    if (factionInfluenceInput) {
+      factionInfluenceInput.value = 'medium';
+    }
+    if (factionAlignmentInput) {
+      factionAlignmentInput.value = '';
+    }
+    if (factionNotesInput) {
+      factionNotesInput.value = '';
+    }
+    renderFactionRoster();
+    saveState();
+  });
+}
+if (generateRumorButton) {
+  generateRumorButton.addEventListener('click', () => {
+    if (!rumorTitleInput || !rumorNotesInput || !rumorSourceInput || !rumorTagsInput) {
+      return;
+    }
+    const hook = generateRumorHook();
+    rumorTitleInput.value = hook.title;
+    rumorNotesInput.value = hook.notes;
+    rumorSourceInput.value = hook.source;
+    rumorTagsInput.value = hook.tags.join(', ');
+    if (rumorUrgencyInput && !rumorUrgencyInput.value) {
+      rumorUrgencyInput.value = 'medium';
+    }
+  });
+}
+if (addRumorButton) {
+  addRumorButton.addEventListener('click', () => {
+    if (!rumorTitleInput) {
+      return;
+    }
+    const title = rumorTitleInput.value.trim();
+    if (!title) {
+      rumorTitleInput.focus();
+      return;
+    }
+    const rumor = {
+      id: crypto.randomUUID(),
+      title,
+      source: rumorSourceInput?.value.trim() || '',
+      urgency: rumorUrgencyInput?.value || 'medium',
+      tags: parseTags(rumorTagsInput?.value),
+      notes: rumorNotesInput?.value.trim() || '',
+      revealed: Boolean(rumorRevealedInput?.checked)
+    };
+    rumorBoard = [...rumorBoard, rumor];
+    rumorTitleInput.value = '';
+    if (rumorSourceInput) {
+      rumorSourceInput.value = '';
+    }
+    if (rumorUrgencyInput) {
+      rumorUrgencyInput.value = 'medium';
+    }
+    if (rumorTagsInput) {
+      rumorTagsInput.value = '';
+    }
+    if (rumorNotesInput) {
+      rumorNotesInput.value = '';
+    }
+    if (rumorRevealedInput) {
+      rumorRevealedInput.checked = false;
+    }
+    renderRumorBoard();
+    saveState();
+  });
+}
+if (addSessionNoteButton) {
+  addSessionNoteButton.addEventListener('click', () => {
+    if (!sessionNoteTitleInput) {
+      return;
+    }
+    const title = sessionNoteTitleInput.value.trim();
+    if (!title) {
+      sessionNoteTitleInput.focus();
+      return;
+    }
+    const createdAt = getCurrentDateParts();
+    const note = {
+      id: crypto.randomUUID(),
+      title,
+      eventId: sessionNoteEventSelect?.value || null,
+      notes: sessionNoteNotesInput?.value.trim() || '',
+      createdAt,
+      createdAtKey: `${createdAt.year}-${createdAt.month
+        .toString()
+        .padStart(2, '0')}-${createdAt.day.toString().padStart(2, '0')}`
+    };
+    sessionNotes = [...sessionNotes, note];
+    sessionNoteTitleInput.value = '';
+    if (sessionNoteEventSelect) {
+      sessionNoteEventSelect.value = '';
+    }
+    if (sessionNoteNotesInput) {
+      sessionNoteNotesInput.value = '';
+    }
+    renderSessionNotes();
+    saveState();
+  });
+}
+if (addMilestoneButton) {
+  addMilestoneButton.addEventListener('click', () => {
+    if (!milestoneTitleInput) {
+      return;
+    }
+    const title = milestoneTitleInput.value.trim();
+    if (!title) {
+      milestoneTitleInput.focus();
+      return;
+    }
+    const dayValue = Number(milestoneDayInput?.value);
+    const monthValue = Number(milestoneMonthInput?.value);
+    const yearValue = Number(milestoneYearInput?.value);
+    const hasDate =
+      Number.isFinite(dayValue) && Number.isFinite(monthValue) && Number.isFinite(yearValue);
+    const targetDate = hasDate
+      ? {
+        day: Math.max(1, dayValue),
+        month: Math.max(1, monthValue),
+        year: Math.max(1, yearValue)
+      }
+      : null;
+    const milestone = {
+      id: crypto.randomUUID(),
+      title,
+      status: milestoneStatusInput?.value || 'planned',
+      targetDate,
+      notes: milestoneNotesInput?.value.trim() || ''
+    };
+    campaignMilestones = [...campaignMilestones, milestone];
+    milestoneTitleInput.value = '';
+    if (milestoneStatusInput) {
+      milestoneStatusInput.value = 'planned';
+    }
+    if (milestoneNotesInput) {
+      milestoneNotesInput.value = '';
+    }
+    if (milestoneDayInput) {
+      milestoneDayInput.value = '';
+    }
+    if (milestoneMonthInput) {
+      milestoneMonthInput.value = '';
+    }
+    if (milestoneYearInput) {
+      milestoneYearInput.value = '';
+    }
+    renderCampaignMilestones();
+    saveState();
+  });
+}
+if (addEncounterPlanButton) {
+  addEncounterPlanButton.addEventListener('click', () => {
+    if (!encounterPlanTitleInput) {
+      return;
+    }
+    const title = encounterPlanTitleInput.value.trim();
+    if (!title) {
+      encounterPlanTitleInput.focus();
+      return;
+    }
+    const roster = String(encounterPlanRosterInput?.value || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const plan = {
+      id: crypto.randomUUID(),
+      title,
+      threat: encounterPlanThreatInput?.value || 'medium',
+      roster,
+      notes: encounterPlanNotesInput?.value.trim() || ''
+    };
+    encounterPlans = [...encounterPlans, plan];
+    encounterPlanTitleInput.value = '';
+    if (encounterPlanThreatInput) {
+      encounterPlanThreatInput.value = 'medium';
+    }
+    if (encounterPlanRosterInput) {
+      encounterPlanRosterInput.value = '';
+    }
+    if (encounterPlanNotesInput) {
+      encounterPlanNotesInput.value = '';
+    }
+    renderEncounterPlans();
+    saveState();
+  });
+}
 if (partyProfileCurrentHp) {
   partyProfileCurrentHp.addEventListener('input', () => {
     if (!selectedPartyMemberId) {
@@ -3333,7 +4175,8 @@ if (partyProfileConditionConfirm) {
     const durationValue = Number(partyProfileConditionDuration?.value);
     const duration = Number.isNaN(durationValue) ? null : durationValue;
     const unit = partyProfileConditionUnit?.value || null;
-    addConditionToMember(selectedPartyMemberId, value, duration, unit);
+    const rule = partyProfileConditionRule?.value || null;
+    addConditionToMember(selectedPartyMemberId, value, duration, unit, rule);
     if (partyProfileConditionInput) {
       partyProfileConditionInput.value = '';
     }
@@ -3345,6 +4188,9 @@ if (partyProfileConditionConfirm) {
     }
     if (partyProfileConditionUnit) {
       partyProfileConditionUnit.value = '';
+    }
+    if (partyProfileConditionRule) {
+      partyProfileConditionRule.value = '';
     }
     partyProfileConditionPopover?.classList.remove('is-open');
   });
@@ -3576,7 +4422,13 @@ if (exportWorldButton) {
       worldMap,
       worldNotes,
       questBoard,
-      downtimeEntries
+      downtimeEntries,
+      npcDirectory,
+      factionRoster,
+      rumorBoard,
+      sessionNotes,
+      campaignMilestones,
+      encounterPlans
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -3648,7 +4500,17 @@ if (importWorldInput) {
           questBoard: Array.isArray(parsed.questBoard) ? parsed.questBoard : [],
           downtimeEntries: Array.isArray(parsed.downtimeEntries)
             ? parsed.downtimeEntries
-            : []
+            : [],
+          npcDirectory: Array.isArray(parsed.npcDirectory) ? parsed.npcDirectory : [],
+          factionRoster: Array.isArray(parsed.factionRoster)
+            ? parsed.factionRoster
+            : [],
+          rumorBoard: Array.isArray(parsed.rumorBoard) ? parsed.rumorBoard : [],
+          sessionNotes: Array.isArray(parsed.sessionNotes) ? parsed.sessionNotes : [],
+          campaignMilestones: Array.isArray(parsed.campaignMilestones)
+            ? parsed.campaignMilestones
+            : [],
+          encounterPlans: Array.isArray(parsed.encounterPlans) ? parsed.encounterPlans : []
         };
         worlds[world.id] = world;
         activeWorldId = world.id;

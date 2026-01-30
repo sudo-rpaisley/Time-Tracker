@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - NPCs &amp; Factions</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page npc-page">
+      <header class="page-header">
+        <div>
+          <h2>NPC &amp; Faction Tracker</h2>
+          <p class="helper-text">Track allies, rivals, and the factions that influence them.</p>
+        </div>
+      </header>
+
+      <div class="controls">
+        <div class="quest-card">
+          <h3>Add NPC</h3>
+          <div class="input-row">
+            <label>
+              Name
+              <input type="text" id="npcNameInput" placeholder="e.g. Captain Ressa" />
+            </label>
+            <label>
+              Role
+              <input type="text" id="npcRoleInput" placeholder="e.g. Harbor Master" />
+            </label>
+            <label>
+              Status
+              <select id="npcStatusInput">
+                <option value="active">Active</option>
+                <option value="missing">Missing</option>
+                <option value="deceased">Deceased</option>
+              </select>
+            </label>
+            <label>
+              Faction
+              <input
+                type="text"
+                id="npcFactionInput"
+                placeholder="e.g. Sapphire Fleet"
+                list="factionOptions"
+              />
+            </label>
+            <datalist id="factionOptions"></datalist>
+          </div>
+          <label>
+            Notes
+            <textarea id="npcNotesInput" rows="2" placeholder="Key motivations or secrets."></textarea>
+          </label>
+          <button class="primary" id="addNpcButton" type="button">Add NPC</button>
+        </div>
+
+        <div class="quest-card">
+          <h3>Add Faction</h3>
+          <div class="input-row">
+            <label>
+              Name
+              <input type="text" id="factionNameInput" placeholder="e.g. Sapphire Fleet" />
+            </label>
+            <label>
+              Influence
+              <select id="factionInfluenceInput">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label>
+              Alignment
+              <input type="text" id="factionAlignmentInput" placeholder="e.g. Lawful Neutral" />
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea id="factionNotesInput" rows="2" placeholder="Goals, assets, or territory."></textarea>
+          </label>
+          <button class="primary" id="addFactionButton" type="button">Add Faction</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <h3>NPC Directory</h3>
+          <ul class="quest-list" id="npcList"></ul>
+        </div>
+        <div class="control-group">
+          <h3>Faction Roster</h3>
+          <ul class="quest-list" id="factionList"></ul>
+        </div>
+      </div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>
