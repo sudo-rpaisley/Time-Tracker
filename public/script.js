@@ -28,6 +28,7 @@ const navParty = document.getElementById('navParty');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const createWorldButton = document.getElementById('createWorldButton');
 const worldGrid = document.getElementById('worldGrid');
+const worldScaleInput = document.getElementById('worldScaleInput');
 const leaveWorldButton = document.getElementById('leaveWorldButton');
 const partyMemberName = document.getElementById('partyMemberName');
 const partyMemberMaxHp = document.getElementById('partyMemberMaxHp');
@@ -476,6 +477,19 @@ const getCurrentWorld = () => worlds[activeWorldId];
 
 const setWorldSelectedState = (isSelected) => {
   document.body.classList.toggle('world-selected', Boolean(isSelected));
+};
+
+const applyWorldScale = (scaleValue) => {
+  if (!worldGrid) {
+    return;
+  }
+  const parsed = Number(scaleValue);
+  const clamped = Number.isNaN(parsed) ? 1 : Math.min(1.4, Math.max(0.8, parsed));
+  worldGrid.style.setProperty('--world-tile-scale', clamped);
+  if (worldScaleInput) {
+    worldScaleInput.value = clamped.toFixed(1);
+  }
+  localStorage.setItem('worldTileScale', String(clamped));
 };
 
 const saveState = () => {
@@ -4407,6 +4421,11 @@ if (createWorldButton) {
     requestWorldCreation();
   });
 }
+if (worldScaleInput) {
+  worldScaleInput.addEventListener('input', () => {
+    applyWorldScale(worldScaleInput.value);
+  });
+}
 if (renameWorldButton) {
   renameWorldButton.addEventListener('click', () => {
     const currentWorld = getCurrentWorld();
@@ -4716,6 +4735,12 @@ const initializeDefaults = async () => {
   renderEncounterPresets();
   renderQuestBoard();
   renderDowntimeTracker();
+  if (worldGrid) {
+    const savedScale = localStorage.getItem('worldTileScale');
+    if (savedScale) {
+      applyWorldScale(savedScale);
+    }
+  }
 };
 
 initializeDefaults().then(() => {

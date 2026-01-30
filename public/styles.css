@@ -254,9 +254,19 @@ body.world-selected .nav-no-world {
 }
 
 .world-grid {
+  --world-tile-scale: 1;
+  --world-tile-width: 220px;
+  --world-tile-height: 160px;
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      calc(var(--world-tile-width) * var(--world-tile-scale)),
+      calc(var(--world-tile-width) * var(--world-tile-scale))
+    )
+  );
+  justify-content: flex-start;
 }
 
 .world-tile {
@@ -267,7 +277,7 @@ body.world-selected .nav-no-world {
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: grid;
   place-items: center;
-  min-height: 140px;
+  min-height: calc(var(--world-tile-height) * var(--world-tile-scale));
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
@@ -299,6 +309,17 @@ body.world-selected .nav-no-world {
 .world-helper {
   font-size: 0.9rem;
   color: #c9ccda;
+}
+
+.world-scale-control {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #c9ccda;
+}
+
+.world-scale-control input[type='range'] {
+  width: 140px;
 }
 
 .world-tile button {
