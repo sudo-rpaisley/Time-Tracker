@@ -280,6 +280,24 @@ body.world-selected .nav-no-world {
   min-height: calc(var(--world-tile-height) * var(--world-tile-scale));
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.world-cover {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+  transform: scale(1);
+  filter: blur(0);
+  transition: transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
+}
+
+.world-tile:hover .world-cover {
+  transform: scale(1.04);
+  filter: blur(2px);
+  opacity: 0.4;
 }
 
 .world-tile--empty {
@@ -288,6 +306,10 @@ body.world-selected .nav-no-world {
   background: rgba(18, 21, 31, 0.6);
   gap: 8px;
   text-align: center;
+}
+
+.world-tile--empty .world-cover {
+  display: none;
 }
 
 .world-tile:hover {
@@ -304,6 +326,8 @@ body.world-selected .nav-no-world {
   font-size: 1.1rem;
   font-weight: 600;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .world-helper {
@@ -335,6 +359,34 @@ body.world-selected .nav-no-world {
   place-items: center;
   font-size: 1rem;
   border-radius: 10px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  transform: translateY(-2px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease;
+  z-index: 2;
+}
+
+.world-tile:hover .world-edit-button,
+.world-tile:focus-within .world-edit-button {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.world-edit-button:hover {
+  color: #7a52ff;
+}
+
+.world-cover-preview {
+  height: 160px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(18, 21, 31, 0.6);
+  background-size: cover;
+  background-position: center;
 }
 
 .header {

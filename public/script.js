@@ -73,6 +73,8 @@ const worldEditModal = document.getElementById('worldEditModal');
 const worldEditBackdrop = document.getElementById('worldEditBackdrop');
 const closeWorldEditButton = document.getElementById('closeWorldEditButton');
 const worldEditNameInput = document.getElementById('worldEditNameInput');
+const worldCoverInput = document.getElementById('worldCoverInput');
+const worldCoverPreview = document.getElementById('worldCoverPreview');
 const worldEditError = document.getElementById('worldEditError');
 const confirmWorldEditButton = document.getElementById('confirmWorldEditButton');
 const cancelWorldEditButton = document.getElementById('cancelWorldEditButton');
@@ -330,6 +332,8 @@ let timeConfig = {
 let worlds = {};
 let activeWorldId = null;
 let worldEditTargetId = null;
+let worldCoverImage = '';
+let worldEditCoverImage = '';
 
 const EVENT_TYPES = [
   { value: 'all', label: 'All Events' },
@@ -396,6 +400,7 @@ const generateWorldId = () => {
 const createWorld = (name) => ({
   id: generateWorldId(),
   name,
+  coverImage: '',
   totalSeconds: 0,
   combatants: [],
   currentCombatantIndex: 0,
@@ -456,12 +461,21 @@ const openWorldEditModal = (worldId) => {
     return false;
   }
   worldEditTargetId = worldId;
+  worldEditCoverImage = world.coverImage || '';
   worldEditModal.classList.add('is-open');
   worldEditModal.setAttribute('aria-hidden', 'false');
   if (worldEditError) {
     worldEditError.textContent = '';
   }
   worldEditNameInput.value = world.name || '';
+  if (worldCoverInput) {
+    worldCoverInput.value = '';
+  }
+  if (worldCoverPreview) {
+    worldCoverPreview.style.backgroundImage = worldEditCoverImage
+      ? `url("${worldEditCoverImage}")`
+      : 'none';
+  }
   setTimeout(() => {
     worldEditNameInput.focus();
     worldEditNameInput.select();
@@ -479,6 +493,7 @@ const closeWorldEditModal = () => {
     worldEditError.textContent = '';
   }
   worldEditTargetId = null;
+  worldEditCoverImage = '';
 };
 
 const saveWorldEdit = () => {
@@ -499,8 +514,12 @@ const saveWorldEdit = () => {
   }
   worlds[worldEditTargetId] = {
     ...currentWorld,
-    name: trimmed
+    name: trimmed,
+    coverImage: worldEditCoverImage || ''
   };
+  if (activeWorldId === worldEditTargetId) {
+    worldCoverImage = worldEditCoverImage || '';
+  }
   saveState();
   renderWorldTiles();
   return true;
@@ -520,6 +539,7 @@ const deleteWorld = () => {
   if (activeWorldId === worldEditTargetId) {
     activeWorldId = Object.keys(worlds)[0] || null;
   }
+  worldCoverImage = activeWorldId ? worlds[activeWorldId]?.coverImage || '' : '';
   saveState();
   renderWorldTiles();
   if (activeWorldId) {
@@ -600,6 +620,7 @@ const saveState = () => {
       encounterPresets,
       worldStats,
       worldMap,
+      coverImage: worldCoverImage,
       worldNotes,
       questBoard,
       downtimeEntries,
@@ -743,6 +764,7 @@ const setActiveWorld = (worldId) => {
       : []
   };
   worldNotes = nextWorld.worldNotes || '';
+  worldCoverImage = nextWorld.coverImage || '';
   questBoard = Array.isArray(nextWorld.questBoard) ? nextWorld.questBoard : [];
   downtimeEntries = Array.isArray(nextWorld.downtimeEntries)
     ? nextWorld.downtimeEntries
@@ -858,6 +880,12 @@ const renderWorldTiles = () => {
     tile.className = `world-tile${world.id === activeWorldId ? ' active' : ''}`;
     tile.dataset.worldId = world.id;
 
+    const cover = document.createElement('div');
+    cover.className = 'world-cover';
+    if (world.coverImage) {
+      cover.style.backgroundImage = `url("${world.coverImage}")`;
+    }
+
     const name = document.createElement('div');
     name.className = 'world-name';
     name.textContent = world.name;
@@ -872,7 +900,7 @@ const renderWorldTiles = () => {
       openWorldEditModal(world.id);
     });
 
-    tile.append(name, editButton);
+    tile.append(cover, name, editButton);
     tile.addEventListener('click', () => {
       setActiveWorld(world.id);
       window.location.href = 'party.html';
@@ -4459,6 +4487,22 @@ if (worldEditNameInput) {
     }
   });
 }
+if (worldCoverInput) {
+  worldCoverInput.addEventListener('change', () => {
+    const file = worldCoverInput.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      worldEditCoverImage = reader.result;
+      if (worldCoverPreview) {
+        worldCoverPreview.style.backgroundImage = `url("${worldEditCoverImage}")`;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
 if (deleteWorldButton) {
   deleteWorldButton.addEventListener('click', () => {
     if (deleteWorld()) {
@@ -4733,6 +4777,7 @@ if (importWorldInput) {
           encounterPresets: Array.isArray(parsed.encounterPresets)
             ? parsed.encounterPresets
             : [],
+          coverImage: parsed.coverImage || '',
           worldStats: {
             distanceTravelled: Number(parsed.worldStats?.distanceTravelled) || 0,
             encountersCompleted: Number(parsed.worldStats?.encountersCompleted) || 0
