@@ -1223,7 +1223,6 @@ const renderTimeline = () => {
   );
   if (events.length === 0) {
     const item = document.createElement('li');
-    item.textContent = 'No events scheduled for this month.';
     item.className = 'helper-text';
     item.textContent = 'No events recorded yet.';
     timelineList.appendChild(item);
