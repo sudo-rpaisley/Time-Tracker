@@ -328,6 +328,15 @@ body.world-selected .nav-no-world {
   right: 12px;
 }
 
+.world-edit-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  border-radius: 10px;
+}
+
 .header {
   display: flex;
   flex-wrap: wrap;

@@ -69,6 +69,14 @@ const worldNameInput = document.getElementById('worldNameInput');
 const worldModalError = document.getElementById('worldModalError');
 const confirmWorldButton = document.getElementById('confirmWorldButton');
 const cancelWorldButton = document.getElementById('cancelWorldButton');
+const worldEditModal = document.getElementById('worldEditModal');
+const worldEditBackdrop = document.getElementById('worldEditBackdrop');
+const closeWorldEditButton = document.getElementById('closeWorldEditButton');
+const worldEditNameInput = document.getElementById('worldEditNameInput');
+const worldEditError = document.getElementById('worldEditError');
+const confirmWorldEditButton = document.getElementById('confirmWorldEditButton');
+const cancelWorldEditButton = document.getElementById('cancelWorldEditButton');
+const deleteWorldButton = document.getElementById('deleteWorldButton');
 const profileCard = document.getElementById('profileCard');
 const emptyProfile = document.getElementById('emptyProfile');
 const profileDetails = document.getElementById('profileDetails');
@@ -127,7 +135,6 @@ const resetPartyDeathSavesButton = document.getElementById(
 const removePartyMemberButton = document.getElementById('removePartyMemberButton');
 const exportWorldButton = document.getElementById('exportWorldButton');
 const importWorldInput = document.getElementById('importWorldInput');
-const renameWorldButton = document.getElementById('renameWorldButton');
 const worldNotesInput = document.getElementById('worldNotesInput');
 const encounterDifficulty = document.getElementById('encounterDifficulty');
 const encounterDifficultyLabel = document.getElementById(
@@ -322,6 +329,7 @@ let timeConfig = {
 
 let worlds = {};
 let activeWorldId = null;
+let worldEditTargetId = null;
 
 const EVENT_TYPES = [
   { value: 'all', label: 'All Events' },
@@ -440,6 +448,86 @@ const closeWorldModal = () => {
   if (worldModalError) {
     worldModalError.textContent = '';
   }
+};
+
+const openWorldEditModal = (worldId) => {
+  const world = worlds[worldId];
+  if (!worldEditModal || !worldEditNameInput || !world) {
+    return false;
+  }
+  worldEditTargetId = worldId;
+  worldEditModal.classList.add('is-open');
+  worldEditModal.setAttribute('aria-hidden', 'false');
+  if (worldEditError) {
+    worldEditError.textContent = '';
+  }
+  worldEditNameInput.value = world.name || '';
+  setTimeout(() => {
+    worldEditNameInput.focus();
+    worldEditNameInput.select();
+  }, 0);
+  return true;
+};
+
+const closeWorldEditModal = () => {
+  if (!worldEditModal) {
+    return;
+  }
+  worldEditModal.classList.remove('is-open');
+  worldEditModal.setAttribute('aria-hidden', 'true');
+  if (worldEditError) {
+    worldEditError.textContent = '';
+  }
+  worldEditTargetId = null;
+};
+
+const saveWorldEdit = () => {
+  if (!worldEditTargetId || !worldEditNameInput) {
+    return false;
+  }
+  const trimmed = worldEditNameInput.value.trim();
+  if (!trimmed) {
+    if (worldEditError) {
+      worldEditError.textContent = 'Please enter a world name.';
+    }
+    worldEditNameInput.focus();
+    return false;
+  }
+  const currentWorld = worlds[worldEditTargetId];
+  if (!currentWorld) {
+    return false;
+  }
+  worlds[worldEditTargetId] = {
+    ...currentWorld,
+    name: trimmed
+  };
+  saveState();
+  renderWorldTiles();
+  return true;
+};
+
+const deleteWorld = () => {
+  if (!worldEditTargetId) {
+    return false;
+  }
+  if (Object.keys(worlds).length <= 1) {
+    if (worldEditError) {
+      worldEditError.textContent = 'Create another world before deleting this one.';
+    }
+    return false;
+  }
+  delete worlds[worldEditTargetId];
+  if (activeWorldId === worldEditTargetId) {
+    activeWorldId = Object.keys(worlds)[0] || null;
+  }
+  saveState();
+  renderWorldTiles();
+  if (activeWorldId) {
+    setActiveWorld(activeWorldId);
+  } else {
+    setWorldSelectedState(false);
+  }
+  return true;
 };
 
 const createWorldFromName = (name) => {
@@ -774,33 +862,17 @@ const renderWorldTiles = () => {
     name.className = 'world-name';
     name.textContent = world.name;
 
-    const deleteButton = document.createElement('button');
-    deleteButton.className = 'icon-button';
-    deleteButton.type = 'button';
-    deleteButton.setAttribute('aria-label', `Delete ${world.name}`);
-    deleteButton.textContent = '✕';
-    deleteButton.addEventListener('click', (event) => {
+    const editButton = document.createElement('button');
+    editButton.className = 'icon-button world-edit-button';
+    editButton.type = 'button';
+    editButton.setAttribute('aria-label', `Edit ${world.name}`);
+    editButton.textContent = '✎';
+    editButton.addEventListener('click', (event) => {
       event.stopPropagation();
-      if (Object.keys(worlds).length <= 1) {
-        window.alert('Create another world before deleting this one.');
-        return;
-      }
-      const confirmed = window.confirm(`Delete world "${world.name}"?`);
-      if (!confirmed) {
-        return;
-      }
-      delete worlds[world.id];
-      if (activeWorldId === world.id) {
-        activeWorldId = Object.keys(worlds)[0] || null;
-      }
-      saveState();
-      renderWorldTiles();
-      if (activeWorldId) {
-        setActiveWorld(activeWorldId);
-      }
+      openWorldEditModal(world.id);
     });
 
-    tile.append(name, deleteButton);
+    tile.append(name, editButton);
     tile.addEventListener('click', () => {
       setActiveWorld(world.id);
       window.location.href = 'party.html';
@@ -4356,6 +4428,44 @@ if (worldModalBackdrop) {
 if (cancelWorldButton) {
   cancelWorldButton.addEventListener('click', closeWorldModal);
 }
+if (closeWorldEditButton) {
+  closeWorldEditButton.addEventListener('click', closeWorldEditModal);
+}
+if (worldEditBackdrop) {
+  worldEditBackdrop.addEventListener('click', closeWorldEditModal);
+}
+if (cancelWorldEditButton) {
+  cancelWorldEditButton.addEventListener('click', closeWorldEditModal);
+}
+if (confirmWorldEditButton) {
+  confirmWorldEditButton.addEventListener('click', () => {
+    if (saveWorldEdit()) {
+      closeWorldEditModal();
+    }
+  });
+}
+if (worldEditNameInput) {
+  worldEditNameInput.addEventListener('input', () => {
+    if (worldEditError) {
+      worldEditError.textContent = '';
+    }
+  });
+  worldEditNameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (saveWorldEdit()) {
+        closeWorldEditModal();
+      }
+    }
+  });
+}
+if (deleteWorldButton) {
+  deleteWorldButton.addEventListener('click', () => {
+    if (deleteWorld()) {
+      closeWorldEditModal();
+    }
+  });
+}
 if (confirmWorldButton) {
   confirmWorldButton.addEventListener('click', () => {
     if (!worldNameInput) {
@@ -4394,6 +4504,7 @@ document.addEventListener('keydown', (event) => {
     closeProfileModal();
     closePartyProfileModal();
     closeWorldModal();
+    closeWorldEditModal();
   }
 });
 document.addEventListener('click', (event) => {
@@ -4423,28 +4534,6 @@ if (createWorldButton) {
 if (worldScaleInput) {
   worldScaleInput.addEventListener('input', () => {
     applyWorldScale(worldScaleInput.value);
-  });
-}
-if (renameWorldButton) {
-  renameWorldButton.addEventListener('click', () => {
-    const currentWorld = getCurrentWorld();
-    if (!currentWorld) {
-      return;
-    }
-    const nextName = window.prompt('Rename world', currentWorld.name || '');
-    if (!nextName) {
-      return;
-    }
-    const trimmed = nextName.trim();
-    if (!trimmed) {
-      return;
-    }
-    worlds[activeWorldId] = {
-      ...currentWorld,
-      name: trimmed
-    };
-    saveState();
-    renderWorldTiles();
   });
 }
 if (worldNotesInput) {
