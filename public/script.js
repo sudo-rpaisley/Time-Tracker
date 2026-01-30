@@ -156,8 +156,10 @@ const calendarMonthLabel = document.getElementById('calendarMonthLabel');
 const calendarPrevButton = document.getElementById('calendarPrevButton');
 const calendarNextButton = document.getElementById('calendarNextButton');
 const calendarFilterSelect = document.getElementById('calendarFilterSelect');
+const calendarActorFilterSelect = document.getElementById('calendarActorFilterSelect');
 const eventTitleInput = document.getElementById('eventTitleInput');
 const eventTypeInput = document.getElementById('eventTypeInput');
+const eventActorInput = document.getElementById('eventActorInput');
 const eventDayInput = document.getElementById('eventDayInput');
 const eventMonthInput = document.getElementById('eventMonthInput');
 const eventYearInput = document.getElementById('eventYearInput');
@@ -166,6 +168,7 @@ const addEventButton = document.getElementById('addEventButton');
 const calendarEventList = document.getElementById('calendarEventList');
 const timelineList = document.getElementById('timelineList');
 const timelineFilterSelect = document.getElementById('timelineFilterSelect');
+const timelineActorFilterSelect = document.getElementById('timelineActorFilterSelect');
 const distanceTravelledInput = document.getElementById('distanceTravelledInput');
 const encountersCompletedInput = document.getElementById('encountersCompletedInput');
 const saveWorldStatsButton = document.getElementById('saveWorldStatsButton');
@@ -347,6 +350,12 @@ const EVENT_TYPES = [
   { value: 'travel', label: 'Travel' },
   { value: 'downtime', label: 'Downtime' },
   { value: 'combat', label: 'Combat' }
+];
+
+const EVENT_ACTORS = [
+  { value: 'all', label: 'All Actors' },
+  { value: 'player', label: 'Player' },
+  { value: 'npc', label: 'NPC' }
 ];
 
 const monsterPresets = [
@@ -749,7 +758,8 @@ const setActiveWorld = (worldId) => {
   calendarEvents = Array.isArray(nextWorld.calendarEvents)
     ? nextWorld.calendarEvents.map((event) => ({
       ...event,
-      type: event.type || 'general'
+      type: event.type || 'general',
+      actorType: event.actorType || 'player'
     }))
     : [];
   encounterPresets = Array.isArray(nextWorld.encounterPresets)
@@ -1105,6 +1115,26 @@ const getEventFilterValue = (selectElement) =>
     ? selectElement.value
     : null;
 
+const ensureActorOptions = (selectElement, includeAll) => {
+  if (!selectElement || selectElement.options.length > 0) {
+    return;
+  }
+  EVENT_ACTORS.filter((actor) => includeAll || actor.value !== 'all').forEach(
+    (actor) => {
+      const option = document.createElement('option');
+      option.value = actor.value;
+      option.textContent = actor.label;
+      selectElement.appendChild(option);
+    }
+  );
+  if (!includeAll) {
+    selectElement.value = 'player';
+  }
+};
+
+const getEventActorLabel = (actorType) =>
+  EVENT_ACTORS.find((entry) => entry.value === actorType)?.label || 'Unknown';
+
 const ensureEventTypeOptions = (selectElement, includeAll) => {
   if (!selectElement || selectElement.options.length > 0) {
     return;
@@ -1159,7 +1189,9 @@ const renderCalendar = () => {
     setCalendarViewToCurrent();
   }
   ensureEventTypeOptions(eventTypeInput, false);
+  ensureActorOptions(eventActorInput, false);
   ensureEventTypeOptions(calendarFilterSelect, true);
+  ensureActorOptions(calendarActorFilterSelect, true);
   const { month, year } = calendarView;
   const monthName = calendarSettings.monthNames[month - 1] || `Month ${month}`;
   if (calendarMonthLabel) {
@@ -1246,10 +1278,12 @@ const renderCalendarEventsList = () => {
   }
   calendarEventList.innerHTML = '';
   const activeFilter = getEventFilterValue(calendarFilterSelect);
+  const activeActor = getEventFilterValue(calendarActorFilterSelect);
   const { month, year } = calendarView;
   const events = calendarEvents
     .filter((event) => event.month === month && event.year === year)
     .filter((event) => !activeFilter || event.type === activeFilter)
+    .filter((event) => !activeActor || event.actorType === activeActor)
     .sort((a, b) => a.day - b.day);
 
   if (events.length === 0) {
@@ -1285,7 +1319,10 @@ const renderCalendarEventsList = () => {
   const tag = document.createElement('span');
   tag.className = 'timeline-tag';
   tag.textContent = getEventTypeLabel(event.type || 'general');
-  meta.append(dateText, tag);
+  const actorTag = document.createElement('span');
+  actorTag.className = 'timeline-tag';
+  actorTag.textContent = getEventActorLabel(event.actorType || 'player');
+  meta.append(dateText, tag, actorTag);
 
     content.append(title, description, meta);
 
@@ -1324,11 +1361,13 @@ const renderTimeline = () => {
     return;
   }
   ensureEventTypeOptions(timelineFilterSelect, true);
+  ensureActorOptions(timelineActorFilterSelect, true);
   const activeFilter = getEventFilterValue(timelineFilterSelect);
+  const activeActor = getEventFilterValue(timelineActorFilterSelect);
   timelineList.innerHTML = '';
-  const events = buildTimelineEvents().filter(
-    (event) => !activeFilter || event.type === activeFilter
-  );
+  const events = buildTimelineEvents()
+    .filter((event) => !activeFilter || event.type === activeFilter)
+    .filter((event) => !activeActor || event.actorType === activeActor);
   if (events.length === 0) {
     const item = document.createElement('li');
     item.className = 'helper-text';
@@ -1350,7 +1389,10 @@ const renderTimeline = () => {
     const tag = document.createElement('span');
     tag.className = 'timeline-tag';
     tag.textContent = getEventTypeLabel(event.type || 'general');
-    meta.append(dateText, tag);
+    const actorTag = document.createElement('span');
+    actorTag.className = 'timeline-tag';
+    actorTag.textContent = getEventActorLabel(event.actorType || 'player');
+    meta.append(dateText, tag, actorTag);
 
     const title = document.createElement('div');
     title.className = 'timeline-title';
@@ -3012,6 +3054,7 @@ const addCalendarEvent = () => {
   const daysInMonth = getDaysInMonth(month, calendarSettings);
   const day = Math.max(1, Math.min(daysInMonth, Number(eventDayInput.value) || 1));
   const type = eventTypeInput?.value || 'general';
+  const actorType = eventActorInput?.value || 'player';
   const description = eventDescriptionInput ? eventDescriptionInput.value.trim() : '';
 
   const newEvent = {
@@ -3021,7 +3064,8 @@ const addCalendarEvent = () => {
     day,
     month,
     year,
-    type
+    type,
+    actorType
   };
   calendarEvents = [...calendarEvents, newEvent];
   eventTitleInput.value = '';
@@ -3739,8 +3783,14 @@ if (addEventButton) {
 if (calendarFilterSelect) {
   calendarFilterSelect.addEventListener('change', renderCalendarEventsList);
 }
+if (calendarActorFilterSelect) {
+  calendarActorFilterSelect.addEventListener('change', renderCalendarEventsList);
+}
 if (timelineFilterSelect) {
   timelineFilterSelect.addEventListener('change', renderTimeline);
+}
+if (timelineActorFilterSelect) {
+  timelineActorFilterSelect.addEventListener('change', renderTimeline);
 }
 if (saveWorldStatsButton) {
   saveWorldStatsButton.addEventListener('click', () => {
@@ -4779,7 +4829,11 @@ if (importWorldInput) {
             ? parsed.roundHistoryEntries
             : [],
           calendarEvents: Array.isArray(parsed.calendarEvents)
-            ? parsed.calendarEvents
+            ? parsed.calendarEvents.map((event) => ({
+              ...event,
+              type: event.type || 'general',
+              actorType: event.actorType || 'player'
+            }))
             : [],
           combatActive: Boolean(parsed.combatActive),
           encounterPresets: Array.isArray(parsed.encounterPresets)
