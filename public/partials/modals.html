@@ -171,6 +171,21 @@
               Or type custom
               <input type="text" id="partyProfileConditionInput" placeholder="e.g. Burning" />
             </label>
+            <div class="input-row">
+              <label>
+                Duration
+                <input type="number" id="partyProfileConditionDuration" min="1" />
+              </label>
+              <label>
+                Unit
+                <select id="partyProfileConditionUnit">
+                  <option value="">None</option>
+                  <option value="rounds">Rounds</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select>
+              </label>
+            </div>
             <button type="button" class="primary" id="partyProfileConditionConfirm">Add Condition</button>
           </div>
         </div>

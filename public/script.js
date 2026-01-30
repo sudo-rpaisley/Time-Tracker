@@ -96,6 +96,10 @@ const partyProfileConditionInput = document.getElementById(
 const partyProfileConditionConfirm = document.getElementById(
   'partyProfileConditionConfirm'
 );
+const partyProfileConditionDuration = document.getElementById(
+  'partyProfileConditionDuration'
+);
+const partyProfileConditionUnit = document.getElementById('partyProfileConditionUnit');
 const partyProfileNotes = document.getElementById('partyProfileNotes');
 const partyProfileCopper = document.getElementById('partyProfileCopper');
 const partyProfileSilver = document.getElementById('partyProfileSilver');
@@ -157,6 +161,25 @@ const mapTagList = document.getElementById('mapTagList');
 const encounterPresetName = document.getElementById('encounterPresetName');
 const saveEncounterPresetButton = document.getElementById('saveEncounterPresetButton');
 const encounterPresetList = document.getElementById('encounterPresetList');
+const questTitleInput = document.getElementById('questTitleInput');
+const questStatusInput = document.getElementById('questStatusInput');
+const questDeadlineDayInput = document.getElementById('questDeadlineDayInput');
+const questDeadlineMonthInput = document.getElementById('questDeadlineMonthInput');
+const questDeadlineYearInput = document.getElementById('questDeadlineYearInput');
+const questNotesInput = document.getElementById('questNotesInput');
+const addQuestButton = document.getElementById('addQuestButton');
+const questList = document.getElementById('questList');
+const downtimeCharacterInput = document.getElementById('downtimeCharacterInput');
+const downtimeActivityInput = document.getElementById('downtimeActivityInput');
+const downtimeStartDayInput = document.getElementById('downtimeStartDayInput');
+const downtimeStartMonthInput = document.getElementById('downtimeStartMonthInput');
+const downtimeStartYearInput = document.getElementById('downtimeStartYearInput');
+const downtimeEndDayInput = document.getElementById('downtimeEndDayInput');
+const downtimeEndMonthInput = document.getElementById('downtimeEndMonthInput');
+const downtimeEndYearInput = document.getElementById('downtimeEndYearInput');
+const downtimeNotesInput = document.getElementById('downtimeNotesInput');
+const addDowntimeButton = document.getElementById('addDowntimeButton');
+const downtimeList = document.getElementById('downtimeList');
 
 const timeInputs = [
   yearInput,
@@ -196,6 +219,8 @@ let worldMap = {
   markers: []
 };
 let worldNotes = '';
+let questBoard = [];
+let downtimeEntries = [];
 const updateWorldNotes = (value) => {
   worldNotes = value;
   saveState();
@@ -306,7 +331,9 @@ const createWorld = (name) => ({
   encounterPresets: [],
   worldStats: { ...worldStats },
   worldMap: { ...worldMap },
-  worldNotes: ''
+  worldNotes: '',
+  questBoard: [],
+  downtimeEntries: []
 });
 
 const getCurrentWorld = () => worlds[activeWorldId];
@@ -333,7 +360,9 @@ const saveState = () => {
     encounterPresets,
     worldStats,
     worldMap,
-    worldNotes
+    worldNotes,
+    questBoard,
+    downtimeEntries
   };
   fetch('/api/state', {
     method: 'POST',
@@ -462,6 +491,10 @@ const setActiveWorld = (worldId) => {
       : []
   };
   worldNotes = nextWorld.worldNotes || '';
+  questBoard = Array.isArray(nextWorld.questBoard) ? nextWorld.questBoard : [];
+  downtimeEntries = Array.isArray(nextWorld.downtimeEntries)
+    ? nextWorld.downtimeEntries
+    : [];
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers.map((member) => ({
       ...member,
@@ -510,6 +543,8 @@ const setActiveWorld = (worldId) => {
   renderStats();
   renderWorldMap();
   renderEncounterPresets();
+  renderQuestBoard();
+  renderDowntimeTracker();
   saveState();
 };
 
@@ -1156,6 +1191,132 @@ const renderEncounterPresets = () => {
   });
 };
 
+const formatQuestDeadline = (deadline) => {
+  if (!deadline) {
+    return 'No deadline';
+  }
+  return `Day ${deadline.day}, Month ${deadline.month}, Year ${deadline.year}`;
+};
+
+const renderQuestBoard = () => {
+  if (!questList) {
+    return;
+  }
+  questList.innerHTML = '';
+  if (questBoard.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No quests recorded yet.';
+    questList.appendChild(item);
+    return;
+  }
+  questBoard.forEach((quest) => {
+    const item = document.createElement('li');
+    item.className = 'quest-item';
+
+    const header = document.createElement('div');
+    header.className = 'quest-header';
+    const title = document.createElement('span');
+    title.textContent = quest.title;
+    const status = document.createElement('span');
+    status.className = 'timeline-tag';
+    status.textContent = quest.status || 'open';
+    header.append(title, status);
+
+    const meta = document.createElement('div');
+    meta.className = 'timeline-meta';
+    meta.textContent = formatQuestDeadline(quest.deadline);
+
+    const notes = document.createElement('div');
+    notes.className = 'event-description';
+    notes.textContent = quest.notes || 'No notes provided.';
+
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'ghost';
+    toggle.textContent =
+      quest.status === 'completed' ? 'Reopen' : 'Mark Complete';
+    toggle.addEventListener('click', () => {
+      questBoard = questBoard.map((entry) =>
+        entry.id === quest.id
+          ? {
+            ...entry,
+            status: entry.status === 'completed' ? 'open' : 'completed'
+          }
+          : entry
+      );
+      renderQuestBoard();
+      saveState();
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost';
+    remove.textContent = 'Delete';
+    remove.addEventListener('click', () => {
+      questBoard = questBoard.filter((entry) => entry.id !== quest.id);
+      renderQuestBoard();
+      saveState();
+    });
+    actions.append(toggle, remove);
+
+    item.append(header, meta, notes, actions);
+    questList.appendChild(item);
+  });
+};
+
+const renderDowntimeTracker = () => {
+  if (!downtimeList) {
+    return;
+  }
+  downtimeList.innerHTML = '';
+  if (downtimeEntries.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No downtime logged yet.';
+    downtimeList.appendChild(item);
+    return;
+  }
+  downtimeEntries.forEach((entry) => {
+    const item = document.createElement('li');
+    item.className = 'quest-item';
+
+    const header = document.createElement('div');
+    header.className = 'quest-header';
+    const title = document.createElement('span');
+    title.textContent = `${entry.character}: ${entry.activity}`;
+    const status = document.createElement('span');
+    status.className = 'timeline-tag';
+    status.textContent = 'downtime';
+    header.append(title, status);
+
+    const meta = document.createElement('div');
+    meta.className = 'timeline-meta';
+    meta.textContent = `Start Day ${entry.start.day}, Month ${entry.start.month}, Year ${entry.start.year} → End Day ${entry.end.day}, Month ${entry.end.month}, Year ${entry.end.year}`;
+
+    const notes = document.createElement('div');
+    notes.className = 'event-description';
+    notes.textContent = entry.notes || 'No notes provided.';
+
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost';
+    remove.textContent = 'Delete';
+    remove.addEventListener('click', () => {
+      downtimeEntries = downtimeEntries.filter((itemEntry) => itemEntry.id !== entry.id);
+      renderDowntimeTracker();
+      saveState();
+    });
+    actions.append(remove);
+
+    item.append(header, meta, notes, actions);
+    downtimeList.appendChild(item);
+  });
+};
+
 const handleMapDragStart = (event) => {
   if (!mapViewport) {
     return;
@@ -1355,18 +1516,47 @@ const renderCombatLog = () => {
 
 const normalizeConditions = (conditions) => {
   if (Array.isArray(conditions)) {
-    return conditions.map((condition) => String(condition).trim()).filter(Boolean);
+    return conditions
+      .map((condition) => {
+        if (!condition) {
+          return null;
+        }
+        if (typeof condition === 'string') {
+          return { name: condition.trim(), duration: null, unit: null };
+        }
+        if (typeof condition === 'object') {
+          return {
+            name: String(condition.name || '').trim(),
+            duration: Number.isFinite(condition.duration) ? condition.duration : null,
+            unit: condition.unit || null
+          };
+        }
+        return null;
+      })
+      .filter((condition) => condition && condition.name.length > 0);
   }
   if (typeof conditions === 'string') {
     return conditions
       .split(',')
       .map((condition) => condition.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((name) => ({ name, duration: null, unit: null }));
   }
   return [];
 };
 
-const addConditionToMember = (memberId, value) => {
+const formatConditionLabel = (condition) => {
+  if (!condition) {
+    return '';
+  }
+  const name = condition.name;
+  if (condition.duration && condition.unit) {
+    return `${name} • ${condition.duration} ${condition.unit}`;
+  }
+  return name;
+};
+
+const addConditionToMember = (memberId, value, duration, unit) => {
   const condition = String(value || '').trim();
   if (!condition) {
     return;
@@ -1376,20 +1566,29 @@ const addConditionToMember = (memberId, value) => {
     return;
   }
   const conditions = normalizeConditions(member.conditions);
-  if (conditions.includes(condition)) {
+  const normalized = String(condition || '').trim();
+  const durationValue = Number.isFinite(duration) ? duration : null;
+  const unitValue = durationValue ? unit : null;
+  if (conditions.some((entry) => entry.name === normalized)) {
     return;
   }
-  updatePartyMember(memberId, { conditions: [...conditions, condition] });
+  updatePartyMember(memberId, {
+    conditions: [
+      ...conditions,
+      { name: normalized, duration: durationValue, unit: unitValue }
+    ]
+  });
 };
 
-const removeConditionFromMember = (memberId, condition) => {
+const removeConditionFromMember = (memberId, conditionKey) => {
   const member = partyMembers.find((entry) => entry.id === memberId);
   if (!member) {
     return;
   }
-  const conditions = normalizeConditions(member.conditions).filter(
-    (entry) => entry !== condition
-  );
+  const conditions = normalizeConditions(member.conditions).filter((entry) => {
+    const key = `${entry.name}|${entry.duration || ''}|${entry.unit || ''}`;
+    return key !== conditionKey;
+  });
   updatePartyMember(memberId, { conditions });
 };
 
@@ -1464,6 +1663,31 @@ const renderPartyList = () => {
     conditionInput.type = 'text';
     conditionInput.placeholder = 'e.g. Burning';
     conditionInputLabel.appendChild(conditionInput);
+    const durationRow = document.createElement('div');
+    durationRow.className = 'input-row';
+    const durationLabel = document.createElement('label');
+    durationLabel.textContent = 'Duration';
+    const durationInput = document.createElement('input');
+    durationInput.type = 'number';
+    durationInput.min = '1';
+    durationLabel.appendChild(durationInput);
+    const unitLabel = document.createElement('label');
+    unitLabel.textContent = 'Unit';
+    const unitSelect = document.createElement('select');
+    [
+      { value: '', label: 'None' },
+      { value: 'rounds', label: 'Rounds' },
+      { value: 'hours', label: 'Hours' },
+      { value: 'days', label: 'Days' }
+    ].forEach((optionData) => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      unitSelect.appendChild(option);
+    });
+    unitLabel.appendChild(unitSelect);
+    durationRow.append(durationLabel, unitLabel);
+
     const conditionConfirm = document.createElement('button');
     conditionConfirm.type = 'button';
     conditionConfirm.className = 'primary';
@@ -1471,14 +1695,20 @@ const renderPartyList = () => {
     conditionConfirm.addEventListener('click', (event) => {
       event.stopPropagation();
       const value = conditionInput.value.trim() || conditionSelect.value;
-      addConditionToMember(member.id, value);
+      const durationValue = Number(durationInput.value);
+      const duration = Number.isNaN(durationValue) ? null : durationValue;
+      const unit = unitSelect.value || null;
+      addConditionToMember(member.id, value, duration, unit);
       conditionInput.value = '';
       conditionSelect.value = '';
+      durationInput.value = '';
+      unitSelect.value = '';
       conditionPopover.classList.remove('is-open');
     });
     conditionPopover.append(
       conditionSelectLabel,
       conditionInputLabel,
+      durationRow,
       conditionConfirm
     );
 
@@ -1486,16 +1716,17 @@ const renderPartyList = () => {
     memberConditions.forEach((condition) => {
       const tag = document.createElement('span');
       tag.className = 'condition-tag';
-      tag.textContent = condition;
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'condition-remove';
-    remove.setAttribute('aria-label', `Remove ${condition}`);
-    remove.textContent = '✕';
-    remove.addEventListener('click', (event) => {
-      event.stopPropagation();
-      removeConditionFromMember(member.id, condition);
-    });
+      tag.textContent = formatConditionLabel(condition);
+      const key = `${condition.name}|${condition.duration || ''}|${condition.unit || ''}`;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'condition-remove';
+      remove.setAttribute('aria-label', `Remove ${condition.name}`);
+      remove.textContent = '✕';
+      remove.addEventListener('click', (event) => {
+        event.stopPropagation();
+        removeConditionFromMember(member.id, key);
+      });
       tag.appendChild(remove);
       conditionTags.appendChild(tag);
     });
@@ -1869,7 +2100,9 @@ const addPartyToEncounter = () => {
     maxHp: member.maxHp,
     currentHp: member.currentHp ?? member.maxHp,
     initiative: null,
-    conditions: normalizeConditions(member.conditions).join(', '),
+    conditions: normalizeConditions(member.conditions)
+      .map((condition) => condition.name)
+      .join(', '),
     notes: '',
     avatar: null
   }));
@@ -2377,14 +2610,15 @@ const renderPartyProfile = () => {
     conditions.forEach((condition) => {
       const tag = document.createElement('span');
       tag.className = 'condition-tag';
-      tag.textContent = condition;
+      tag.textContent = formatConditionLabel(condition);
+      const key = `${condition.name}|${condition.duration || ''}|${condition.unit || ''}`;
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'condition-remove';
-      remove.setAttribute('aria-label', `Remove ${condition}`);
+      remove.setAttribute('aria-label', `Remove ${condition.name}`);
       remove.textContent = '✕';
       remove.addEventListener('click', () => {
-        removeConditionFromMember(selectedPartyMemberId, condition);
+        removeConditionFromMember(selectedPartyMemberId, key);
       });
       tag.appendChild(remove);
       partyProfileConditionTags.appendChild(tag);
@@ -2903,6 +3137,126 @@ if (resetPartyDeathSavesButton) {
     updatePartyDeathSaves(0, 0);
   });
 }
+if (addQuestButton) {
+  addQuestButton.addEventListener('click', () => {
+    if (!questTitleInput) {
+      return;
+    }
+    const title = questTitleInput.value.trim();
+    if (!title) {
+      questTitleInput.focus();
+      return;
+    }
+    const deadlineDay = Number(questDeadlineDayInput?.value);
+    const deadlineMonth = Number(questDeadlineMonthInput?.value);
+    const deadlineYear = Number(questDeadlineYearInput?.value);
+    const hasDeadline =
+      Number.isFinite(deadlineDay) &&
+      Number.isFinite(deadlineMonth) &&
+      Number.isFinite(deadlineYear);
+    const deadline = hasDeadline
+      ? {
+        day: Math.max(1, deadlineDay),
+        month: Math.max(1, deadlineMonth),
+        year: Math.max(1, deadlineYear)
+      }
+      : null;
+    const quest = {
+      id: crypto.randomUUID(),
+      title,
+      status: questStatusInput?.value || 'open',
+      deadline,
+      notes: questNotesInput?.value.trim() || ''
+    };
+    questBoard = [...questBoard, quest];
+    questTitleInput.value = '';
+    if (questNotesInput) {
+      questNotesInput.value = '';
+    }
+    if (questDeadlineDayInput) {
+      questDeadlineDayInput.value = '';
+    }
+    if (questDeadlineMonthInput) {
+      questDeadlineMonthInput.value = '';
+    }
+    if (questDeadlineYearInput) {
+      questDeadlineYearInput.value = '';
+    }
+    renderQuestBoard();
+    saveState();
+  });
+}
+if (addDowntimeButton) {
+  addDowntimeButton.addEventListener('click', () => {
+    if (!downtimeCharacterInput || !downtimeActivityInput) {
+      return;
+    }
+    const character = downtimeCharacterInput.value.trim();
+    const activity = downtimeActivityInput.value.trim();
+    if (!character || !activity) {
+      downtimeCharacterInput.focus();
+      return;
+    }
+    const startDay = Number(downtimeStartDayInput?.value);
+    const startMonth = Number(downtimeStartMonthInput?.value);
+    const startYear = Number(downtimeStartYearInput?.value);
+    const endDay = Number(downtimeEndDayInput?.value);
+    const endMonth = Number(downtimeEndMonthInput?.value);
+    const endYear = Number(downtimeEndYearInput?.value);
+    if (
+      !Number.isFinite(startDay) ||
+      !Number.isFinite(startMonth) ||
+      !Number.isFinite(startYear) ||
+      !Number.isFinite(endDay) ||
+      !Number.isFinite(endMonth) ||
+      !Number.isFinite(endYear)
+    ) {
+      return;
+    }
+    const downtimeEntry = {
+      id: crypto.randomUUID(),
+      character,
+      activity,
+      start: {
+        day: Math.max(1, startDay),
+        month: Math.max(1, startMonth),
+        year: Math.max(1, startYear)
+      },
+      end: {
+        day: Math.max(1, endDay),
+        month: Math.max(1, endMonth),
+        year: Math.max(1, endYear)
+      },
+      notes: downtimeNotesInput?.value.trim() || ''
+    };
+    downtimeEntries = [...downtimeEntries, downtimeEntry];
+    downtimeCharacterInput.value = '';
+    downtimeActivityInput.value = '';
+    if (downtimeNotesInput) {
+      downtimeNotesInput.value = '';
+    }
+    if (downtimeStartDayInput) {
+      downtimeStartDayInput.value = '';
+    }
+    if (downtimeStartMonthInput) {
+      downtimeStartMonthInput.value = '';
+    }
+    if (downtimeStartYearInput) {
+      downtimeStartYearInput.value = '';
+    }
+    if (downtimeEndDayInput) {
+      downtimeEndDayInput.value = '';
+    }
+    if (downtimeEndMonthInput) {
+      downtimeEndMonthInput.value = '';
+    }
+    if (downtimeEndYearInput) {
+      downtimeEndYearInput.value = '';
+    }
+    renderDowntimeTracker();
+    saveState();
+  });
+}
 if (partyProfileCurrentHp) {
   partyProfileCurrentHp.addEventListener('input', () => {
     if (!selectedPartyMemberId) {
@@ -2976,12 +3330,21 @@ if (partyProfileConditionConfirm) {
     const value =
       partyProfileConditionInput?.value.trim() ||
       partyProfileConditionSelect?.value;
-    addConditionToMember(selectedPartyMemberId, value);
+    const durationValue = Number(partyProfileConditionDuration?.value);
+    const duration = Number.isNaN(durationValue) ? null : durationValue;
+    const unit = partyProfileConditionUnit?.value || null;
+    addConditionToMember(selectedPartyMemberId, value, duration, unit);
     if (partyProfileConditionInput) {
       partyProfileConditionInput.value = '';
     }
     if (partyProfileConditionSelect) {
       partyProfileConditionSelect.value = '';
+    }
+    if (partyProfileConditionDuration) {
+      partyProfileConditionDuration.value = '';
+    }
+    if (partyProfileConditionUnit) {
+      partyProfileConditionUnit.value = '';
     }
     partyProfileConditionPopover?.classList.remove('is-open');
   });
@@ -3211,7 +3574,9 @@ if (exportWorldButton) {
       encounterPresets,
       worldStats,
       worldMap,
-      worldNotes
+      worldNotes,
+      questBoard,
+      downtimeEntries
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -3279,7 +3644,11 @@ if (importWorldInput) {
               ? parsed.worldMap.markers
               : []
           },
-          worldNotes: parsed.worldNotes || ''
+          worldNotes: parsed.worldNotes || '',
+          questBoard: Array.isArray(parsed.questBoard) ? parsed.questBoard : [],
+          downtimeEntries: Array.isArray(parsed.downtimeEntries)
+            ? parsed.downtimeEntries
+            : []
         };
         worlds[world.id] = world;
         activeWorldId = world.id;
@@ -3351,6 +3720,8 @@ const initializeDefaults = async () => {
   renderStats();
   renderWorldMap();
   renderEncounterPresets();
+  renderQuestBoard();
+  renderDowntimeTracker();
 };
 
 initializeDefaults().then(() => {
