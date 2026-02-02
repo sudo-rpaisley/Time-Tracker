@@ -31,11 +31,29 @@
               New Book Name
               <input type="text" id="monsterBookNameInput" placeholder="e.g. Official Manual" />
             </label>
+            <label>
+              Edition
+              <input type="text" id="monsterBookEditionInput" placeholder="e.g. 5e" />
+            </label>
+            <label>
+              Cover Image URL
+              <input type="url" id="monsterBookCoverInput" placeholder="https://..." />
+            </label>
+            <label>
+              Book Source
+              <select id="monsterBookSourceInput">
+                <option value="core">Core</option>
+                <option value="user" selected>User</option>
+              </select>
+            </label>
           </div>
           <div class="button-row">
             <button class="ghost" id="addMonsterBookButton" type="button">Add Book</button>
             <button class="ghost" id="exportMonsterBookButton" type="button">
               Export Book JSON
+            </button>
+            <button class="ghost" id="saveMonsterBookButton" type="button">
+              Save Book to Library
             </button>
           </div>
           <p class="helper-text" id="monsterBookError" role="alert"></p>
@@ -99,6 +117,15 @@
 
       <div class="controls monster-list-panel" id="monsterListPanel">
         <div class="control-group">
+          <div class="monster-book-tiles">
+            <div class="monster-book-tiles-header">
+              <h3>
+                Monster Books
+                <span title="Toggle books on/off to include their monsters in the list."> ⓘ </span>
+              </h3>
+            </div>
+            <div class="monster-book-grid" id="monsterBookTiles"></div>
+          </div>
           <div class="input-row">
             <label>
               Search
