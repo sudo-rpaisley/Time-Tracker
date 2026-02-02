@@ -406,6 +406,9 @@ body.world-selected .nav-no-world {
 }
 
 .monster-book-tile {
+  aspect-ratio: 2 / 3;
+  width: clamp(160px, 18vw, 240px);
+  min-height: unset;
   position: relative;
   border-radius: 14px;
   padding: 16px;
@@ -446,11 +449,21 @@ body.world-selected .nav-no-world {
 }
 
 .monster-book-info {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 6px;
+  position: absolute;      /* was relative */
+  left: 0px;
+  bottom: 12px;
+  z-index: 2;
+
+  /* keep it from running off the right edge */
+  max-width: calc(100% - 28px);
+
+  /* readable over the cover */
+  padding: 10px 12px;
+  border-radius: 12px;
+  /* background: rgba(0, 0, 0, 0.45); */
+  backdrop-filter: blur(6px);
 }
+
 
 .monster-book-name {
   font-size: 1rem;
