@@ -2644,14 +2644,25 @@ const getMonsterImageModal = () => {
   const body = document.createElement('div');
   body.className = 'monster-image-modal-body';
 
-  close.addEventListener('click', () => {
+  const closeModal = () => {
     modal.hidden = true;
     body.innerHTML = '';
+  };
+
+  close.addEventListener('click', () => {
+    closeModal();
   });
   modal.addEventListener('click', (event) => {
     if (event.target === modal) {
-      modal.hidden = true;
-      body.innerHTML = '';
+      closeModal();
+    }
+  });
+  content.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !modal.hidden) {
+      closeModal();
     }
   });
 
