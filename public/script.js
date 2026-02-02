@@ -242,6 +242,7 @@ const monsterDetailContent = document.getElementById('monsterDetailContent');
 const monsterDetailRelated = document.getElementById('monsterDetailRelated');
 const closeMonsterDetailButton = document.getElementById('closeMonsterDetailButton');
 const editMonsterButton = document.getElementById('editMonsterButton');
+const deleteMonsterButton = document.getElementById('deleteMonsterButton');
 const factionNameInput = document.getElementById('factionNameInput');
 const factionInfluenceInput = document.getElementById('factionInfluenceInput');
 const factionAlignmentInput = document.getElementById('factionAlignmentInput');
@@ -566,6 +567,11 @@ const getActiveMonsterBook = () => getMonsterBookById(activeMonsterBookId);
 const setActiveMonster = (monsterId) => {
   activeMonsterId = monsterId;
   cancelMonsterEdit();
+  if (monsterId) {
+    window.location.hash = `monster=${monsterId}`;
+  } else if (window.location.hash.startsWith('#monster=')) {
+    window.location.hash = '';
+  }
   renderMonsterDetail();
 };
 
@@ -2170,28 +2176,7 @@ const renderMonsterManual = () => {
       view.addEventListener('click', () => {
         setActiveMonster(monster.id);
       });
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'ghost';
-      edit.textContent = 'Edit';
-      edit.addEventListener('click', () => {
-        startMonsterEdit(monster);
-      });
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'ghost';
-      remove.textContent = 'Remove';
-      remove.addEventListener('click', () => {
-        activeBook.monsters = activeBook.monsters.filter((entry) => entry.id !== monster.id);
-        if (activeMonsterId === monster.id) {
-          activeMonsterId = null;
-        }
-        renderMonsterManual();
-        renderCombatantPresets();
-        renderMonsterDetail();
-        saveState();
-      });
-      actions.append(view, edit, remove);
+      actions.append(view);
 
       item.append(header, meta, content, actions);
       monsterList.appendChild(item);
@@ -2235,11 +2220,17 @@ const renderMonsterDetail = () => {
     if (monsterListPanel) {
       monsterListPanel.hidden = false;
     }
+    if (deleteMonsterButton) {
+      deleteMonsterButton.hidden = true;
+    }
     return;
   }
   monsterDetailPanel.hidden = false;
   if (monsterListPanel) {
     monsterListPanel.hidden = true;
+  }
+  if (deleteMonsterButton) {
+    deleteMonsterButton.hidden = !editingMonsterId;
   }
   monsterDetailContent.innerHTML = '';
   if (monsterDetailRelated) {
@@ -2419,6 +2410,9 @@ const setMonsterEditState = (isEditing) => {
   if (cancelMonsterEditButton) {
     cancelMonsterEditButton.hidden = !isEditing;
   }
+  if (deleteMonsterButton) {
+    deleteMonsterButton.hidden = !isEditing;
+  }
 };
 
 const startMonsterEdit = (monster) => {
@@ -2448,6 +2442,29 @@ const cancelMonsterEdit = () => {
   editingMonsterId = null;
   resetMonsterForm();
   setMonsterEditState(false);
+  renderMonsterDetail();
+};
+
+const deleteActiveMonster = () => {
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook || !activeMonsterId) {
+    return;
+  }
+  const target = activeBook.monsters.find((monster) => monster.id === activeMonsterId);
+  if (!target) {
+    return;
+  }
+  const confirmed = window.confirm(`Delete ${target.name}? This cannot be undone.`);
+  if (!confirmed) {
+    return;
+  }
+  activeBook.monsters = activeBook.monsters.filter((monster) => monster.id !== target.id);
+  activeMonsterId = null;
+  cancelMonsterEdit();
+  renderMonsterManual();
+  renderCombatantPresets();
+  renderMonsterDetail();
+  saveState();
 };
 
 const updateMonsterImportError = (message = '') => {
@@ -5324,8 +5341,7 @@ if (cancelMonsterEditButton) {
 }
 if (closeMonsterDetailButton) {
   closeMonsterDetailButton.addEventListener('click', () => {
-    activeMonsterId = null;
-    renderMonsterDetail();
+    setActiveMonster(null);
   });
 }
 if (editMonsterButton) {
@@ -5338,6 +5354,9 @@ if (editMonsterButton) {
       startMonsterEdit(selected);
     }
   });
+}
+if (deleteMonsterButton) {
+  deleteMonsterButton.addEventListener('click', deleteActiveMonster);
 }
 if (addFactionButton) {
   addFactionButton.addEventListener('click', () => {
@@ -6142,4 +6161,11 @@ const initializeDefaults = async () => {
 initializeDefaults().then(() => {
   renderInitiative();
   renderProfile();
+  if (window.location.hash.startsWith('#monster=')) {
+    const monsterId = window.location.hash.replace('#monster=', '').trim();
+    if (monsterId) {
+      activeMonsterId = monsterId;
+    }
+    renderMonsterDetail();
+  }
 });
