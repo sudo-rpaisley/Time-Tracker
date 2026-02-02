@@ -662,6 +662,17 @@ const getMonsterDetailSnapshot = () => {
   }
 };
 
+const clearMonsterDetailSnapshot = () => {
+  if (typeof sessionStorage === 'undefined') {
+    return;
+  }
+  try {
+    sessionStorage.removeItem('monsterDetailSnapshot');
+  } catch (error) {
+    // Ignore storage errors.
+  }
+};
+
 const findWorldForMonsterId = (monsterId) => {
   if (!monsterId) {
     return null;
@@ -706,6 +717,9 @@ const findMonsterById = (monsterId) => {
 };
 
 const setActiveMonster = (monsterId, { syncHash = true } = {}) => {
+  if (!monsterId) {
+    clearMonsterDetailSnapshot();
+  }
   ensureWorldForMonster(monsterId);
   const match = findMonsterById(monsterId);
   if (match) {
@@ -2753,7 +2767,7 @@ const renderMonsterDetail = () => {
       selectedMonster = match.monster;
     }
   }
-  if (!selectedMonster) {
+  if (!selectedMonster && isMonsterDetailPage()) {
     const snapshot = getMonsterDetailSnapshot();
     if (snapshot?.monster && (!activeMonsterId || snapshot.monster.id === activeMonsterId)) {
       selectedMonster = snapshot.monster;
@@ -6117,6 +6131,7 @@ if (closeMonsterDetailButton) {
       window.location.href = 'monsters.html';
       return;
     }
+    clearMonsterDetailSnapshot();
     setActiveMonster(null);
   });
 }
