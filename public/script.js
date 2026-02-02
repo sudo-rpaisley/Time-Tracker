@@ -2546,10 +2546,21 @@ const renderMonsterDetail = () => {
   if (!monsterDetailPanel || !monsterDetailContent) {
     return;
   }
-  const activeBook = getActiveMonsterBook();
-  const selectedMonster = activeBook?.monsters.find(
+  let activeBook = getActiveMonsterBook();
+  let selectedMonster = activeBook?.monsters.find(
     (monster) => monster.id === activeMonsterId
   );
+  if (!selectedMonster && activeMonsterId) {
+    const match = findMonsterById(activeMonsterId);
+    if (match) {
+      activeBook = match.book;
+      activeMonsterBookId = match.book.id;
+      if (!selectedMonsterBookIds.includes(match.book.id)) {
+        selectedMonsterBookIds = [...selectedMonsterBookIds, match.book.id];
+      }
+      selectedMonster = match.monster;
+    }
+  }
   if (!selectedMonster) {
     monsterDetailPanel.hidden = true;
     if (monsterListPanel) {
