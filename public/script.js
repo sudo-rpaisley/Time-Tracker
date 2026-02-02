@@ -437,6 +437,14 @@ const parseFirstNumber = (value) => {
   return match ? Number(match[0]) : null;
 };
 
+const truncateText = (value, maxLength = 140) => {
+  const text = String(value || '').trim();
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength).trim()}…`;
+};
+
 const normalizeMonsterEntry = (entry) => {
   if (!entry || typeof entry !== 'object') {
     return null;
@@ -2141,30 +2149,19 @@ const renderMonsterManual = () => {
       ].filter(Boolean);
       extra.textContent = extraParts.join(' • ');
 
-      const notes = document.createElement('div');
-      notes.className = 'event-description';
-      notes.textContent = monster.notes || 'No notes recorded.';
+      const preview = document.createElement('div');
+      preview.className = 'event-description';
+      const previewSource = [
+        monster.notes,
+        monster.traits,
+        monster.actions,
+        monster.legendaryActions
+      ]
+        .filter(Boolean)
+        .join(' ');
+      preview.textContent = truncateText(previewSource || 'No notes recorded.', 160);
 
-      details.append(statLine, extra);
-      if (monster.traits) {
-        const traits = document.createElement('div');
-        traits.className = 'event-description';
-        traits.textContent = `Traits: ${monster.traits}`;
-        details.appendChild(traits);
-      }
-      if (monster.actions) {
-        const actions = document.createElement('div');
-        actions.className = 'event-description';
-        actions.textContent = `Actions: ${monster.actions}`;
-        details.appendChild(actions);
-      }
-      if (monster.legendaryActions) {
-        const legendary = document.createElement('div');
-        legendary.className = 'event-description';
-        legendary.textContent = `Legendary: ${monster.legendaryActions}`;
-        details.appendChild(legendary);
-      }
-      details.appendChild(notes);
+      details.append(statLine, extra, preview);
       content.appendChild(details);
 
       const actions = document.createElement('div');
