@@ -68,7 +68,12 @@
               placeholder="e.g. Multiattack, Displacement"
             ></textarea>
           </label>
-          <button class="primary" id="addMonsterButton" type="button">Add Monster</button>
+          <div class="button-row">
+            <button class="primary" id="addMonsterButton" type="button">Add Monster</button>
+            <button class="ghost" id="cancelMonsterEditButton" type="button" hidden>
+              Cancel Edit
+            </button>
+          </div>
         </div>
 
         <div class="quest-card">
@@ -88,7 +93,7 @@
         </div>
       </div>
 
-      <div class="controls">
+      <div class="controls monster-list-panel" id="monsterListPanel">
         <div class="control-group">
           <div class="input-row">
             <label>
@@ -99,6 +104,18 @@
           <ul class="quest-list" id="monsterList"></ul>
         </div>
       </div>
+      <section class="monster-detail-panel" id="monsterDetailPanel" hidden>
+        <div class="monster-detail-header">
+          <button class="ghost" id="closeMonsterDetailButton" type="button">
+            Back to list
+          </button>
+          <div class="button-row">
+            <button class="ghost" id="editMonsterButton" type="button">Edit Monster</button>
+          </div>
+        </div>
+        <div id="monsterDetailContent"></div>
+        <div class="monster-related" id="monsterDetailRelated"></div>
+      </section>
     </section>
 
     @@include('partials/modals.html')

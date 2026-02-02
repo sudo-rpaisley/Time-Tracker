@@ -226,6 +226,7 @@ const monsterMaxHpInput = document.getElementById('monsterMaxHpInput');
 const monsterNotesInput = document.getElementById('monsterNotesInput');
 const monsterImageInput = document.getElementById('monsterImageInput');
 const addMonsterButton = document.getElementById('addMonsterButton');
+const cancelMonsterEditButton = document.getElementById('cancelMonsterEditButton');
 const monsterList = document.getElementById('monsterList');
 const monsterImportInput = document.getElementById('monsterImportInput');
 const monsterImportError = document.getElementById('monsterImportError');
@@ -235,6 +236,12 @@ const monsterBookNameInput = document.getElementById('monsterBookNameInput');
 const addMonsterBookButton = document.getElementById('addMonsterBookButton');
 const exportMonsterBookButton = document.getElementById('exportMonsterBookButton');
 const monsterBookError = document.getElementById('monsterBookError');
+const monsterListPanel = document.getElementById('monsterListPanel');
+const monsterDetailPanel = document.getElementById('monsterDetailPanel');
+const monsterDetailContent = document.getElementById('monsterDetailContent');
+const monsterDetailRelated = document.getElementById('monsterDetailRelated');
+const closeMonsterDetailButton = document.getElementById('closeMonsterDetailButton');
+const editMonsterButton = document.getElementById('editMonsterButton');
 const factionNameInput = document.getElementById('factionNameInput');
 const factionInfluenceInput = document.getElementById('factionInfluenceInput');
 const factionAlignmentInput = document.getElementById('factionAlignmentInput');
@@ -319,6 +326,8 @@ let campaignMilestones = [];
 let encounterPlans = [];
 let monsterBooks = [];
 let activeMonsterBookId = null;
+let activeMonsterId = null;
+let editingMonsterId = null;
 const updateWorldNotes = (value) => {
   worldNotes = value;
   saveState();
@@ -554,6 +563,12 @@ const getMonsterBookById = (id) =>
 
 const getActiveMonsterBook = () => getMonsterBookById(activeMonsterBookId);
 
+const setActiveMonster = (monsterId) => {
+  activeMonsterId = monsterId;
+  cancelMonsterEdit();
+  renderMonsterDetail();
+};
+
 const getMonsterBookByName = (name) => {
   const key = String(name || '').trim().toLowerCase();
   if (!key) {
@@ -779,8 +794,11 @@ const deleteWorld = () => {
     setWorldSelectedState(false);
     monsterBooks = [];
     activeMonsterBookId = null;
+    activeMonsterId = null;
+    editingMonsterId = null;
     renderMonsterManual();
     renderCombatantPresets();
+    renderMonsterDetail();
   }
   return true;
 };
@@ -1029,6 +1047,8 @@ const setActiveWorld = (worldId) => {
   if (!getMonsterBookById(activeMonsterBookId) && monsterBooks.length > 0) {
     activeMonsterBookId = monsterBooks[0].id;
   }
+  activeMonsterId = null;
+  editingMonsterId = null;
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers.map((member) => ({
       ...member,
@@ -1087,6 +1107,7 @@ const setActiveWorld = (worldId) => {
   renderEncounterPlans();
   renderMonsterManual();
   renderCombatantPresets();
+  renderMonsterDetail();
   saveState();
 };
 
@@ -2142,17 +2163,35 @@ const renderMonsterManual = () => {
 
       const actions = document.createElement('div');
       actions.className = 'button-row';
+      const view = document.createElement('button');
+      view.type = 'button';
+      view.className = 'ghost';
+      view.textContent = 'View';
+      view.addEventListener('click', () => {
+        setActiveMonster(monster.id);
+      });
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'ghost';
+      edit.textContent = 'Edit';
+      edit.addEventListener('click', () => {
+        startMonsterEdit(monster);
+      });
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'ghost';
       remove.textContent = 'Remove';
       remove.addEventListener('click', () => {
         activeBook.monsters = activeBook.monsters.filter((entry) => entry.id !== monster.id);
+        if (activeMonsterId === monster.id) {
+          activeMonsterId = null;
+        }
         renderMonsterManual();
         renderCombatantPresets();
+        renderMonsterDetail();
         saveState();
       });
-      actions.append(remove);
+      actions.append(view, edit, remove);
 
       item.append(header, meta, content, actions);
       monsterList.appendChild(item);
@@ -2181,6 +2220,234 @@ const renderCombatantPresets = () => {
       option.textContent = preset.name;
       combatantPresetSelect.appendChild(option);
     });
+};
+
+const renderMonsterDetail = () => {
+  if (!monsterDetailPanel || !monsterDetailContent) {
+    return;
+  }
+  const activeBook = getActiveMonsterBook();
+  const selectedMonster = activeBook?.monsters.find(
+    (monster) => monster.id === activeMonsterId
+  );
+  if (!selectedMonster) {
+    monsterDetailPanel.hidden = true;
+    if (monsterListPanel) {
+      monsterListPanel.hidden = false;
+    }
+    return;
+  }
+  monsterDetailPanel.hidden = false;
+  if (monsterListPanel) {
+    monsterListPanel.hidden = true;
+  }
+  monsterDetailContent.innerHTML = '';
+  if (monsterDetailRelated) {
+    monsterDetailRelated.innerHTML = '';
+  }
+
+  const block = document.createElement('div');
+  block.className = 'stat-block';
+
+  const header = document.createElement('div');
+  header.className = 'stat-block-header';
+  const title = document.createElement('h2');
+  title.textContent = selectedMonster.name;
+  const meta = document.createElement('div');
+  meta.className = 'stat-block-meta';
+  meta.textContent = selectedMonster.meta || selectedMonster.type || '';
+  header.append(title, meta);
+
+  const top = document.createElement('div');
+  top.className = 'stat-block-top';
+  if (selectedMonster.imageUrl) {
+    const image = document.createElement('img');
+    image.className = 'stat-block-image';
+    image.alt = selectedMonster.name;
+    image.loading = 'lazy';
+    image.src = selectedMonster.imageUrl;
+    top.appendChild(image);
+  }
+
+  const core = document.createElement('div');
+  core.className = 'stat-block-core';
+  const coreFields = [
+    ['Armor Class', selectedMonster.armorClass],
+    [
+      'Hit Points',
+      selectedMonster.hitPoints ||
+        (Number.isFinite(selectedMonster.maxHp) ? selectedMonster.maxHp : '')
+    ],
+    ['Speed', selectedMonster.speed]
+  ];
+  coreFields.forEach(([label, value]) => {
+    if (!value) {
+      return;
+    }
+    const row = document.createElement('div');
+    row.className = 'stat-block-row';
+    const labelEl = document.createElement('span');
+    labelEl.textContent = `${label} `;
+    const valueEl = document.createElement('span');
+    valueEl.textContent = value;
+    row.append(labelEl, valueEl);
+    core.appendChild(row);
+  });
+
+  const abilities = document.createElement('div');
+  abilities.className = 'stat-block-abilities';
+  const abilityData = [
+    ['STR', selectedMonster.stats?.str, selectedMonster.stats?.strMod],
+    ['DEX', selectedMonster.stats?.dex, selectedMonster.stats?.dexMod],
+    ['CON', selectedMonster.stats?.con, selectedMonster.stats?.conMod],
+    ['INT', selectedMonster.stats?.int, selectedMonster.stats?.intMod],
+    ['WIS', selectedMonster.stats?.wis, selectedMonster.stats?.wisMod],
+    ['CHA', selectedMonster.stats?.cha, selectedMonster.stats?.chaMod]
+  ];
+  abilityData.forEach(([label, score, mod]) => {
+    if (!score) {
+      return;
+    }
+    const cell = document.createElement('div');
+    cell.className = 'stat-block-ability';
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+    const valueEl = document.createElement('strong');
+    valueEl.textContent = mod ? `${score} ${mod}` : score;
+    cell.append(labelEl, valueEl);
+    abilities.appendChild(cell);
+  });
+
+  const sections = [];
+  const addSection = (titleText, contentText) => {
+    if (!contentText) {
+      return;
+    }
+    const section = document.createElement('div');
+    section.className = 'stat-block-section';
+    const titleEl = document.createElement('h3');
+    titleEl.textContent = titleText;
+    const bodyEl = document.createElement('p');
+    bodyEl.textContent = contentText;
+    section.append(titleEl, bodyEl);
+    sections.push(section);
+  };
+
+  addSection('Saving Throws', selectedMonster.savingThrows);
+  addSection('Skills', selectedMonster.skills);
+  addSection('Senses', selectedMonster.senses);
+  addSection('Languages', selectedMonster.languages);
+  addSection('Challenge', selectedMonster.challenge);
+  addSection('Traits', selectedMonster.traits);
+  addSection('Actions', selectedMonster.actions);
+  addSection('Legendary Actions', selectedMonster.legendaryActions);
+  addSection('Notes', selectedMonster.notes);
+
+  top.appendChild(core);
+  block.append(header, top, abilities, ...sections);
+  monsterDetailContent.appendChild(block);
+
+  if (monsterDetailRelated) {
+    const related = monsterBooks
+      .filter((book) => book.id !== activeBook?.id)
+      .flatMap((book) =>
+        book.monsters
+          .filter(
+            (monster) => monster.name.toLowerCase() === selectedMonster.name.toLowerCase()
+          )
+          .map((monster) => ({ ...monster, bookName: book.name, bookId: book.id }))
+      );
+    if (related.length > 0) {
+      const heading = document.createElement('h3');
+      heading.textContent = 'Other versions';
+      monsterDetailRelated.appendChild(heading);
+      const list = document.createElement('div');
+      list.className = 'monster-related-list';
+      related.forEach((monster) => {
+        const card = document.createElement('div');
+        card.className = 'monster-related-card';
+        const title = document.createElement('strong');
+        title.textContent = `${monster.name} (${monster.bookName})`;
+        const meta = document.createElement('div');
+        meta.className = 'monster-meta';
+        meta.textContent = monster.meta || monster.type || '';
+        const view = document.createElement('button');
+        view.type = 'button';
+        view.className = 'ghost';
+        view.textContent = 'View';
+        view.addEventListener('click', () => {
+          activeMonsterBookId = monster.bookId;
+          activeMonsterId = monster.id;
+          renderMonsterManual();
+          renderCombatantPresets();
+          renderMonsterDetail();
+          saveState();
+        });
+        card.append(title, meta, view);
+        list.appendChild(card);
+      });
+      monsterDetailRelated.appendChild(list);
+    }
+  }
+};
+
+const resetMonsterForm = () => {
+  if (monsterNameInput) {
+    monsterNameInput.value = '';
+  }
+  if (monsterTypeInput) {
+    monsterTypeInput.value = '';
+  }
+  if (monsterMaxHpInput) {
+    monsterMaxHpInput.value = '';
+  }
+  if (monsterImageInput) {
+    monsterImageInput.value = '';
+  }
+  if (monsterNotesInput) {
+    monsterNotesInput.value = '';
+  }
+};
+
+const setMonsterEditState = (isEditing) => {
+  if (!isEditing) {
+    editingMonsterId = null;
+  }
+  if (addMonsterButton) {
+    addMonsterButton.textContent = isEditing ? 'Save Monster' : 'Add Monster';
+  }
+  if (cancelMonsterEditButton) {
+    cancelMonsterEditButton.hidden = !isEditing;
+  }
+};
+
+const startMonsterEdit = (monster) => {
+  if (!monster) {
+    return;
+  }
+  editingMonsterId = monster.id;
+  if (monsterNameInput) {
+    monsterNameInput.value = monster.name || '';
+  }
+  if (monsterTypeInput) {
+    monsterTypeInput.value = monster.type || '';
+  }
+  if (monsterMaxHpInput) {
+    monsterMaxHpInput.value = Number.isFinite(monster.maxHp) ? monster.maxHp : '';
+  }
+  if (monsterImageInput) {
+    monsterImageInput.value = monster.imageUrl || '';
+  }
+  if (monsterNotesInput) {
+    monsterNotesInput.value = monster.notes || '';
+  }
+  setMonsterEditState(true);
+};
+
+const cancelMonsterEdit = () => {
+  editingMonsterId = null;
+  resetMonsterForm();
+  setMonsterEditState(false);
 };
 
 const updateMonsterImportError = (message = '') => {
@@ -2268,6 +2535,49 @@ const handleAddMonster = () => {
   const maxHp = Number.isNaN(maxHpValue) ? null : Math.max(0, maxHpValue);
   const imageUrl = monsterImageInput?.value.trim() || '';
   const notes = monsterNotesInput?.value.trim() || '';
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook) {
+    updateMonsterBookError('Create a monster book first.');
+    return;
+  }
+  if (editingMonsterId) {
+    const existing = activeBook.monsters.find((monster) => monster.id === editingMonsterId);
+    if (!existing) {
+      updateMonsterImportError('Select a monster to edit.');
+      return;
+    }
+    const duplicate = activeBook.monsters.find(
+      (monster) =>
+        monster.id !== existing.id &&
+        monster.name.toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) {
+      updateMonsterImportError('Another monster with that name already exists.');
+      return;
+    }
+    const meta =
+      existing.meta && existing.meta !== existing.type ? existing.meta : type;
+    const updated = {
+      ...existing,
+      name,
+      type,
+      meta,
+      maxHp,
+      imageUrl,
+      notes
+    };
+    activeBook.monsters = activeBook.monsters.map((monster) =>
+      monster.id === existing.id ? updated : monster
+    );
+    updateMonsterImportError('');
+    setMonsterEditState(false);
+    resetMonsterForm();
+    renderMonsterManual();
+    renderMonsterDetail();
+    renderCombatantPresets();
+    saveState();
+    return;
+  }
   const entry = normalizeMonsterEntry({
     name,
     type,
@@ -2280,20 +2590,10 @@ const handleAddMonster = () => {
   }
   updateMonsterImportError('');
   if (addMonsterToManual(entry)) {
-    monsterNameInput.value = '';
-    if (monsterTypeInput) {
-      monsterTypeInput.value = '';
+    resetMonsterForm();
+    if (monsterNameInput) {
+      monsterNameInput.focus();
     }
-    if (monsterMaxHpInput) {
-      monsterMaxHpInput.value = '';
-    }
-    if (monsterImageInput) {
-      monsterImageInput.value = '';
-    }
-    if (monsterNotesInput) {
-      monsterNotesInput.value = '';
-    }
-    monsterNameInput.focus();
   }
 };
 
@@ -4995,9 +5295,12 @@ if (importMonstersButton) {
 if (monsterBookSelect) {
   monsterBookSelect.addEventListener('change', () => {
     activeMonsterBookId = monsterBookSelect.value || null;
+    activeMonsterId = null;
+    cancelMonsterEdit();
     updateMonsterBookError('');
     renderMonsterManual();
     renderCombatantPresets();
+    renderMonsterDetail();
     saveState();
   });
 }
@@ -5015,6 +5318,26 @@ if (addMonsterBookButton) {
 }
 if (exportMonsterBookButton) {
   exportMonsterBookButton.addEventListener('click', handleExportMonsterBook);
+}
+if (cancelMonsterEditButton) {
+  cancelMonsterEditButton.addEventListener('click', cancelMonsterEdit);
+}
+if (closeMonsterDetailButton) {
+  closeMonsterDetailButton.addEventListener('click', () => {
+    activeMonsterId = null;
+    renderMonsterDetail();
+  });
+}
+if (editMonsterButton) {
+  editMonsterButton.addEventListener('click', () => {
+    const activeBook = getActiveMonsterBook();
+    const selected = activeBook?.monsters.find(
+      (monster) => monster.id === activeMonsterId
+    );
+    if (selected) {
+      startMonsterEdit(selected);
+    }
+  });
 }
 if (addFactionButton) {
   addFactionButton.addEventListener('click', () => {
@@ -5492,9 +5815,12 @@ if (leaveWorldButton) {
     activeWorldId = null;
     monsterBooks = [];
     activeMonsterBookId = null;
+    activeMonsterId = null;
+    editingMonsterId = null;
     setWorldSelectedState(false);
     renderMonsterManual();
     renderCombatantPresets();
+    renderMonsterDetail();
     saveState();
     window.location.href = 'index.html';
   });
