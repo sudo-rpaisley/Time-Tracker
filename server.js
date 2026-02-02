@@ -253,7 +253,9 @@ const server = http.createServer(async (req, res) => {
         const imagesDir = path.join(bookDir, 'images');
         ensureDir(imagesDir);
 
-        const urlBase = `/books/${source}/${folderName}`;
+        const urlBase = `/books/${encodeURIComponent(source)}/${encodeURIComponent(
+          folderName
+        )}`;
         const monsters = Array.isArray(book.monsters) ? book.monsters : [];
         const updatedMonsters = [];
 
@@ -280,7 +282,7 @@ const server = http.createServer(async (req, res) => {
             const destPath = path.join(imagesDir, imageName);
             try {
               await downloadToFile(url, destPath);
-              localUrls.push(`${urlBase}/images/${imageName}`);
+              localUrls.push(`${urlBase}/images/${encodeURIComponent(imageName)}`);
             } catch (error) {
               localUrls.push(url);
             }
@@ -298,7 +300,7 @@ const server = http.createServer(async (req, res) => {
           const coverName = `cover${ext}`;
           try {
             await downloadToFile(coverImage, path.join(bookDir, coverName));
-            coverImage = `${urlBase}/${coverName}`;
+            coverImage = `${urlBase}/${encodeURIComponent(coverName)}`;
           } catch (error) {
             // keep original URL if download fails
           }
