@@ -253,9 +253,7 @@ const server = http.createServer(async (req, res) => {
         const imagesDir = path.join(bookDir, 'images');
         ensureDir(imagesDir);
 
-        const urlBase = `/books/${encodeURIComponent(source)}/${encodeURIComponent(
-          folderName
-        )}`;
+        const urlBase = `/books/${source}/${folderName}`;
         const monsters = Array.isArray(book.monsters) ? book.monsters : [];
         const updatedMonsters = [];
 
@@ -339,16 +337,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const requestedPath = req.url === '/' ? '/index.html' : req.url;
-  const safePath = path.normalize(requestedPath).replace(/^\.\.(\/|\\)/, '');
+    const url = new URL(req.url, `http://${req.headers.host}`);
+  const requestedPath = url.pathname === '/' ? '/index.html' : url.pathname;
+
+  // URL paths should always be POSIX-style (forward slashes), even on Windows
+  const safePath = path.posix
+    .normalize(requestedPath)
+    .replace(/^(\.\.(\/|\\|$))+/, '');
+
   const isBookAsset = safePath.startsWith('/books/');
-  let bookRelativePath = safePath.replace('/books/', '');
+
+  // Turn "/foo/bar" into "foo/bar" so path.join doesn't ignore the base dir
+  const relPath = safePath.replace(/^\/+/, '');
+
+  let filePath;
   if (isBookAsset) {
-    bookRelativePath = decodeBookPath(bookRelativePath);
+    const bookRel = decodeBookPath(relPath.slice('books/'.length));
+    filePath = path.join(booksDir, ...bookRel.split('/'));
+  } else {
+    filePath = path.join(publicDir, ...relPath.split('/'));
   }
-  const filePath = isBookAsset
-    ? path.join(booksDir, bookRelativePath)
-    : path.join(publicDir, safePath);
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
