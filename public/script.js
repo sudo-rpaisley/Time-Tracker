@@ -702,11 +702,19 @@ const getMonsterIdFromHash = () => {
   return id || null;
 };
 
-const getMonsterIdFromQuery = () => {
+const getMonsterQueryParams = () => {
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
-  return id ? id.trim() : null;
+  const bookId = params.get('book');
+  const worldId = params.get('world');
+  return {
+    id: id ? id.trim() : null,
+    bookId: bookId ? bookId.trim() : null,
+    worldId: worldId ? worldId.trim() : null
+  };
 };
+
+const getMonsterIdFromQuery = () => getMonsterQueryParams().id;
 
 const isMonsterDetailPage = () => window.location.pathname.endsWith('monster.html');
 
@@ -719,6 +727,21 @@ const getMonsterIdFromLocation = () => {
     return getMonsterIdFromQuery();
   }
   return null;
+};
+
+const buildMonsterDetailUrl = ({ id, bookId, worldId } = {}) => {
+  const params = new URLSearchParams();
+  if (id) {
+    params.set('id', id);
+  }
+  if (bookId) {
+    params.set('book', bookId);
+  }
+  if (worldId) {
+    params.set('world', worldId);
+  }
+  const query = params.toString();
+  return `monster.html${query ? `?${query}` : ''}`;
 };
 
 const getMonsterBookByName = (name) => {
@@ -2462,7 +2485,11 @@ const renderMonsterManual = () => {
       view.textContent = 'View';
       view.addEventListener('click', () => {
         activeMonsterBookId = book.id;
-        window.location.href = `monster.html?id=${monster.id}`;
+        window.location.href = buildMonsterDetailUrl({
+          id: monster.id,
+          bookId: book.id,
+          worldId: activeWorldId
+        });
       });
       actions.append(view);
 
@@ -2715,7 +2742,11 @@ const renderMonsterDetail = () => {
         view.textContent = 'View';
         view.addEventListener('click', () => {
           activeMonsterBookId = monster.bookId;
-          window.location.href = `monster.html?id=${monster.id}`;
+          window.location.href = buildMonsterDetailUrl({
+            id: monster.id,
+            bookId: monster.bookId,
+            worldId: activeWorldId
+          });
         });
         card.append(title, meta, view);
         list.appendChild(card);
@@ -6614,5 +6645,17 @@ initializeDefaults().then(() => {
   renderInitiative();
   renderProfile();
   const monsterId = getMonsterIdFromLocation();
+  if (isMonsterDetailPage()) {
+    const { bookId, worldId } = getMonsterQueryParams();
+    if (worldId && worlds[worldId]) {
+      setActiveWorld(worldId);
+    }
+    if (bookId && getMonsterBookById(bookId)) {
+      activeMonsterBookId = bookId;
+      if (!selectedMonsterBookIds.includes(bookId)) {
+        selectedMonsterBookIds = [...selectedMonsterBookIds, bookId];
+      }
+    }
+  }
   setActiveMonster(monsterId, { syncHash: false });
 });
