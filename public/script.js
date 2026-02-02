@@ -1050,10 +1050,30 @@ const saveState = () => {
       selectedMonsterBookIds
     };
   }
+  const payloadWorlds = Object.fromEntries(
+    Object.entries(worlds).map(([worldId, world]) => {
+      const { monsterBooks: storedMonsterBooks, ...rest } = world;
+      const bookIds = Array.isArray(world.monsterBookIds)
+        ? world.monsterBookIds
+        : Array.isArray(storedMonsterBooks)
+          ? storedMonsterBooks.map((book) => book.id).filter(Boolean)
+          : [];
+      return [
+        worldId,
+        {
+          ...rest,
+          monsterBookIds: bookIds,
+          selectedMonsterBookIds: Array.isArray(world.selectedMonsterBookIds)
+            ? world.selectedMonsterBookIds
+            : []
+        }
+      ];
+    })
+  );
   fetch('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ worlds, activeWorldId })
+    body: JSON.stringify({ worlds: payloadWorlds, activeWorldId })
   }).catch((error) => {
     console.error('Failed to save state', error);
   });

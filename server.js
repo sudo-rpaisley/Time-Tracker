@@ -1,11 +1,15 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const port = process.env.PORT || 3000;
 const publicDir = path.join(__dirname, 'public');
-const dataFile = path.join(__dirname, 'data.json');
 const booksDir = path.join(__dirname, 'books');
+const dataDir = path.join(__dirname, 'data');
+const stateFile = path.join(dataDir, 'state.json');
+const worldsDir = path.join(dataDir, 'worlds');
+const booksIndexFile = path.join(dataDir, 'books-index.json');
 
 const mimeTypes = {
   '.html': 'text/html',
@@ -22,6 +26,22 @@ const ensureDir = (dir) => {
   fs.mkdirSync(dir, { recursive: true });
 };
 
+ensureDir(dataDir);
+ensureDir(worldsDir);
+
+const readJsonFile = async (filePath, fallback = null) => {
+  try {
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    return fallback;
+  }
+};
+
+const writeJsonFile = async (filePath, payload) => {
+  await fs.promises.writeFile(filePath, JSON.stringify(payload, null, 2));
+};
+
 const sanitizeFolderName = (name) =>
   name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim() || 'book';
 
@@ -29,6 +49,59 @@ const slugify = (value) =>
   value.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'book';
 
 const normalizeBookSource = (source) => (source === 'core' ? 'core' : 'user');
+
+const loadBooksIndex = async () => {
+  const index = await readJsonFile(booksIndexFile, null);
+  if (index && typeof index === 'object') {
+    return index;
+  }
+  const result = {};
+  const sources = ['core', 'user'];
+  for (const source of sources) {
+    const sourceDir = path.join(booksDir, source);
+    try {
+      const entries = await fs.promises.readdir(sourceDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+        const bookFolder = entry.name;
+        const folderPath = path.join(sourceDir, bookFolder);
+        const files = await fs.promises.readdir(folderPath);
+        const jsonFile = files.find((file) => file.endsWith('.json'));
+        if (!jsonFile) {
+          continue;
+        }
+        const bookData = await readJsonFile(path.join(folderPath, jsonFile), null);
+        if (!bookData || !bookData.id) {
+          continue;
+        }
+        result[bookData.id] = {
+          source,
+          folderName: bookFolder,
+          fileName: jsonFile
+        };
+      }
+    } catch (error) {
+      // ignore missing directories
+    }
+  }
+  await writeJsonFile(booksIndexFile, result);
+  return result;
+};
+
+const loadBookById = async (bookId) => {
+  if (!bookId) {
+    return null;
+  }
+  const index = await loadBooksIndex();
+  const entry = index[bookId];
+  if (!entry) {
+    return null;
+  }
+  const bookPath = path.join(booksDir, entry.source, entry.folderName, entry.fileName);
+  return readJsonFile(bookPath, null);
+};
 
 const downloadToFile = async (url, destination) => {
   const response = await fetch(url);
@@ -42,15 +115,41 @@ const downloadToFile = async (url, destination) => {
 const server = http.createServer(async (req, res) => {
   if (req.url === '/api/state') {
     if (req.method === 'GET') {
-      fs.readFile(dataFile, 'utf8', (err, data) => {
-        if (err) {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({}));
-          return;
-        }
+      const state = await readJsonFile(stateFile, null);
+      if (!state || typeof state !== 'object') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(data);
-      });
+        res.end(JSON.stringify({}));
+        return;
+      }
+      const worldIds = Array.isArray(state.worldIds) ? state.worldIds : [];
+      const worlds = {};
+      for (const worldId of worldIds) {
+        const worldPath = path.join(worldsDir, `${worldId}.json`);
+        const world = await readJsonFile(worldPath, null);
+        if (!world) {
+          continue;
+        }
+        const bookIds = Array.isArray(world.monsterBookIds)
+          ? world.monsterBookIds
+          : [];
+        const monsterBooks = [];
+        for (const bookId of bookIds) {
+          const book = await loadBookById(bookId);
+          if (book) {
+            monsterBooks.push(book);
+          }
+        }
+        worlds[worldId] = {
+          ...world,
+          monsterBooks,
+          activeMonsterBookId: world.activeMonsterBookId || monsterBooks[0]?.id || null,
+          selectedMonsterBookIds: Array.isArray(world.selectedMonsterBookIds)
+            ? world.selectedMonsterBookIds
+            : monsterBooks.map((book) => book.id)
+        };
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ worlds, activeWorldId: state.activeWorldId || null }));
       return;
     }
 
@@ -59,18 +158,39 @@ const server = http.createServer(async (req, res) => {
       req.on('data', (chunk) => {
         body += chunk;
       });
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
-          JSON.parse(body);
-          fs.writeFile(dataFile, body, 'utf8', (err) => {
-            if (err) {
-              res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Failed to save state' }));
-              return;
+          const parsed = JSON.parse(body);
+          const incomingWorlds = parsed?.worlds && typeof parsed.worlds === 'object'
+            ? parsed.worlds
+            : {};
+          const worldIds = Object.keys(incomingWorlds);
+          for (const worldId of worldIds) {
+            const world = incomingWorlds[worldId];
+            if (!world) {
+              continue;
             }
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: true }));
+            const { monsterBooks, ...rest } = world;
+            const bookIds = Array.isArray(world.monsterBookIds)
+              ? world.monsterBookIds
+              : Array.isArray(monsterBooks)
+                ? monsterBooks.map((book) => book.id).filter(Boolean)
+                : [];
+            const payload = {
+              ...rest,
+              monsterBookIds: bookIds,
+              selectedMonsterBookIds: Array.isArray(world.selectedMonsterBookIds)
+                ? world.selectedMonsterBookIds
+                : []
+            };
+            await writeJsonFile(path.join(worldsDir, `${worldId}.json`), payload);
+          }
+          await writeJsonFile(stateFile, {
+            activeWorldId: parsed?.activeWorldId || null,
+            worldIds
           });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
         } catch (error) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
@@ -94,6 +214,7 @@ const server = http.createServer(async (req, res) => {
           res.end(JSON.stringify({ error: 'Missing book data.' }));
           return;
         }
+        const bookId = book.id ? String(book.id) : crypto.randomUUID();
         const source = normalizeBookSource(book.source);
         const folderName = sanitizeFolderName(
           `${book.name}${book.edition ? ` ${book.edition}` : ''}`
@@ -157,14 +278,23 @@ const server = http.createServer(async (req, res) => {
         }
 
         const payload = {
+          id: bookId,
           name: book.name,
           edition: book.edition || '',
           coverImage,
           source,
           monsters: updatedMonsters
         };
-        const filePath = path.join(bookDir, `${fileBase}.json`);
-        await fs.promises.writeFile(filePath, JSON.stringify(payload, null, 2));
+        const fileName = `${fileBase}.json`;
+        const filePath = path.join(bookDir, fileName);
+        await writeJsonFile(filePath, payload);
+        const index = await loadBooksIndex();
+        index[bookId] = {
+          source,
+          folderName,
+          fileName
+        };
+        await writeJsonFile(booksIndexFile, index);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, message: 'Book saved to library.' }));
       } catch (error) {
