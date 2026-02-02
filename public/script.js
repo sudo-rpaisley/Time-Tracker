@@ -626,6 +626,42 @@ const getMonsterBookById = (id) =>
 
 const getActiveMonsterBook = () => getMonsterBookById(activeMonsterBookId);
 
+const storeMonsterDetailSnapshot = ({ monster, book, worldId } = {}) => {
+  if (!monster || typeof sessionStorage === 'undefined') {
+    return;
+  }
+  const payload = {
+    monster,
+    bookId: book?.id || null,
+    bookName: book?.name || null,
+    worldId: worldId || null
+  };
+  try {
+    sessionStorage.setItem('monsterDetailSnapshot', JSON.stringify(payload));
+  } catch (error) {
+    // Ignore storage errors.
+  }
+};
+
+const getMonsterDetailSnapshot = () => {
+  if (typeof sessionStorage === 'undefined') {
+    return null;
+  }
+  try {
+    const raw = sessionStorage.getItem('monsterDetailSnapshot');
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    return null;
+  }
+};
+
 const findWorldForMonsterId = (monsterId) => {
   if (!monsterId) {
     return null;
@@ -2485,6 +2521,7 @@ const renderMonsterManual = () => {
       view.textContent = 'View';
       view.addEventListener('click', () => {
         activeMonsterBookId = book.id;
+        storeMonsterDetailSnapshot({ monster, book, worldId: activeWorldId });
         window.location.href = buildMonsterDetailUrl({
           id: monster.id,
           bookId: book.id,
@@ -2586,6 +2623,29 @@ const renderMonsterDetail = () => {
         selectedMonsterBookIds = [...selectedMonsterBookIds, match.book.id];
       }
       selectedMonster = match.monster;
+    }
+  }
+  if (!selectedMonster) {
+    const snapshot = getMonsterDetailSnapshot();
+    if (snapshot?.monster && (!activeMonsterId || snapshot.monster.id === activeMonsterId)) {
+      selectedMonster = snapshot.monster;
+      if (!activeMonsterId) {
+        activeMonsterId = snapshot.monster.id;
+      }
+      const snapshotBookId = snapshot.bookId || snapshot.monster.bookId;
+      if (snapshotBookId) {
+        activeMonsterBookId = snapshotBookId;
+      }
+      const existingBook = snapshotBookId ? getMonsterBookById(snapshotBookId) : null;
+      activeBook =
+        existingBook ||
+        (snapshotBookId || snapshot.bookName
+          ? {
+            id: snapshotBookId || 'snapshot-book',
+            name: snapshot.bookName || 'Monster Book',
+            monsters: [snapshot.monster]
+          }
+          : activeBook);
     }
   }
   if (!selectedMonster) {
@@ -2742,6 +2802,11 @@ const renderMonsterDetail = () => {
         view.textContent = 'View';
         view.addEventListener('click', () => {
           activeMonsterBookId = monster.bookId;
+          storeMonsterDetailSnapshot({
+            monster,
+            book: { id: monster.bookId, name: monster.bookName },
+            worldId: activeWorldId
+          });
           window.location.href = buildMonsterDetailUrl({
             id: monster.id,
             bookId: monster.bookId,
@@ -6644,16 +6709,19 @@ const initializeDefaults = async () => {
 initializeDefaults().then(() => {
   renderInitiative();
   renderProfile();
-  const monsterId = getMonsterIdFromLocation();
+  const snapshot = getMonsterDetailSnapshot();
+  const monsterId = getMonsterIdFromLocation() || snapshot?.monster?.id || null;
   if (isMonsterDetailPage()) {
     const { bookId, worldId } = getMonsterQueryParams();
-    if (worldId && worlds[worldId]) {
-      setActiveWorld(worldId);
+    const targetWorldId = worldId || snapshot?.worldId;
+    if (targetWorldId && worlds[targetWorldId]) {
+      setActiveWorld(targetWorldId);
     }
-    if (bookId && getMonsterBookById(bookId)) {
-      activeMonsterBookId = bookId;
-      if (!selectedMonsterBookIds.includes(bookId)) {
-        selectedMonsterBookIds = [...selectedMonsterBookIds, bookId];
+    const targetBookId = bookId || snapshot?.bookId;
+    if (targetBookId && getMonsterBookById(targetBookId)) {
+      activeMonsterBookId = targetBookId;
+      if (!selectedMonsterBookIds.includes(targetBookId)) {
+        selectedMonsterBookIds = [...selectedMonsterBookIds, targetBookId];
       }
     }
   }
