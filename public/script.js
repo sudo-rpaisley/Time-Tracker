@@ -433,7 +433,7 @@ const baseMonsterPresets = [
 const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim();
 
 const parseFirstNumber = (value) => {
-  const match = String(value || '').match(/-?\\d+(?:\\.\\d+)?/);
+  const match = String(value || '').match(/-?\d+(?:\.\d+)?/);
   return match ? Number(match[0]) : null;
 };
 
@@ -592,6 +592,14 @@ const setActiveMonster = (monsterId) => {
     window.location.hash = '';
   }
   renderMonsterDetail();
+};
+
+const getMonsterIdFromHash = () => {
+  if (!window.location.hash.startsWith('#monster=')) {
+    return null;
+  }
+  const id = window.location.hash.replace('#monster=', '').trim();
+  return id || null;
 };
 
 const getMonsterBookByName = (name) => {
@@ -5839,6 +5847,15 @@ document.addEventListener('click', (event) => {
     closeConditionPopovers();
   }
 });
+window.addEventListener('hashchange', () => {
+  const monsterId = getMonsterIdFromHash();
+  if (monsterId) {
+    activeMonsterId = monsterId;
+  } else {
+    activeMonsterId = null;
+  }
+  renderMonsterDetail();
+});
 if (leaveWorldButton) {
   leaveWorldButton.addEventListener('click', () => {
     activeWorldId = null;
@@ -6171,11 +6188,9 @@ const initializeDefaults = async () => {
 initializeDefaults().then(() => {
   renderInitiative();
   renderProfile();
-  if (window.location.hash.startsWith('#monster=')) {
-    const monsterId = window.location.hash.replace('#monster=', '').trim();
-    if (monsterId) {
-      activeMonsterId = monsterId;
-    }
-    renderMonsterDetail();
+  const monsterId = getMonsterIdFromHash();
+  if (monsterId) {
+    activeMonsterId = monsterId;
   }
+  renderMonsterDetail();
 });
