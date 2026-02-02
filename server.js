@@ -116,6 +116,23 @@ const downloadToFile = async (url, destination) => {
   await fs.promises.writeFile(destination, buffer);
 };
 
+const decodeBookPath = (value) => {
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch (error) {
+    return value;
+  }
+  if (/%[0-9A-Fa-f]{2}/.test(decoded)) {
+    try {
+      decoded = decodeURIComponent(decoded);
+    } catch (error) {
+      return decoded;
+    }
+  }
+  return decoded;
+};
+
 const server = http.createServer(async (req, res) => {
   if (req.url === '/api/state') {
     if (req.method === 'GET') {
@@ -325,13 +342,7 @@ const server = http.createServer(async (req, res) => {
   const isBookAsset = safePath.startsWith('/books/');
   let bookRelativePath = safePath.replace('/books/', '');
   if (isBookAsset) {
-    try {
-      bookRelativePath = decodeURIComponent(bookRelativePath);
-    } catch (error) {
-      res.writeHead(400, { 'Content-Type': 'text/plain' });
-      res.end('Bad request');
-      return;
-    }
+    bookRelativePath = decodeBookPath(bookRelativePath);
   }
   const filePath = isBookAsset
     ? path.join(booksDir, bookRelativePath)
