@@ -2631,6 +2631,7 @@ const getMonsterImageModal = () => {
   modal = document.createElement('div');
   modal.className = 'monster-image-modal';
   modal.hidden = true;
+  modal.style.display = 'none';
 
   const content = document.createElement('div');
   content.className = 'monster-image-modal-content';
@@ -2646,6 +2647,7 @@ const getMonsterImageModal = () => {
 
   const closeModal = () => {
     modal.hidden = true;
+    modal.style.display = 'none';
     body.innerHTML = '';
   };
 
@@ -2683,6 +2685,7 @@ const openMonsterImageModal = (images, name) => {
   }
   body.innerHTML = '';
   body.appendChild(createMonsterImageCarousel(images, name));
+  modal.style.display = 'grid';
   modal.hidden = false;
 };
 
