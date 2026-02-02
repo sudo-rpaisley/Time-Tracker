@@ -84,6 +84,7 @@ const interactionBackdrop = document.getElementById('interactionBackdrop');
 const closeInteractionButton = document.getElementById('closeInteractionButton');
 const interactionSummary = document.getElementById('interactionSummary');
 const interactionTypeInput = document.getElementById('interactionTypeInput');
+const interactionAmountLabel = document.getElementById('interactionAmountLabel');
 const interactionDamageInput = document.getElementById('interactionDamageInput');
 const interactionNotesInput = document.getElementById('interactionNotesInput');
 const cancelInteractionButton = document.getElementById('cancelInteractionButton');
@@ -3244,6 +3245,26 @@ const adjustTime = (milliseconds) => {
   saveState();
 };
 
+const getInteractionAmountLabel = (action) => {
+  switch (action) {
+    case 'heal':
+      return 'Healing';
+    case 'buff':
+      return 'Buff amount';
+    case 'assist':
+      return 'Assist amount';
+    case 'attack':
+    default:
+      return 'Damage';
+  }
+};
+
+const updateInteractionAmountLabel = (action) => {
+  if (interactionAmountLabel) {
+    interactionAmountLabel.textContent = getInteractionAmountLabel(action);
+  }
+};
+
 const openInteractionModal = (sourceId, targetId) => {
   if (!interactionModal || !interactionSummary || !interactionTypeInput) {
     return false;
@@ -3257,6 +3278,7 @@ const openInteractionModal = (sourceId, targetId) => {
   interactionTargetId = targetId;
   interactionSummary.textContent = `${source.name} → ${target.name}`;
   interactionTypeInput.value = 'attack';
+  updateInteractionAmountLabel('attack');
   if (interactionDamageInput) {
     interactionDamageInput.value = '';
   }
@@ -3288,12 +3310,26 @@ const logInteraction = () => {
     return false;
   }
   const action = interactionTypeInput?.value || 'attack';
-  const damageValue = Number(interactionDamageInput?.value);
-  const damage = Number.isNaN(damageValue) ? 0 : Math.max(0, damageValue);
+  const amountValue = Number(interactionDamageInput?.value);
+  const amount = Number.isNaN(amountValue) ? 0 : Math.max(0, amountValue);
   const notes = interactionNotesInput?.value.trim();
-  const appliedDamage = action === 'attack' && damage > 0;
+  const appliedDamage = action === 'attack' && amount > 0;
+  const appliedHealing = action === 'heal' && amount > 0;
   if (appliedDamage) {
-    const nextHp = Math.max(0, (target.currentHp ?? 0) - damage);
+    const nextHp = Math.max(0, (target.currentHp ?? 0) - amount);
+    combatants = combatants.map((entry) =>
+      entry.id === target.id ? { ...entry, currentHp: nextHp } : entry
+    );
+    renderInitiative();
+    if (selectedCombatantId === target.id) {
+      renderProfile();
+    }
+  }
+  if (appliedHealing) {
+    const maxHp = Number.isFinite(target.maxHp) ? target.maxHp : null;
+    const nextHp = maxHp
+      ? Math.min(maxHp, (target.currentHp ?? 0) + amount)
+      : (target.currentHp ?? 0) + amount;
     combatants = combatants.map((entry) =>
       entry.id === target.id ? { ...entry, currentHp: nextHp } : entry
     );
@@ -3304,7 +3340,11 @@ const logInteraction = () => {
   }
   const noteParts = [];
   if (appliedDamage) {
-    noteParts.push(`-${damage} HP`);
+    noteParts.push(`-${amount} HP`);
+  } else if (appliedHealing) {
+    noteParts.push(`+${amount} HP`);
+  } else if (amount > 0) {
+    noteParts.push(`+${amount}`);
   }
   if (notes) {
     noteParts.push(notes);
@@ -3390,7 +3430,7 @@ const renderInitiative = () => {
     initiativeTrack.appendChild(createDropZone(index));
     const container = document.createElement('div');
     container.className = `combatant ${combatant.type}${
-      index === currentCombatantIndex ? ' current' : ''
+      combatActive && index === currentCombatantIndex ? ' current' : ''
     }`;
     container.setAttribute('role', 'button');
     container.setAttribute('tabindex', '0');
@@ -3450,8 +3490,10 @@ const renderInitiative = () => {
 
     container.append(hpBadge, avatar, name, initiative, removeButton);
     container.addEventListener('click', () => {
-      currentCombatantIndex = index;
       selectedCombatantId = combatant.id;
+      if (!combatActive) {
+        currentCombatantIndex = index;
+      }
       renderInitiative();
       renderProfile();
       openProfileModal();
@@ -3459,8 +3501,10 @@ const renderInitiative = () => {
     container.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        currentCombatantIndex = index;
         selectedCombatantId = combatant.id;
+        if (!combatActive) {
+          currentCombatantIndex = index;
+        }
         renderInitiative();
         renderProfile();
         openProfileModal();
@@ -4720,6 +4764,11 @@ if (confirmInteractionButton) {
     if (logInteraction()) {
       closeInteractionModal();
     }
+  });
+}
+if (interactionTypeInput) {
+  interactionTypeInput.addEventListener('change', () => {
+    updateInteractionAmountLabel(interactionTypeInput.value);
   });
 }
 if (cancelInteractionButton) {
