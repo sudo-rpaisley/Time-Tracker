@@ -456,6 +456,21 @@ const getMonsterMaxHp = (monster) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const normalizeImageUrls = (value) => {
+  if (!value) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => String(entry || '').trim())
+      .filter(Boolean);
+  }
+  return String(value)
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+};
+
 const normalizeMonsterEntry = (entry) => {
   if (!entry || typeof entry !== 'object') {
     return null;
@@ -491,9 +506,16 @@ const normalizeMonsterEntry = (entry) => {
   const traits = stripHtml(entry.traits || entry.Traits || '');
   const actions = stripHtml(entry.actions || entry.Actions || '');
   const legendaryActions = stripHtml(entry.legendaryActions || entry['Legendary Actions'] || '');
-  const imageUrl = String(
-    entry.imageUrl || entry.img_url || entry.image || entry['Image URL'] || ''
-  ).trim();
+  const imageUrls = normalizeImageUrls(
+    entry.imageUrls ||
+      entry.images ||
+      entry.imageUrl ||
+      entry.img_url ||
+      entry.image ||
+      entry['Image URL'] ||
+      ''
+  );
+  const imageUrl = imageUrls[0] || '';
   const stats = {
     str: entry.STR || entry.str || '',
     dex: entry.DEX || entry.dex || '',
@@ -527,6 +549,7 @@ const normalizeMonsterEntry = (entry) => {
     actions,
     legendaryActions,
     imageUrl,
+    imageUrls,
     stats,
     notes
   };
@@ -2176,12 +2199,13 @@ const renderMonsterManual = () => {
 
       const content = document.createElement('div');
       content.className = 'monster-content';
-      if (monster.imageUrl) {
+      const previewImage = monster.imageUrls?.[0] || monster.imageUrl;
+      if (previewImage) {
         const image = document.createElement('img');
         image.className = 'monster-image';
         image.alt = monster.name;
         image.loading = 'lazy';
-        image.src = monster.imageUrl;
+        image.src = previewImage;
         content.appendChild(image);
       }
 
@@ -2265,6 +2289,53 @@ const renderCombatantPresets = () => {
     });
 };
 
+const createMonsterImageCarousel = (images, name) => {
+  const urls = normalizeImageUrls(images);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'stat-block-carousel';
+  if (urls.length === 0) {
+    return wrapper;
+  }
+  const image = document.createElement('img');
+  image.className = 'stat-block-image';
+  image.alt = name;
+  image.loading = 'lazy';
+  const controls = document.createElement('div');
+  controls.className = 'carousel-controls';
+  const prev = document.createElement('button');
+  prev.type = 'button';
+  prev.className = 'ghost';
+  prev.textContent = 'Prev';
+  const next = document.createElement('button');
+  next.type = 'button';
+  next.className = 'ghost';
+  next.textContent = 'Next';
+  const indicator = document.createElement('span');
+  indicator.className = 'carousel-indicator';
+  let index = 0;
+  const update = () => {
+    image.src = urls[index];
+    indicator.textContent = `${index + 1} / ${urls.length}`;
+    prev.disabled = urls.length <= 1;
+    next.disabled = urls.length <= 1;
+  };
+  prev.addEventListener('click', () => {
+    index = (index - 1 + urls.length) % urls.length;
+    update();
+  });
+  next.addEventListener('click', () => {
+    index = (index + 1) % urls.length;
+    update();
+  });
+  update();
+  controls.append(prev, indicator, next);
+  wrapper.append(image);
+  if (urls.length > 1) {
+    wrapper.appendChild(controls);
+  }
+  return wrapper;
+};
+
 const renderMonsterDetail = () => {
   if (!monsterDetailPanel || !monsterDetailContent) {
     return;
@@ -2309,13 +2380,14 @@ const renderMonsterDetail = () => {
 
   const top = document.createElement('div');
   top.className = 'stat-block-top';
-  if (selectedMonster.imageUrl) {
-    const image = document.createElement('img');
-    image.className = 'stat-block-image';
-    image.alt = selectedMonster.name;
-    image.loading = 'lazy';
-    image.src = selectedMonster.imageUrl;
-    top.appendChild(image);
+  const detailImages =
+    selectedMonster.imageUrls?.length > 0
+      ? selectedMonster.imageUrls
+      : selectedMonster.imageUrl
+        ? [selectedMonster.imageUrl]
+        : [];
+  if (detailImages.length > 0) {
+    top.appendChild(createMonsterImageCarousel(detailImages, selectedMonster.name));
   }
 
   const core = document.createElement('div');
@@ -2485,7 +2557,13 @@ const startMonsterEdit = (monster) => {
     monsterMaxHpInput.value = Number.isFinite(monster.maxHp) ? monster.maxHp : '';
   }
   if (monsterImageInput) {
-    monsterImageInput.value = monster.imageUrl || '';
+    const urls =
+      monster.imageUrls?.length > 0
+        ? monster.imageUrls
+        : monster.imageUrl
+          ? [monster.imageUrl]
+          : [];
+    monsterImageInput.value = urls.join('\n');
   }
   if (monsterNotesInput) {
     monsterNotesInput.value = monster.notes || '';
@@ -2605,7 +2683,8 @@ const handleAddMonster = () => {
   const type = monsterTypeInput?.value.trim() || 'npc';
   const maxHpValue = Number(monsterMaxHpInput?.value);
   const maxHp = Number.isNaN(maxHpValue) ? null : Math.max(0, maxHpValue);
-  const imageUrl = monsterImageInput?.value.trim() || '';
+  const imageUrls = normalizeImageUrls(monsterImageInput?.value);
+  const imageUrl = imageUrls[0] || '';
   const notes = monsterNotesInput?.value.trim() || '';
   const activeBook = getActiveMonsterBook();
   if (!activeBook) {
@@ -2636,6 +2715,7 @@ const handleAddMonster = () => {
       meta,
       maxHp,
       imageUrl,
+      imageUrls,
       notes
     };
     activeBook.monsters = activeBook.monsters.map((monster) =>
@@ -2655,6 +2735,7 @@ const handleAddMonster = () => {
     type,
     maxHp,
     imageUrl,
+    imageUrls,
     notes
   });
   if (!entry) {

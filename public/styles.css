@@ -1413,6 +1413,29 @@ button.primary {
   object-fit: cover;
 }
 
+.stat-block-carousel {
+  display: grid;
+  gap: 8px;
+}
+
+.carousel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #f7edd1;
+  font-size: 0.85rem;
+}
+
+.carousel-indicator {
+  font-variant-numeric: tabular-nums;
+}
+
+.carousel-controls .ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .stat-block-core {
   display: grid;
   gap: 8px;
