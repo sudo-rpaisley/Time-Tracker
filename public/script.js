@@ -583,14 +583,37 @@ const getMonsterBookById = (id) =>
 
 const getActiveMonsterBook = () => getMonsterBookById(activeMonsterBookId);
 
-const setActiveMonster = (monsterId) => {
-  activeMonsterId = monsterId;
-  cancelMonsterEdit();
-  if (monsterId) {
-    window.location.hash = `monster=${monsterId}`;
-  } else if (window.location.hash.startsWith('#monster=')) {
-    window.location.hash = '';
+const findMonsterById = (monsterId) => {
+  if (!monsterId) {
+    return null;
   }
+  for (const book of monsterBooks) {
+    const match = book.monsters.find((monster) => monster.id === monsterId);
+    if (match) {
+      return { book, monster: match };
+    }
+  }
+  return null;
+};
+
+const setActiveMonster = (monsterId, { syncHash = true } = {}) => {
+  const match = findMonsterById(monsterId);
+  if (match) {
+    activeMonsterBookId = match.book.id;
+    activeMonsterId = match.monster.id;
+  } else {
+    activeMonsterId = monsterId || null;
+  }
+  cancelMonsterEdit();
+  if (syncHash) {
+    if (activeMonsterId) {
+      window.location.hash = `monster=${activeMonsterId}`;
+    } else if (window.location.hash.startsWith('#monster=')) {
+      window.location.hash = '';
+    }
+  }
+  renderMonsterManual();
+  renderCombatantPresets();
   renderMonsterDetail();
 };
 
@@ -5849,12 +5872,7 @@ document.addEventListener('click', (event) => {
 });
 window.addEventListener('hashchange', () => {
   const monsterId = getMonsterIdFromHash();
-  if (monsterId) {
-    activeMonsterId = monsterId;
-  } else {
-    activeMonsterId = null;
-  }
-  renderMonsterDetail();
+  setActiveMonster(monsterId, { syncHash: false });
 });
 if (leaveWorldButton) {
   leaveWorldButton.addEventListener('click', () => {
@@ -6189,8 +6207,5 @@ initializeDefaults().then(() => {
   renderInitiative();
   renderProfile();
   const monsterId = getMonsterIdFromHash();
-  if (monsterId) {
-    activeMonsterId = monsterId;
-  }
-  renderMonsterDetail();
+  setActiveMonster(monsterId, { syncHash: false });
 });
