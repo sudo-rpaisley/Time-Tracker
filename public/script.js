@@ -224,6 +224,7 @@ const monsterNameInput = document.getElementById('monsterNameInput');
 const monsterTypeInput = document.getElementById('monsterTypeInput');
 const monsterMaxHpInput = document.getElementById('monsterMaxHpInput');
 const monsterNotesInput = document.getElementById('monsterNotesInput');
+const monsterImageInput = document.getElementById('monsterImageInput');
 const addMonsterButton = document.getElementById('addMonsterButton');
 const monsterList = document.getElementById('monsterList');
 const monsterImportInput = document.getElementById('monsterImportInput');
@@ -413,23 +414,85 @@ const baseMonsterPresets = [
   }
 ];
 
+const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim();
+
+const parseFirstNumber = (value) => {
+  const match = String(value || '').match(/-?\\d+(?:\\.\\d+)?/);
+  return match ? Number(match[0]) : null;
+};
+
 const normalizeMonsterEntry = (entry) => {
   if (!entry || typeof entry !== 'object') {
     return null;
   }
-  const name = String(entry.name || '').trim();
+  const name = String(entry.name || entry.Name || '').trim();
   if (!name) {
     return null;
   }
-  const type = String(entry.type || 'npc').trim() || 'npc';
-  const parsedMaxHp = Number(entry.maxHp);
-  const maxHp = Number.isNaN(parsedMaxHp) ? null : Math.max(0, parsedMaxHp);
-  const notes = String(entry.notes || '').trim();
+  const rawType = entry.type || entry.Type || '';
+  const type = String(rawType).trim() || 'npc';
+  const parsedMaxHp =
+    Number(entry.maxHp ?? entry.maxHP ?? entry['Max HP'] ?? entry['Hit Points']);
+  const maxHpFromText =
+    parseFirstNumber(entry['Hit Points'] ?? entry.hitPoints ?? entry.HitPoints);
+  const maxHp = Number.isNaN(parsedMaxHp)
+    ? maxHpFromText
+    : Math.max(0, parsedMaxHp);
+  const meta = String(entry.meta || entry.Meta || entry.type || entry.Type || '').trim();
+  const armorClass = String(
+    entry.armorClass ||
+      entry['Armor Class'] ||
+      entry['Armor class'] ||
+      entry['ArmorClass'] ||
+      ''
+  ).trim();
+  const hitPoints = String(entry.hitPoints || entry['Hit Points'] || '').trim();
+  const speed = String(entry.speed || entry.Speed || '').trim();
+  const savingThrows = String(entry.savingThrows || entry['Saving Throws'] || '').trim();
+  const skills = String(entry.skills || entry.Skills || '').trim();
+  const senses = String(entry.senses || entry.Senses || '').trim();
+  const languages = String(entry.languages || entry.Languages || '').trim();
+  const challenge = String(entry.challenge || entry.Challenge || '').trim();
+  const traits = stripHtml(entry.traits || entry.Traits || '');
+  const actions = stripHtml(entry.actions || entry.Actions || '');
+  const legendaryActions = stripHtml(entry.legendaryActions || entry['Legendary Actions'] || '');
+  const imageUrl = String(
+    entry.imageUrl || entry.img_url || entry.image || entry['Image URL'] || ''
+  ).trim();
+  const stats = {
+    str: entry.STR || entry.str || '',
+    dex: entry.DEX || entry.dex || '',
+    con: entry.CON || entry.con || '',
+    int: entry.INT || entry.int || '',
+    wis: entry.WIS || entry.wis || '',
+    cha: entry.CHA || entry.cha || '',
+    strMod: entry.STR_mod || entry.strMod || '',
+    dexMod: entry.DEX_mod || entry.dexMod || '',
+    conMod: entry.CON_mod || entry.conMod || '',
+    intMod: entry.INT_mod || entry.intMod || '',
+    wisMod: entry.WIS_mod || entry.wisMod || '',
+    chaMod: entry.CHA_mod || entry.chaMod || ''
+  };
+  const notes = String(entry.notes || entry.Notes || entry.description || '').trim();
   return {
     id: entry.id ? String(entry.id) : crypto.randomUUID(),
     name,
     type,
+    meta,
     maxHp,
+    armorClass,
+    hitPoints,
+    speed,
+    savingThrows,
+    skills,
+    senses,
+    languages,
+    challenge,
+    traits,
+    actions,
+    legendaryActions,
+    imageUrl,
+    stats,
     notes
   };
 };
@@ -1844,7 +1907,7 @@ const renderMonsterManual = () => {
     if (!query) {
       return true;
     }
-    const haystack = `${monster.name} ${monster.type} ${monster.notes || ''}`.toLowerCase();
+    const haystack = `${monster.name} ${monster.type} ${monster.meta || ''} ${monster.notes || ''} ${monster.challenge || ''}`.toLowerCase();
     return haystack.includes(query);
   });
   if (filtered.length === 0) {
@@ -1867,18 +1930,86 @@ const renderMonsterManual = () => {
       title.textContent = monster.name;
       const typeTag = document.createElement('span');
       typeTag.className = 'timeline-tag';
-      typeTag.textContent = monster.type || 'npc';
+      typeTag.textContent = monster.meta || monster.type || 'npc';
       header.append(title, typeTag);
 
       const meta = document.createElement('div');
       meta.className = 'monster-meta';
-      meta.textContent = Number.isFinite(monster.maxHp)
-        ? `Max HP ${monster.maxHp}`
-        : 'Max HP —';
+      const metaParts = [];
+      if (monster.armorClass) {
+        metaParts.push(`AC ${monster.armorClass}`);
+      }
+      if (monster.hitPoints) {
+        metaParts.push(`HP ${monster.hitPoints}`);
+      } else if (Number.isFinite(monster.maxHp)) {
+        metaParts.push(`HP ${monster.maxHp}`);
+      }
+      if (monster.challenge) {
+        metaParts.push(`CR ${monster.challenge}`);
+      }
+      meta.textContent = metaParts.length ? metaParts.join(' • ') : 'Details unavailable.';
+
+      const content = document.createElement('div');
+      content.className = 'monster-content';
+      if (monster.imageUrl) {
+        const image = document.createElement('img');
+        image.className = 'monster-image';
+        image.alt = monster.name;
+        image.loading = 'lazy';
+        image.src = monster.imageUrl;
+        content.appendChild(image);
+      }
+
+      const details = document.createElement('div');
+      details.className = 'monster-details';
+      const statLine = document.createElement('div');
+      statLine.className = 'monster-meta';
+      const statParts = [
+        monster.stats?.str ? `STR ${monster.stats.str}${monster.stats.strMod || ''}` : '',
+        monster.stats?.dex ? `DEX ${monster.stats.dex}${monster.stats.dexMod || ''}` : '',
+        monster.stats?.con ? `CON ${monster.stats.con}${monster.stats.conMod || ''}` : '',
+        monster.stats?.int ? `INT ${monster.stats.int}${monster.stats.intMod || ''}` : '',
+        monster.stats?.wis ? `WIS ${monster.stats.wis}${monster.stats.wisMod || ''}` : '',
+        monster.stats?.cha ? `CHA ${monster.stats.cha}${monster.stats.chaMod || ''}` : ''
+      ].filter(Boolean);
+      statLine.textContent = statParts.join(' • ');
+
+      const extra = document.createElement('div');
+      extra.className = 'monster-meta';
+      const extraParts = [
+        monster.savingThrows ? `Saves: ${monster.savingThrows}` : '',
+        monster.skills ? `Skills: ${monster.skills}` : '',
+        monster.senses ? `Senses: ${monster.senses}` : '',
+        monster.languages ? `Languages: ${monster.languages}` : '',
+        monster.speed ? `Speed: ${monster.speed}` : ''
+      ].filter(Boolean);
+      extra.textContent = extraParts.join(' • ');
 
       const notes = document.createElement('div');
       notes.className = 'event-description';
       notes.textContent = monster.notes || 'No notes recorded.';
+
+      details.append(statLine, extra);
+      if (monster.traits) {
+        const traits = document.createElement('div');
+        traits.className = 'event-description';
+        traits.textContent = `Traits: ${monster.traits}`;
+        details.appendChild(traits);
+      }
+      if (monster.actions) {
+        const actions = document.createElement('div');
+        actions.className = 'event-description';
+        actions.textContent = `Actions: ${monster.actions}`;
+        details.appendChild(actions);
+      }
+      if (monster.legendaryActions) {
+        const legendary = document.createElement('div');
+        legendary.className = 'event-description';
+        legendary.textContent = `Legendary: ${monster.legendaryActions}`;
+        details.appendChild(legendary);
+      }
+      details.appendChild(notes);
+      content.appendChild(details);
 
       const actions = document.createElement('div');
       actions.className = 'button-row';
@@ -1894,7 +2025,7 @@ const renderMonsterManual = () => {
       });
       actions.append(remove);
 
-      item.append(header, meta, notes, actions);
+      item.append(header, meta, content, actions);
       monsterList.appendChild(item);
     });
 };
@@ -1953,11 +2084,13 @@ const handleAddMonster = () => {
   const type = monsterTypeInput?.value.trim() || 'npc';
   const maxHpValue = Number(monsterMaxHpInput?.value);
   const maxHp = Number.isNaN(maxHpValue) ? null : Math.max(0, maxHpValue);
+  const imageUrl = monsterImageInput?.value.trim() || '';
   const notes = monsterNotesInput?.value.trim() || '';
   const entry = normalizeMonsterEntry({
     name,
     type,
     maxHp,
+    imageUrl,
     notes
   });
   if (!entry) {
@@ -1971,6 +2104,9 @@ const handleAddMonster = () => {
     }
     if (monsterMaxHpInput) {
       monsterMaxHpInput.value = '';
+    }
+    if (monsterImageInput) {
+      monsterImageInput.value = '';
     }
     if (monsterNotesInput) {
       monsterNotesInput.value = '';

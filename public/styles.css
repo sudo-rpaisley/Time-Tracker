@@ -1341,6 +1341,31 @@ button.primary {
   font-size: 0.9rem;
 }
 
+.monster-content {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 140px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.monster-image {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  object-fit: cover;
+}
+
+.monster-details {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .monster-content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .quest-card {
   background: rgba(18, 21, 31, 0.95);
   border-radius: 16px;
