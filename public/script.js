@@ -445,6 +445,17 @@ const truncateText = (value, maxLength = 140) => {
   return `${text.slice(0, maxLength).trim()}…`;
 };
 
+const getMonsterMaxHp = (monster) => {
+  if (!monster) {
+    return null;
+  }
+  if (Number.isFinite(monster.maxHp)) {
+    return monster.maxHp;
+  }
+  const parsed = parseFirstNumber(monster.hitPoints);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const normalizeMonsterEntry = (entry) => {
   if (!entry || typeof entry !== 'object') {
     return null;
@@ -3907,6 +3918,7 @@ const generateEncounterDraft = () => {
   for (let i = 0; i < monsterCount; i += 1) {
     const preset =
       activeBook.monsters[Math.floor(Math.random() * activeBook.monsters.length)];
+    const maxHp = getMonsterMaxHp(preset);
     const existing = encounterDraft.find((entry) => entry.id === preset.id);
     if (existing) {
       existing.count += 1;
@@ -3915,7 +3927,7 @@ const generateEncounterDraft = () => {
         id: preset.id,
         name: preset.name,
         type: preset.type,
-        maxHp: preset.maxHp,
+        maxHp,
         notes: preset.notes,
         count: 1
       });
@@ -4639,7 +4651,7 @@ const addCombatant = () => {
   const preset = getMonsterById(combatantPresetSelect.value);
   const maxHpValue = Number(combatantMaxHpInput.value);
   const maxHp = Number.isNaN(maxHpValue)
-    ? preset?.maxHp ?? null
+    ? getMonsterMaxHp(preset)
     : maxHpValue;
   const initiativeValue = Number(combatantInitiativeInput.value);
   const initiative = Number.isNaN(initiativeValue) ? null : initiativeValue;
@@ -4821,7 +4833,8 @@ if (combatantPresetSelect) {
       combatantTypeSelect.value = preset.type;
     }
     if (combatantMaxHpInput) {
-      combatantMaxHpInput.value = preset.maxHp ?? '';
+      const maxHp = getMonsterMaxHp(preset);
+      combatantMaxHpInput.value = Number.isFinite(maxHp) ? maxHp : '';
     }
   });
 }
