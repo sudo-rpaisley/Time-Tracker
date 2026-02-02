@@ -230,6 +230,11 @@ const monsterList = document.getElementById('monsterList');
 const monsterImportInput = document.getElementById('monsterImportInput');
 const monsterImportError = document.getElementById('monsterImportError');
 const importMonstersButton = document.getElementById('importMonstersButton');
+const monsterBookSelect = document.getElementById('monsterBookSelect');
+const monsterBookNameInput = document.getElementById('monsterBookNameInput');
+const addMonsterBookButton = document.getElementById('addMonsterBookButton');
+const exportMonsterBookButton = document.getElementById('exportMonsterBookButton');
+const monsterBookError = document.getElementById('monsterBookError');
 const factionNameInput = document.getElementById('factionNameInput');
 const factionInfluenceInput = document.getElementById('factionInfluenceInput');
 const factionAlignmentInput = document.getElementById('factionAlignmentInput');
@@ -312,7 +317,8 @@ let rumorBoard = [];
 let sessionNotes = [];
 let campaignMilestones = [];
 let encounterPlans = [];
-let monsterManual = [];
+let monsterBooks = [];
+let activeMonsterBookId = null;
 const updateWorldNotes = (value) => {
   worldNotes = value;
   saveState();
@@ -515,16 +521,80 @@ const normalizeMonsterManual = (entries) => {
   }, []);
 };
 
+const createMonsterBook = (name, monsters = []) => ({
+  id: crypto.randomUUID(),
+  name,
+  monsters: normalizeMonsterManual(monsters)
+});
+
+const normalizeMonsterBooks = (books) => {
+  const list = Array.isArray(books) ? books : [];
+  const seen = new Set();
+  return list.reduce((acc, entry) => {
+    const name = String(entry?.name || '').trim();
+    if (!name) {
+      return acc;
+    }
+    const key = name.toLowerCase();
+    if (seen.has(key)) {
+      return acc;
+    }
+    seen.add(key);
+    acc.push({
+      id: entry.id ? String(entry.id) : crypto.randomUUID(),
+      name,
+      monsters: normalizeMonsterManual(entry.monsters || entry.entries || [])
+    });
+    return acc;
+  }, []);
+};
+
+const getMonsterBookById = (id) =>
+  monsterBooks.find((book) => book.id === id) || null;
+
+const getActiveMonsterBook = () => getMonsterBookById(activeMonsterBookId);
+
+const getMonsterBookByName = (name) => {
+  const key = String(name || '').trim().toLowerCase();
+  if (!key) {
+    return null;
+  }
+  return monsterBooks.find((book) => book.name.toLowerCase() === key) || null;
+};
+
+const ensureMonsterBook = (name) => {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) {
+    return null;
+  }
+  const existing = getMonsterBookByName(trimmed);
+  if (existing) {
+    return existing;
+  }
+  const book = createMonsterBook(trimmed, []);
+  monsterBooks = [...monsterBooks, book];
+  return book;
+};
+
 const getMonsterManualByName = (name) => {
   const key = name.trim().toLowerCase();
   if (!key) {
     return null;
   }
-  return monsterManual.find((monster) => monster.name.toLowerCase() === key) || null;
+  const book = getActiveMonsterBook();
+  if (!book) {
+    return null;
+  }
+  return book.monsters.find((monster) => monster.name.toLowerCase() === key) || null;
 };
 
-const getMonsterById = (id) =>
-  monsterManual.find((monster) => monster.id === id) || null;
+const getMonsterById = (id) => {
+  const book = getActiveMonsterBook();
+  if (!book) {
+    return null;
+  }
+  return book.monsters.find((monster) => monster.id === id) || null;
+};
 
 const pad = (value) => String(value).padStart(2, '0');
 
@@ -543,37 +613,41 @@ const generateWorldId = () => {
   return `world-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
-const createWorld = (name) => ({
-  id: generateWorldId(),
-  name,
-  coverImage: '',
-  totalSeconds: 0,
-  combatants: [],
-  currentCombatantIndex: 0,
-  selectedCombatantId: null,
-  calendarSettings: { ...calendarSettings },
-  timeConfig: { ...timeConfig },
-  roundNumber: 1,
-  combatLogEntries: [],
-  encounterDraft: [],
-  partyMembers: [],
-  roundHistoryEntries: [],
-  calendarEvents: [],
-  combatActive: false,
-  encounterPresets: [],
-  worldStats: { ...worldStats },
-  worldMap: { ...worldMap },
-  worldNotes: '',
-  questBoard: [],
-  downtimeEntries: [],
-  npcDirectory: [],
-  factionRoster: [],
-  rumorBoard: [],
-  sessionNotes: [],
-  campaignMilestones: [],
-  encounterPlans: [],
-  monsterManual: normalizeMonsterManual(baseMonsterPresets)
-});
+const createWorld = (name) => {
+  const defaultBook = createMonsterBook('Monster Manual', baseMonsterPresets);
+  return {
+    id: generateWorldId(),
+    name,
+    coverImage: '',
+    totalSeconds: 0,
+    combatants: [],
+    currentCombatantIndex: 0,
+    selectedCombatantId: null,
+    calendarSettings: { ...calendarSettings },
+    timeConfig: { ...timeConfig },
+    roundNumber: 1,
+    combatLogEntries: [],
+    encounterDraft: [],
+    partyMembers: [],
+    roundHistoryEntries: [],
+    calendarEvents: [],
+    combatActive: false,
+    encounterPresets: [],
+    worldStats: { ...worldStats },
+    worldMap: { ...worldMap },
+    worldNotes: '',
+    questBoard: [],
+    downtimeEntries: [],
+    npcDirectory: [],
+    factionRoster: [],
+    rumorBoard: [],
+    sessionNotes: [],
+    campaignMilestones: [],
+    encounterPlans: [],
+    monsterBooks: [defaultBook],
+    activeMonsterBookId: defaultBook.id
+  };
+};
 
 const openWorldModal = () => {
   if (!worldModal || !worldNameInput) {
@@ -703,7 +777,8 @@ const deleteWorld = () => {
     setActiveWorld(activeWorldId);
   } else {
     setWorldSelectedState(false);
-    monsterManual = [];
+    monsterBooks = [];
+    activeMonsterBookId = null;
     renderMonsterManual();
     renderCombatantPresets();
   }
@@ -788,7 +863,8 @@ const saveState = () => {
       sessionNotes,
       campaignMilestones,
       encounterPlans,
-      monsterManual
+      monsterBooks,
+      activeMonsterBookId
     };
   }
   fetch('/api/state', {
@@ -941,9 +1017,18 @@ const setActiveWorld = (worldId) => {
   encounterPlans = Array.isArray(nextWorld.encounterPlans)
     ? nextWorld.encounterPlans
     : [];
-  monsterManual = Array.isArray(nextWorld.monsterManual)
-    ? normalizeMonsterManual(nextWorld.monsterManual)
-    : normalizeMonsterManual(baseMonsterPresets);
+  if (Array.isArray(nextWorld.monsterBooks)) {
+    monsterBooks = normalizeMonsterBooks(nextWorld.monsterBooks);
+  } else if (Array.isArray(nextWorld.monsterManual)) {
+    const legacyBook = createMonsterBook('Monster Manual', nextWorld.monsterManual);
+    monsterBooks = [legacyBook];
+  } else {
+    monsterBooks = [createMonsterBook('Monster Manual', baseMonsterPresets)];
+  }
+  activeMonsterBookId = nextWorld.activeMonsterBookId || monsterBooks[0]?.id || null;
+  if (!getMonsterBookById(activeMonsterBookId) && monsterBooks.length > 0) {
+    activeMonsterBookId = monsterBooks[0].id;
+  }
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers.map((member) => ({
       ...member,
@@ -1883,11 +1968,47 @@ const renderNpcDirectory = () => {
     });
 };
 
+const updateMonsterBookError = (message = '') => {
+  if (monsterBookError) {
+    monsterBookError.textContent = message;
+  }
+};
+
+const renderMonsterBookSelect = () => {
+  if (!monsterBookSelect) {
+    return;
+  }
+  monsterBookSelect.innerHTML = '';
+  if (!activeWorldId || monsterBooks.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No books available';
+    monsterBookSelect.appendChild(option);
+    monsterBookSelect.disabled = true;
+    return;
+  }
+  monsterBookSelect.disabled = false;
+  monsterBooks
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((book) => {
+      const option = document.createElement('option');
+      option.value = book.id;
+      option.textContent = book.name;
+      monsterBookSelect.appendChild(option);
+    });
+  if (!getMonsterBookById(activeMonsterBookId)) {
+    activeMonsterBookId = monsterBooks[0]?.id || null;
+  }
+  monsterBookSelect.value = activeMonsterBookId || '';
+};
+
 const renderMonsterManual = () => {
   if (!monsterList) {
     return;
   }
   monsterList.innerHTML = '';
+  renderMonsterBookSelect();
   if (!activeWorldId) {
     const item = document.createElement('li');
     item.className = 'helper-text';
@@ -1895,15 +2016,23 @@ const renderMonsterManual = () => {
     monsterList.appendChild(item);
     return;
   }
-  if (monsterManual.length === 0) {
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook) {
     const item = document.createElement('li');
     item.className = 'helper-text';
-    item.textContent = 'No monsters saved yet.';
+    item.textContent = 'Select or create a monster book to get started.';
+    monsterList.appendChild(item);
+    return;
+  }
+  if (activeBook.monsters.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No monsters saved in this book yet.';
     monsterList.appendChild(item);
     return;
   }
   const query = monsterSearchInput?.value.trim().toLowerCase() || '';
-  const filtered = monsterManual.filter((monster) => {
+  const filtered = activeBook.monsters.filter((monster) => {
     if (!query) {
       return true;
     }
@@ -2018,7 +2147,7 @@ const renderMonsterManual = () => {
       remove.className = 'ghost';
       remove.textContent = 'Remove';
       remove.addEventListener('click', () => {
-        monsterManual = monsterManual.filter((entry) => entry.id !== monster.id);
+        activeBook.monsters = activeBook.monsters.filter((entry) => entry.id !== monster.id);
         renderMonsterManual();
         renderCombatantPresets();
         saveState();
@@ -2039,7 +2168,11 @@ const renderCombatantPresets = () => {
   defaultOption.value = '';
   defaultOption.textContent = 'Custom';
   combatantPresetSelect.appendChild(defaultOption);
-  monsterManual
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook) {
+    return;
+  }
+  activeBook.monsters
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((preset) => {
@@ -2061,15 +2194,64 @@ const addMonsterToManual = (monster) => {
     window.alert('Select a world before adding monsters.');
     return false;
   }
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook) {
+    updateMonsterBookError('Create a monster book first.');
+    return false;
+  }
   if (getMonsterManualByName(monster.name)) {
     updateMonsterImportError(`"${monster.name}" is already in this manual.`);
     return false;
   }
-  monsterManual = [...monsterManual, monster];
+  activeBook.monsters = [...activeBook.monsters, monster];
   renderMonsterManual();
   renderCombatantPresets();
   saveState();
   return true;
+};
+
+const handleAddMonsterBook = () => {
+  if (!monsterBookNameInput) {
+    return;
+  }
+  const name = monsterBookNameInput.value.trim();
+  if (!name) {
+    monsterBookNameInput.focus();
+    return;
+  }
+  if (getMonsterBookByName(name)) {
+    updateMonsterBookError('That book already exists.');
+    return;
+  }
+  const book = createMonsterBook(name, []);
+  monsterBooks = [...monsterBooks, book];
+  activeMonsterBookId = book.id;
+  updateMonsterBookError('');
+  renderMonsterManual();
+  renderCombatantPresets();
+  saveState();
+  monsterBookNameInput.value = '';
+};
+
+const handleExportMonsterBook = () => {
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook) {
+    updateMonsterBookError('Select a book to export.');
+    return;
+  }
+  const payload = {
+    name: activeBook.name,
+    monsters: activeBook.monsters
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json'
+  });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  const safeName = activeBook.name.replace(/[^\w.-]+/g, '-');
+  link.download = `${safeName || 'monster-book'}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 };
 
 const handleAddMonster = () => {
@@ -2134,24 +2316,43 @@ const handleImportMonsters = () => {
     if (!entries) {
       throw new Error('JSON must be an array or an object with a monsters array.');
     }
+    const bookName =
+      String(parsed?.name || monsterBookNameInput?.value || '').trim() ||
+      getActiveMonsterBook()?.name ||
+      '';
+    if (!bookName) {
+      updateMonsterImportError('Provide a book name before importing.');
+      return;
+    }
+    const targetBook = ensureMonsterBook(bookName);
+    if (!targetBook) {
+      updateMonsterImportError('Provide a valid book name.');
+      return;
+    }
     const normalized = normalizeMonsterManual(entries);
     if (normalized.length === 0) {
       updateMonsterImportError('No valid monsters found in the JSON.');
       return;
     }
-    const additions = normalized.filter(
-      (monster) => !getMonsterManualByName(monster.name)
+    const additions = normalized.filter((monster) =>
+      targetBook.monsters.every(
+        (existing) => existing.name.toLowerCase() !== monster.name.toLowerCase()
+      )
     );
     if (additions.length === 0) {
       updateMonsterImportError('All imported monsters already exist.');
       return;
     }
     updateMonsterImportError('');
-    monsterManual = [...monsterManual, ...additions];
+    targetBook.monsters = [...targetBook.monsters, ...additions];
+    activeMonsterBookId = targetBook.id;
     renderMonsterManual();
     renderCombatantPresets();
     saveState();
     monsterImportInput.value = '';
+    if (monsterBookNameInput) {
+      monsterBookNameInput.value = '';
+    }
   } catch (error) {
     updateMonsterImportError('Invalid JSON. Please check the format.');
   }
@@ -3383,14 +3584,15 @@ const renderEncounterDraft = () => {
 const generateEncounterDraft = () => {
   const difficulty = Number(encounterDifficulty.value);
   const monsterCount = Math.max(1, Math.ceil(difficulty + Math.random() * 2));
-  if (monsterManual.length === 0) {
-    window.alert('Add monsters to the manual before generating encounters.');
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook || activeBook.monsters.length === 0) {
+    window.alert('Add monsters to the active book before generating encounters.');
     return;
   }
   encounterDraft = [];
   for (let i = 0; i < monsterCount; i += 1) {
     const preset =
-      monsterManual[Math.floor(Math.random() * monsterManual.length)];
+      activeBook.monsters[Math.floor(Math.random() * activeBook.monsters.length)];
     const existing = encounterDraft.find((entry) => entry.id === preset.id);
     if (existing) {
       existing.count += 1;
@@ -4790,6 +4992,30 @@ if (monsterImportInput) {
 if (importMonstersButton) {
   importMonstersButton.addEventListener('click', handleImportMonsters);
 }
+if (monsterBookSelect) {
+  monsterBookSelect.addEventListener('change', () => {
+    activeMonsterBookId = monsterBookSelect.value || null;
+    updateMonsterBookError('');
+    renderMonsterManual();
+    renderCombatantPresets();
+    saveState();
+  });
+}
+if (monsterBookNameInput) {
+  monsterBookNameInput.addEventListener('input', () => updateMonsterBookError(''));
+  monsterBookNameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleAddMonsterBook();
+    }
+  });
+}
+if (addMonsterBookButton) {
+  addMonsterBookButton.addEventListener('click', handleAddMonsterBook);
+}
+if (exportMonsterBookButton) {
+  exportMonsterBookButton.addEventListener('click', handleExportMonsterBook);
+}
 if (addFactionButton) {
   addFactionButton.addEventListener('click', () => {
     if (!factionNameInput) {
@@ -5264,7 +5490,8 @@ document.addEventListener('click', (event) => {
 if (leaveWorldButton) {
   leaveWorldButton.addEventListener('click', () => {
     activeWorldId = null;
-    monsterManual = [];
+    monsterBooks = [];
+    activeMonsterBookId = null;
     setWorldSelectedState(false);
     renderMonsterManual();
     renderCombatantPresets();
@@ -5425,7 +5652,8 @@ if (exportWorldButton) {
       sessionNotes,
       campaignMilestones,
       encounterPlans,
-      monsterManual
+      monsterBooks,
+      activeMonsterBookId
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -5513,9 +5741,12 @@ if (importWorldInput) {
             ? parsed.campaignMilestones
             : [],
           encounterPlans: Array.isArray(parsed.encounterPlans) ? parsed.encounterPlans : [],
-          monsterManual: normalizeMonsterManual(
-            parsed.monsterManual || parsed.monsters || baseMonsterPresets
-          )
+          monsterBooks: Array.isArray(parsed.monsterBooks)
+            ? normalizeMonsterBooks(parsed.monsterBooks)
+            : parsed.monsterManual || parsed.monsters
+              ? [createMonsterBook('Monster Manual', parsed.monsterManual || parsed.monsters)]
+              : [createMonsterBook('Monster Manual', baseMonsterPresets)],
+          activeMonsterBookId: parsed.activeMonsterBookId || null
         };
         worlds[world.id] = world;
         activeWorldId = world.id;

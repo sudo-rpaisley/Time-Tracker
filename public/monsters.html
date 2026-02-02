@@ -14,12 +14,32 @@
         <div>
           <h2>Monster Manual</h2>
           <p class="helper-text">
-            Build a searchable monster list for each world and paste JSON to import in bulk.
+            Build a searchable monster list for each world and organize monsters into books.
           </p>
         </div>
       </header>
 
       <div class="controls">
+        <div class="quest-card">
+          <h3>Monster Books</h3>
+          <div class="input-row">
+            <label>
+              Active Book
+              <select id="monsterBookSelect"></select>
+            </label>
+            <label>
+              New Book Name
+              <input type="text" id="monsterBookNameInput" placeholder="e.g. Official Manual" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button class="ghost" id="addMonsterBookButton" type="button">Add Book</button>
+            <button class="ghost" id="exportMonsterBookButton" type="button">
+              Export Book JSON
+            </button>
+          </div>
+          <p class="helper-text" id="monsterBookError" role="alert"></p>
+        </div>
         <div class="quest-card">
           <h3>Add Monster</h3>
           <div class="input-row">
@@ -54,7 +74,9 @@
         <div class="quest-card">
           <h3>Import Monsters</h3>
           <p class="helper-text">
-            Paste JSON for a monster array. Supported keys: name, type, maxHp, notes.
+            Paste JSON for a monster array or a book export. Supported keys: name, type,
+            maxHp, notes, and statblock fields. Book name is taken from the JSON or the
+            New Book Name field.
           </p>
           <textarea
             id="monsterImportInput"
