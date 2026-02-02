@@ -51,11 +51,8 @@ const slugify = (value) =>
 const normalizeBookSource = (source) => (source === 'core' ? 'core' : 'user');
 
 const loadBooksIndex = async () => {
-  const index = await readJsonFile(booksIndexFile, null);
-  if (index && typeof index === 'object') {
-    return index;
-  }
-  const result = {};
+  const existingIndex = await readJsonFile(booksIndexFile, null);
+  const result = existingIndex && typeof existingIndex === 'object' ? existingIndex : {};
   const sources = ['core', 'user'];
   for (const source of sources) {
     const sourceDir = path.join(booksDir, source);
@@ -73,14 +70,21 @@ const loadBooksIndex = async () => {
           continue;
         }
         const bookData = await readJsonFile(path.join(folderPath, jsonFile), null);
-        if (!bookData || !bookData.id) {
+        if (!bookData) {
           continue;
         }
-        result[bookData.id] = {
-          source,
-          folderName: bookFolder,
-          fileName: jsonFile
-        };
+        const bookId = bookData.id ? String(bookData.id) : crypto.randomUUID();
+        if (!bookData.id) {
+          bookData.id = bookId;
+          await writeJsonFile(path.join(folderPath, jsonFile), bookData);
+        }
+        if (!result[bookId]) {
+          result[bookId] = {
+            source,
+            folderName: bookFolder,
+            fileName: jsonFile
+          };
+        }
       }
     } catch (error) {
       // ignore missing directories
