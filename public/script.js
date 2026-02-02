@@ -2254,8 +2254,8 @@ const renderMonsterBookTiles = () => {
       meta.appendChild(source);
 
       const toggle = document.createElement('div');
-      toggle.className = 'monster-book-toggle';
-      toggle.textContent = selectedIds.has(book.id) ? 'Selected' : 'Not selected';
+      // toggle.className = 'monster-book-toggle';
+      // toggle.textContent = selectedIds.has(book.id) ? 'Selected' : 'Not selected';
 
       info.append(name, meta, toggle);
       tile.append(cover, info);
