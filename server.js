@@ -126,6 +126,8 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const worldIds = Array.isArray(state.worldIds) ? state.worldIds : [];
+      const booksIndex = await loadBooksIndex();
+      const allBookIds = Object.keys(booksIndex);
       const worlds = {};
       for (const worldId of worldIds) {
         const worldPath = path.join(worldsDir, `${worldId}.json`);
@@ -133,9 +135,13 @@ const server = http.createServer(async (req, res) => {
         if (!world) {
           continue;
         }
-        const bookIds = Array.isArray(world.monsterBookIds)
+        const storedBookIds = Array.isArray(world.monsterBookIds)
           ? world.monsterBookIds
           : [];
+        const bookIds =
+          storedBookIds.length > 0
+            ? Array.from(new Set([...storedBookIds, ...allBookIds]))
+            : allBookIds;
         const monsterBooks = [];
         for (const bookId of bookIds) {
           const book = await loadBookById(bookId);
