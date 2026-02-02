@@ -1285,6 +1285,7 @@ const setActiveWorld = (worldId) => {
   renderCombatantPresets();
   renderMonsterDetail();
   saveState();
+  saveMonsterBookToLibrary(activeBook, { silent: true });
 };
 
 const renderWorldTiles = () => {
@@ -2783,6 +2784,7 @@ const deleteActiveMonster = () => {
   renderCombatantPresets();
   renderMonsterDetail();
   saveState();
+  saveMonsterBookToLibrary(activeBook, { silent: true });
 };
 
 const updateMonsterImportError = (message = '') => {
@@ -2809,6 +2811,7 @@ const addMonsterToManual = (monster) => {
   renderMonsterManual();
   renderCombatantPresets();
   saveState();
+  saveMonsterBookToLibrary(activeBook, { silent: true });
   return true;
 };
 
@@ -2839,6 +2842,7 @@ const handleAddMonsterBook = () => {
   renderMonsterManual();
   renderCombatantPresets();
   saveState();
+  saveMonsterBookToLibrary(book, { silent: true });
   monsterBookNameInput.value = '';
   if (monsterBookEditionInput) {
     monsterBookEditionInput.value = '';
@@ -2872,28 +2876,38 @@ const handleExportMonsterBook = () => {
   URL.revokeObjectURL(link.href);
 };
 
-const handleSaveMonsterBook = async () => {
-  const activeBook = getActiveMonsterBook();
-  if (!activeBook) {
-    updateMonsterBookError('Select a book to save.');
+const saveMonsterBookToLibrary = async (book, { silent = false } = {}) => {
+  if (!book) {
+    if (!silent) {
+      updateMonsterBookError('Select a book to save.');
+    }
     return;
   }
   try {
     const response = await fetch('/api/books', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ book: activeBook })
+      body: JSON.stringify({ book })
     });
     if (!response.ok) {
       throw new Error('Save failed');
     }
-    const payload = await response.json();
-    updateMonsterBookError(
-      payload?.message || `Saved "${activeBook.name}" to the ${activeBook.source} library.`
-    );
+    if (!silent) {
+      const payload = await response.json();
+      updateMonsterBookError(
+        payload?.message || `Saved "${book.name}" to the ${book.source} library.`
+      );
+    }
   } catch (error) {
-    updateMonsterBookError('Unable to save book to the library.');
+    if (!silent) {
+      updateMonsterBookError('Unable to save book to the library.');
+    }
   }
+};
+
+const handleSaveMonsterBook = async () => {
+  const activeBook = getActiveMonsterBook();
+  await saveMonsterBookToLibrary(activeBook);
 };
 
 const handleAddMonster = () => {
@@ -2953,6 +2967,7 @@ const handleAddMonster = () => {
     renderMonsterDetail();
     renderCombatantPresets();
     saveState();
+    saveMonsterBookToLibrary(activeBook, { silent: true });
     return;
   }
   const entry = normalizeMonsterEntry({
@@ -3035,6 +3050,7 @@ const handleImportMonsters = () => {
     renderMonsterManual();
     renderCombatantPresets();
     saveState();
+    saveMonsterBookToLibrary(targetBook, { silent: true });
     monsterImportInput.value = '';
     if (monsterBookNameInput) {
       monsterBookNameInput.value = '';
