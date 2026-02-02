@@ -2606,6 +2606,134 @@ const createMonsterImageCarousel = (images, name) => {
   return wrapper;
 };
 
+const getMonsterImageModal = () => {
+  if (!monsterDetailPanel) {
+    return null;
+  }
+  let modal = monsterDetailPanel.querySelector('.monster-image-modal');
+  if (modal) {
+    return modal;
+  }
+  modal = document.createElement('div');
+  modal.className = 'monster-image-modal';
+  modal.hidden = true;
+
+  const content = document.createElement('div');
+  content.className = 'monster-image-modal-content';
+
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'ghost monster-image-modal-close';
+  close.setAttribute('aria-label', 'Close image preview');
+  close.textContent = '✕';
+
+  const body = document.createElement('div');
+  body.className = 'monster-image-modal-body';
+
+  close.addEventListener('click', () => {
+    modal.hidden = true;
+    body.innerHTML = '';
+  });
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      modal.hidden = true;
+      body.innerHTML = '';
+    }
+  });
+
+  content.append(close, body);
+  modal.appendChild(content);
+  monsterDetailPanel.appendChild(modal);
+  return modal;
+};
+
+const openMonsterImageModal = (images, name) => {
+  const modal = getMonsterImageModal();
+  if (!modal) {
+    return;
+  }
+  const body = modal.querySelector('.monster-image-modal-body');
+  if (!body) {
+    return;
+  }
+  body.innerHTML = '';
+  body.appendChild(createMonsterImageCarousel(images, name));
+  modal.hidden = false;
+};
+
+const getDetailInputValue = (id) => {
+  const input = document.getElementById(id);
+  return input ? input.value.trim() : '';
+};
+
+const saveMonsterDetailEdits = () => {
+  const activeBook = getActiveMonsterBook();
+  const selected = activeBook?.monsters.find((monster) => monster.id === activeMonsterId);
+  if (!activeBook || !selected) {
+    return;
+  }
+  const name = getDetailInputValue('detailMonsterNameInput');
+  if (!name) {
+    return;
+  }
+  const type = getDetailInputValue('detailMonsterTypeInput') || selected.type || 'npc';
+  const metaValue = getDetailInputValue('detailMonsterMetaInput');
+  const meta = metaValue || type;
+  const armorClass = getDetailInputValue('detailMonsterArmorClassInput');
+  const hitPoints = getDetailInputValue('detailMonsterHitPointsInput');
+  const speed = getDetailInputValue('detailMonsterSpeedInput');
+  const imageUrls = normalizeImageUrls(getDetailInputValue('detailMonsterImageInput'));
+  const imageUrl = imageUrls[0] || '';
+  const maxHpValue = Number(getDetailInputValue('detailMonsterMaxHpInput'));
+  const maxHp = Number.isNaN(maxHpValue) ? selected.maxHp : Math.max(0, maxHpValue);
+  const stats = {
+    str: getDetailInputValue('detailMonsterStrInput'),
+    dex: getDetailInputValue('detailMonsterDexInput'),
+    con: getDetailInputValue('detailMonsterConInput'),
+    int: getDetailInputValue('detailMonsterIntInput'),
+    wis: getDetailInputValue('detailMonsterWisInput'),
+    cha: getDetailInputValue('detailMonsterChaInput'),
+    strMod: getDetailInputValue('detailMonsterStrModInput'),
+    dexMod: getDetailInputValue('detailMonsterDexModInput'),
+    conMod: getDetailInputValue('detailMonsterConModInput'),
+    intMod: getDetailInputValue('detailMonsterIntModInput'),
+    wisMod: getDetailInputValue('detailMonsterWisModInput'),
+    chaMod: getDetailInputValue('detailMonsterChaModInput')
+  };
+  const updated = {
+    ...selected,
+    name,
+    type,
+    meta,
+    armorClass,
+    hitPoints,
+    maxHp,
+    speed,
+    savingThrows: getDetailInputValue('detailMonsterSavingThrowsInput'),
+    skills: getDetailInputValue('detailMonsterSkillsInput'),
+    senses: getDetailInputValue('detailMonsterSensesInput'),
+    languages: getDetailInputValue('detailMonsterLanguagesInput'),
+    challenge: getDetailInputValue('detailMonsterChallengeInput'),
+    traits: getDetailInputValue('detailMonsterTraitsInput'),
+    actions: getDetailInputValue('detailMonsterActionsInput'),
+    legendaryActions: getDetailInputValue('detailMonsterLegendaryActionsInput'),
+    notes: getDetailInputValue('detailMonsterNotesInput'),
+    imageUrl,
+    imageUrls,
+    stats
+  };
+  activeBook.monsters = activeBook.monsters.map((monster) =>
+    monster.id === selected.id ? updated : monster
+  );
+  updateMonsterImportError('');
+  setMonsterEditState(false);
+  renderMonsterManual();
+  renderCombatantPresets();
+  renderMonsterDetail();
+  saveState();
+  saveMonsterBookToLibrary(activeBook, { silent: true });
+};
+
 const renderMonsterDetail = () => {
   if (!monsterDetailPanel || !monsterDetailContent) {
     return;
@@ -2670,16 +2798,40 @@ const renderMonsterDetail = () => {
     monsterDetailRelated.innerHTML = '';
   }
 
+  const isEditing = editingMonsterId === selectedMonster.id;
   const block = document.createElement('div');
   block.className = 'stat-block';
 
   const header = document.createElement('div');
   header.className = 'stat-block-header';
   const title = document.createElement('h2');
-  title.textContent = selectedMonster.name;
+  if (isEditing) {
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = 'detailMonsterNameInput';
+    nameInput.className = 'stat-block-input';
+    nameInput.value = selectedMonster.name || '';
+    title.appendChild(nameInput);
+  } else {
+    title.textContent = selectedMonster.name;
+  }
   const meta = document.createElement('div');
   meta.className = 'stat-block-meta';
-  meta.textContent = selectedMonster.meta || selectedMonster.type || '';
+  if (isEditing) {
+    const metaInput = document.createElement('input');
+    metaInput.type = 'text';
+    metaInput.id = 'detailMonsterMetaInput';
+    metaInput.className = 'stat-block-input';
+    metaInput.value = selectedMonster.meta || selectedMonster.type || '';
+    const typeInput = document.createElement('input');
+    typeInput.type = 'text';
+    typeInput.id = 'detailMonsterTypeInput';
+    typeInput.className = 'stat-block-input';
+    typeInput.value = selectedMonster.type || '';
+    meta.append(metaInput, typeInput);
+  } else {
+    meta.textContent = selectedMonster.meta || selectedMonster.type || '';
+  }
   header.append(title, meta);
 
   const top = document.createElement('div');
@@ -2691,22 +2843,31 @@ const renderMonsterDetail = () => {
         ? [selectedMonster.imageUrl]
         : [];
   if (detailImages.length > 0) {
-    top.appendChild(createMonsterImageCarousel(detailImages, selectedMonster.name));
+    const carousel = createMonsterImageCarousel(detailImages, selectedMonster.name);
+    const image = carousel.querySelector('img');
+    if (image) {
+      image.addEventListener('click', () =>
+        openMonsterImageModal(detailImages, selectedMonster.name)
+      );
+    }
+    top.appendChild(carousel);
   }
 
   const core = document.createElement('div');
   core.className = 'stat-block-core';
   const coreFields = [
-    ['Armor Class', selectedMonster.armorClass],
+    ['Armor Class', selectedMonster.armorClass, 'detailMonsterArmorClassInput'],
     [
       'Hit Points',
       selectedMonster.hitPoints ||
-        (Number.isFinite(selectedMonster.maxHp) ? selectedMonster.maxHp : '')
+        (Number.isFinite(selectedMonster.maxHp) ? selectedMonster.maxHp : ''),
+      'detailMonsterHitPointsInput'
     ],
-    ['Speed', selectedMonster.speed]
+    ['Max HP', Number.isFinite(selectedMonster.maxHp) ? selectedMonster.maxHp : '', 'detailMonsterMaxHpInput'],
+    ['Speed', selectedMonster.speed, 'detailMonsterSpeedInput']
   ];
-  coreFields.forEach(([label, value]) => {
-    if (!value) {
+  coreFields.forEach(([label, value, id]) => {
+    if (!value && !isEditing) {
       return;
     }
     const row = document.createElement('div');
@@ -2714,7 +2875,16 @@ const renderMonsterDetail = () => {
     const labelEl = document.createElement('span');
     labelEl.textContent = `${label} `;
     const valueEl = document.createElement('span');
-    valueEl.textContent = value;
+    if (isEditing) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = id;
+      input.className = 'stat-block-input';
+      input.value = value || '';
+      valueEl.appendChild(input);
+    } else {
+      valueEl.textContent = value;
+    }
     row.append(labelEl, valueEl);
     core.appendChild(row);
   });
@@ -2729,8 +2899,16 @@ const renderMonsterDetail = () => {
     ['WIS', selectedMonster.stats?.wis, selectedMonster.stats?.wisMod],
     ['CHA', selectedMonster.stats?.cha, selectedMonster.stats?.chaMod]
   ];
+  const abilityIds = {
+    STR: ['detailMonsterStrInput', 'detailMonsterStrModInput'],
+    DEX: ['detailMonsterDexInput', 'detailMonsterDexModInput'],
+    CON: ['detailMonsterConInput', 'detailMonsterConModInput'],
+    INT: ['detailMonsterIntInput', 'detailMonsterIntModInput'],
+    WIS: ['detailMonsterWisInput', 'detailMonsterWisModInput'],
+    CHA: ['detailMonsterChaInput', 'detailMonsterChaModInput']
+  };
   abilityData.forEach(([label, score, mod]) => {
-    if (!score) {
+    if (!score && !isEditing) {
       return;
     }
     const cell = document.createElement('div');
@@ -2738,39 +2916,102 @@ const renderMonsterDetail = () => {
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
     const valueEl = document.createElement('strong');
-    valueEl.textContent = mod ? `${score} ${mod}` : score;
+    if (isEditing) {
+      const [scoreId, modId] = abilityIds[label];
+      const scoreInput = document.createElement('input');
+      scoreInput.type = 'text';
+      scoreInput.id = scoreId;
+      scoreInput.className = 'stat-block-input';
+      scoreInput.value = score || '';
+      const modInput = document.createElement('input');
+      modInput.type = 'text';
+      modInput.id = modId;
+      modInput.className = 'stat-block-input';
+      modInput.value = mod || '';
+      valueEl.append(scoreInput, modInput);
+    } else {
+      valueEl.textContent = mod ? `${score} ${mod}` : score;
+    }
     cell.append(labelEl, valueEl);
     abilities.appendChild(cell);
   });
 
   const sections = [];
-  const addSection = (titleText, contentText) => {
-    if (!contentText) {
+  const addSection = (titleText, contentText, inputId) => {
+    if (!contentText && !isEditing) {
       return;
     }
     const section = document.createElement('div');
     section.className = 'stat-block-section';
     const titleEl = document.createElement('h3');
     titleEl.textContent = titleText;
-    const bodyEl = document.createElement('p');
-    bodyEl.textContent = contentText;
+    const bodyEl = isEditing ? document.createElement('textarea') : document.createElement('p');
+    if (isEditing) {
+      bodyEl.id = inputId;
+      bodyEl.className = 'stat-block-input';
+      bodyEl.value = contentText || '';
+      bodyEl.rows = 3;
+    } else {
+      bodyEl.textContent = contentText;
+    }
     section.append(titleEl, bodyEl);
     sections.push(section);
   };
 
-  addSection('Saving Throws', selectedMonster.savingThrows);
-  addSection('Skills', selectedMonster.skills);
-  addSection('Senses', selectedMonster.senses);
-  addSection('Languages', selectedMonster.languages);
-  addSection('Challenge', selectedMonster.challenge);
-  addSection('Traits', selectedMonster.traits);
-  addSection('Actions', selectedMonster.actions);
-  addSection('Legendary Actions', selectedMonster.legendaryActions);
-  addSection('Notes', selectedMonster.notes);
+  addSection('Saving Throws', selectedMonster.savingThrows, 'detailMonsterSavingThrowsInput');
+  addSection('Skills', selectedMonster.skills, 'detailMonsterSkillsInput');
+  addSection('Senses', selectedMonster.senses, 'detailMonsterSensesInput');
+  addSection('Languages', selectedMonster.languages, 'detailMonsterLanguagesInput');
+  addSection('Challenge', selectedMonster.challenge, 'detailMonsterChallengeInput');
+  addSection('Traits', selectedMonster.traits, 'detailMonsterTraitsInput');
+  addSection('Actions', selectedMonster.actions, 'detailMonsterActionsInput');
+  addSection(
+    'Legendary Actions',
+    selectedMonster.legendaryActions,
+    'detailMonsterLegendaryActionsInput'
+  );
+  addSection('Notes', selectedMonster.notes, 'detailMonsterNotesInput');
+
+  if (isEditing) {
+    const imageSection = document.createElement('div');
+    imageSection.className = 'stat-block-section';
+    const titleEl = document.createElement('h3');
+    titleEl.textContent = 'Image URLs';
+    const bodyEl = document.createElement('textarea');
+    bodyEl.id = 'detailMonsterImageInput';
+    bodyEl.className = 'stat-block-input';
+    bodyEl.rows = 3;
+    const urls =
+      selectedMonster.imageUrls?.length > 0
+        ? selectedMonster.imageUrls
+        : selectedMonster.imageUrl
+          ? [selectedMonster.imageUrl]
+          : [];
+    bodyEl.value = urls.join('\n');
+    imageSection.append(titleEl, bodyEl);
+    sections.unshift(imageSection);
+  }
 
   top.appendChild(core);
   block.append(header, top, abilities, ...sections);
   monsterDetailContent.appendChild(block);
+
+  if (isEditing) {
+    const actions = document.createElement('div');
+    actions.className = 'button-row monster-detail-actions';
+    const saveButton = document.createElement('button');
+    saveButton.type = 'button';
+    saveButton.className = 'primary';
+    saveButton.textContent = 'Save Changes';
+    saveButton.addEventListener('click', saveMonsterDetailEdits);
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.className = 'ghost';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.addEventListener('click', cancelMonsterEdit);
+    actions.append(saveButton, cancelButton);
+    monsterDetailContent.appendChild(actions);
+  }
 
   if (monsterDetailRelated) {
     const related = monsterBooks
@@ -5885,9 +6126,15 @@ if (editMonsterButton) {
     const selected = activeBook?.monsters.find(
       (monster) => monster.id === activeMonsterId
     );
-    if (selected) {
-      startMonsterEdit(selected);
+    if (!selected) {
+      return;
     }
+    if (editingMonsterId === selected.id) {
+      saveMonsterDetailEdits();
+      return;
+    }
+    startMonsterEdit(selected);
+    renderMonsterDetail();
   });
 }
 if (deleteMonsterButton) {
