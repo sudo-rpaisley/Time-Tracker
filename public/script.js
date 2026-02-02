@@ -233,13 +233,18 @@ const monsterImportError = document.getElementById('monsterImportError');
 const importMonstersButton = document.getElementById('importMonstersButton');
 const monsterBookSelect = document.getElementById('monsterBookSelect');
 const monsterBookNameInput = document.getElementById('monsterBookNameInput');
+const monsterBookEditionInput = document.getElementById('monsterBookEditionInput');
+const monsterBookCoverInput = document.getElementById('monsterBookCoverInput');
+const monsterBookSourceInput = document.getElementById('monsterBookSourceInput');
 const addMonsterBookButton = document.getElementById('addMonsterBookButton');
 const exportMonsterBookButton = document.getElementById('exportMonsterBookButton');
+const saveMonsterBookButton = document.getElementById('saveMonsterBookButton');
 const monsterBookError = document.getElementById('monsterBookError');
 const monsterListPanel = document.getElementById('monsterListPanel');
 const monsterDetailPanel = document.getElementById('monsterDetailPanel');
 const monsterDetailContent = document.getElementById('monsterDetailContent');
 const monsterDetailRelated = document.getElementById('monsterDetailRelated');
+const monsterBookTiles = document.getElementById('monsterBookTiles');
 const closeMonsterDetailButton = document.getElementById('closeMonsterDetailButton');
 const editMonsterButton = document.getElementById('editMonsterButton');
 const deleteMonsterButton = document.getElementById('deleteMonsterButton');
@@ -327,6 +332,7 @@ let campaignMilestones = [];
 let encounterPlans = [];
 let monsterBooks = [];
 let activeMonsterBookId = null;
+let selectedMonsterBookIds = [];
 let activeMonsterId = null;
 let editingMonsterId = null;
 const updateWorldNotes = (value) => {
@@ -573,9 +579,20 @@ const normalizeMonsterManual = (entries) => {
   }, []);
 };
 
-const createMonsterBook = (name, monsters = []) => ({
+const normalizeBookSource = (source) => {
+  const value = String(source || '').trim().toLowerCase();
+  if (value === 'core') {
+    return 'core';
+  }
+  return 'user';
+};
+
+const createMonsterBook = (name, monsters = [], metadata = {}) => ({
   id: crypto.randomUUID(),
   name,
+  edition: String(metadata.edition || '').trim(),
+  coverImage: String(metadata.coverImage || '').trim(),
+  source: normalizeBookSource(metadata.source),
   monsters: normalizeMonsterManual(monsters)
 });
 
@@ -595,6 +612,9 @@ const normalizeMonsterBooks = (books) => {
     acc.push({
       id: entry.id ? String(entry.id) : crypto.randomUUID(),
       name,
+      edition: String(entry?.edition || '').trim(),
+      coverImage: String(entry?.coverImage || '').trim(),
+      source: normalizeBookSource(entry?.source),
       monsters: normalizeMonsterManual(entry.monsters || entry.entries || [])
     });
     return acc;
@@ -605,6 +625,36 @@ const getMonsterBookById = (id) =>
   monsterBooks.find((book) => book.id === id) || null;
 
 const getActiveMonsterBook = () => getMonsterBookById(activeMonsterBookId);
+
+const findWorldForMonsterId = (monsterId) => {
+  if (!monsterId) {
+    return null;
+  }
+  return (
+    Object.entries(worlds).find(([, world]) =>
+      Array.isArray(world?.monsterBooks)
+        ? world.monsterBooks.some((book) =>
+          Array.isArray(book?.monsters)
+            ? book.monsters.some((monster) => monster.id === monsterId)
+            : false
+        )
+        : false
+    )?.[0] || null
+  );
+};
+
+const ensureWorldForMonster = (monsterId) => {
+  if (!monsterId) {
+    return;
+  }
+  if (findMonsterById(monsterId)) {
+    return;
+  }
+  const worldId = findWorldForMonsterId(monsterId);
+  if (worldId) {
+    setActiveWorld(worldId);
+  }
+};
 
 const findMonsterById = (monsterId) => {
   if (!monsterId) {
@@ -620,10 +670,14 @@ const findMonsterById = (monsterId) => {
 };
 
 const setActiveMonster = (monsterId, { syncHash = true } = {}) => {
+  ensureWorldForMonster(monsterId);
   const match = findMonsterById(monsterId);
   if (match) {
     activeMonsterBookId = match.book.id;
     activeMonsterId = match.monster.id;
+    if (!selectedMonsterBookIds.includes(match.book.id)) {
+      selectedMonsterBookIds = [...selectedMonsterBookIds, match.book.id];
+    }
   } else {
     activeMonsterId = monsterId || null;
   }
@@ -675,16 +729,25 @@ const getMonsterBookByName = (name) => {
   return monsterBooks.find((book) => book.name.toLowerCase() === key) || null;
 };
 
-const ensureMonsterBook = (name) => {
+const ensureMonsterBook = (name, metadata = {}) => {
   const trimmed = String(name || '').trim();
   if (!trimmed) {
     return null;
   }
   const existing = getMonsterBookByName(trimmed);
   if (existing) {
+    if (metadata.edition && !existing.edition) {
+      existing.edition = String(metadata.edition).trim();
+    }
+    if (metadata.coverImage && !existing.coverImage) {
+      existing.coverImage = String(metadata.coverImage).trim();
+    }
+    if (metadata.source) {
+      existing.source = normalizeBookSource(metadata.source);
+    }
     return existing;
   }
-  const book = createMonsterBook(trimmed, []);
+  const book = createMonsterBook(trimmed, [], metadata);
   monsterBooks = [...monsterBooks, book];
   return book;
 };
@@ -727,7 +790,9 @@ const generateWorldId = () => {
 };
 
 const createWorld = (name) => {
-  const defaultBook = createMonsterBook('Monster Manual', baseMonsterPresets);
+  const defaultBook = createMonsterBook('Monster Manual', baseMonsterPresets, {
+    source: 'core'
+  });
   return {
     id: generateWorldId(),
     name,
@@ -758,7 +823,8 @@ const createWorld = (name) => {
     campaignMilestones: [],
     encounterPlans: [],
     monsterBooks: [defaultBook],
-    activeMonsterBookId: defaultBook.id
+    activeMonsterBookId: defaultBook.id,
+    selectedMonsterBookIds: [defaultBook.id]
   };
 };
 
@@ -980,7 +1046,8 @@ const saveState = () => {
       campaignMilestones,
       encounterPlans,
       monsterBooks,
-      activeMonsterBookId
+      activeMonsterBookId,
+      selectedMonsterBookIds
     };
   }
   fetch('/api/state', {
@@ -1136,14 +1203,25 @@ const setActiveWorld = (worldId) => {
   if (Array.isArray(nextWorld.monsterBooks)) {
     monsterBooks = normalizeMonsterBooks(nextWorld.monsterBooks);
   } else if (Array.isArray(nextWorld.monsterManual)) {
-    const legacyBook = createMonsterBook('Monster Manual', nextWorld.monsterManual);
+    const legacyBook = createMonsterBook('Monster Manual', nextWorld.monsterManual, {
+      source: 'core'
+    });
     monsterBooks = [legacyBook];
   } else {
-    monsterBooks = [createMonsterBook('Monster Manual', baseMonsterPresets)];
+    monsterBooks = [createMonsterBook('Monster Manual', baseMonsterPresets, { source: 'core' })];
   }
   activeMonsterBookId = nextWorld.activeMonsterBookId || monsterBooks[0]?.id || null;
   if (!getMonsterBookById(activeMonsterBookId) && monsterBooks.length > 0) {
     activeMonsterBookId = monsterBooks[0].id;
+  }
+  const savedSelection = Array.isArray(nextWorld.selectedMonsterBookIds)
+    ? nextWorld.selectedMonsterBookIds
+    : [];
+  selectedMonsterBookIds = savedSelection.filter((id) =>
+    monsterBooks.some((book) => book.id === id)
+  );
+  if (selectedMonsterBookIds.length === 0) {
+    selectedMonsterBookIds = monsterBooks.map((book) => book.id);
   }
   activeMonsterId = null;
   editingMonsterId = null;
@@ -2093,6 +2171,90 @@ const updateMonsterBookError = (message = '') => {
   }
 };
 
+const getSelectedMonsterBookIds = () =>
+  selectedMonsterBookIds.filter((id) => monsterBooks.some((book) => book.id === id));
+
+const setSelectedMonsterBookIds = (ids) => {
+  selectedMonsterBookIds = ids.filter((id) => monsterBooks.some((book) => book.id === id));
+  saveState();
+};
+
+const renderMonsterBookTiles = () => {
+  if (!monsterBookTiles) {
+    return;
+  }
+  monsterBookTiles.innerHTML = '';
+  if (!activeWorldId) {
+    const helper = document.createElement('p');
+    helper.className = 'helper-text';
+    helper.textContent = 'Select a world to view its monster books.';
+    monsterBookTiles.appendChild(helper);
+    return;
+  }
+  if (monsterBooks.length === 0) {
+    const helper = document.createElement('p');
+    helper.className = 'helper-text';
+    helper.textContent = 'Add a monster book to start filtering.';
+    monsterBookTiles.appendChild(helper);
+    return;
+  }
+  const selectedIds = new Set(getSelectedMonsterBookIds());
+  monsterBooks
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((book) => {
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'monster-book-tile';
+      if (selectedIds.has(book.id)) {
+        tile.classList.add('active');
+      }
+
+      const cover = document.createElement('div');
+      cover.className = 'monster-book-cover';
+      if (book.coverImage) {
+        cover.style.backgroundImage = `url("${book.coverImage}")`;
+      }
+
+      const info = document.createElement('div');
+      info.className = 'monster-book-info';
+      const name = document.createElement('div');
+      name.className = 'monster-book-name';
+      name.textContent = book.name;
+      const meta = document.createElement('div');
+      meta.className = 'monster-book-meta';
+      if (book.edition) {
+        const edition = document.createElement('span');
+        edition.textContent = book.edition;
+        meta.appendChild(edition);
+      }
+      const source = document.createElement('span');
+      source.textContent = book.source === 'core' ? 'Core book' : 'User book';
+      meta.appendChild(source);
+
+      const toggle = document.createElement('div');
+      toggle.className = 'monster-book-toggle';
+      toggle.textContent = selectedIds.has(book.id) ? 'Selected' : 'Not selected';
+
+      info.append(name, meta, toggle);
+      tile.append(cover, info);
+
+      tile.addEventListener('click', () => {
+        const updated = new Set(getSelectedMonsterBookIds());
+        if (updated.has(book.id)) {
+          updated.delete(book.id);
+        } else {
+          updated.add(book.id);
+        }
+        setSelectedMonsterBookIds(Array.from(updated));
+        renderMonsterManual();
+        renderMonsterBookTiles();
+      });
+
+      monsterBookTiles.appendChild(tile);
+    });
+};
+
 const renderMonsterBookSelect = () => {
   if (!monsterBookSelect) {
     return;
@@ -2113,7 +2275,7 @@ const renderMonsterBookSelect = () => {
     .forEach((book) => {
       const option = document.createElement('option');
       option.value = book.id;
-      option.textContent = book.name;
+      option.textContent = book.edition ? `${book.name} (${book.edition})` : book.name;
       monsterBookSelect.appendChild(option);
     });
   if (!getMonsterBookById(activeMonsterBookId)) {
@@ -2128,6 +2290,7 @@ const renderMonsterManual = () => {
   }
   monsterList.innerHTML = '';
   renderMonsterBookSelect();
+  renderMonsterBookTiles();
   if (!activeWorldId) {
     const item = document.createElement('li');
     item.className = 'helper-text';
@@ -2135,29 +2298,40 @@ const renderMonsterManual = () => {
     monsterList.appendChild(item);
     return;
   }
-  const activeBook = getActiveMonsterBook();
-  if (!activeBook) {
+  const selectedBookIds = getSelectedMonsterBookIds();
+  if (selectedBookIds.length === 0) {
     const item = document.createElement('li');
     item.className = 'helper-text';
-    item.textContent = 'Select or create a monster book to get started.';
+    item.textContent = 'Select one or more monster books to show their creatures.';
     monsterList.appendChild(item);
     return;
   }
-  if (activeBook.monsters.length === 0) {
+  const selectedBooks = monsterBooks.filter((book) =>
+    selectedBookIds.includes(book.id)
+  );
+  const hasAnyMonsters = selectedBooks.some((book) => book.monsters.length > 0);
+  if (!hasAnyMonsters) {
     const item = document.createElement('li');
     item.className = 'helper-text';
-    item.textContent = 'No monsters saved in this book yet.';
+    item.textContent = 'No monsters saved in the selected books yet.';
     monsterList.appendChild(item);
     return;
   }
   const query = monsterSearchInput?.value.trim().toLowerCase() || '';
-  const filtered = activeBook.monsters.filter((monster) => {
-    if (!query) {
-      return true;
-    }
-    const haystack = `${monster.name} ${monster.type} ${monster.meta || ''} ${monster.notes || ''} ${monster.challenge || ''}`.toLowerCase();
-    return haystack.includes(query);
-  });
+  const filtered = selectedBooks
+    .flatMap((book) =>
+      book.monsters.map((monster) => ({
+        monster,
+        book
+      }))
+    )
+    .filter(({ monster, book }) => {
+      if (!query) {
+        return true;
+      }
+      const haystack = `${monster.name} ${monster.type} ${monster.meta || ''} ${monster.notes || ''} ${monster.challenge || ''} ${book.name} ${book.edition || ''}`.toLowerCase();
+      return haystack.includes(query);
+    });
   if (filtered.length === 0) {
     const item = document.createElement('li');
     item.className = 'helper-text';
@@ -2167,8 +2341,14 @@ const renderMonsterManual = () => {
   }
   filtered
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach((monster) => {
+    .sort((a, b) => {
+      const nameCompare = a.monster.name.localeCompare(b.monster.name);
+      if (nameCompare !== 0) {
+        return nameCompare;
+      }
+      return a.book.name.localeCompare(b.book.name);
+    })
+    .forEach(({ monster, book }) => {
       const item = document.createElement('li');
       item.className = 'quest-item';
 
@@ -2179,7 +2359,11 @@ const renderMonsterManual = () => {
       const typeTag = document.createElement('span');
       typeTag.className = 'timeline-tag';
       typeTag.textContent = monster.meta || monster.type || 'npc';
+      const bookTag = document.createElement('span');
+      bookTag.className = 'timeline-tag';
+      bookTag.textContent = book.edition ? `${book.name} (${book.edition})` : book.name;
       header.append(title, typeTag);
+      header.appendChild(bookTag);
 
       const meta = document.createElement('div');
       meta.className = 'monster-meta';
@@ -2256,6 +2440,7 @@ const renderMonsterManual = () => {
       view.className = 'ghost';
       view.textContent = 'View';
       view.addEventListener('click', () => {
+        activeMonsterBookId = book.id;
         window.location.href = `monster.html?id=${monster.id}`;
       });
       actions.append(view);
@@ -2640,14 +2825,27 @@ const handleAddMonsterBook = () => {
     updateMonsterBookError('That book already exists.');
     return;
   }
-  const book = createMonsterBook(name, []);
+  const book = createMonsterBook(name, [], {
+    edition: monsterBookEditionInput?.value.trim() || '',
+    coverImage: monsterBookCoverInput?.value.trim() || '',
+    source: monsterBookSourceInput?.value || 'user'
+  });
   monsterBooks = [...monsterBooks, book];
   activeMonsterBookId = book.id;
+  if (!selectedMonsterBookIds.includes(book.id)) {
+    selectedMonsterBookIds = [...selectedMonsterBookIds, book.id];
+  }
   updateMonsterBookError('');
   renderMonsterManual();
   renderCombatantPresets();
   saveState();
   monsterBookNameInput.value = '';
+  if (monsterBookEditionInput) {
+    monsterBookEditionInput.value = '';
+  }
+  if (monsterBookCoverInput) {
+    monsterBookCoverInput.value = '';
+  }
 };
 
 const handleExportMonsterBook = () => {
@@ -2658,6 +2856,9 @@ const handleExportMonsterBook = () => {
   }
   const payload = {
     name: activeBook.name,
+    edition: activeBook.edition || '',
+    coverImage: activeBook.coverImage || '',
+    source: activeBook.source || 'user',
     monsters: activeBook.monsters
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -2669,6 +2870,30 @@ const handleExportMonsterBook = () => {
   link.download = `${safeName || 'monster-book'}.json`;
   link.click();
   URL.revokeObjectURL(link.href);
+};
+
+const handleSaveMonsterBook = async () => {
+  const activeBook = getActiveMonsterBook();
+  if (!activeBook) {
+    updateMonsterBookError('Select a book to save.');
+    return;
+  }
+  try {
+    const response = await fetch('/api/books', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ book: activeBook })
+    });
+    if (!response.ok) {
+      throw new Error('Save failed');
+    }
+    const payload = await response.json();
+    updateMonsterBookError(
+      payload?.message || `Saved "${activeBook.name}" to the ${activeBook.source} library.`
+    );
+  } catch (error) {
+    updateMonsterBookError('Unable to save book to the library.');
+  }
 };
 
 const handleAddMonster = () => {
@@ -2777,7 +3002,12 @@ const handleImportMonsters = () => {
       updateMonsterImportError('Provide a book name before importing.');
       return;
     }
-    const targetBook = ensureMonsterBook(bookName);
+    const metadata = {
+      edition: String(parsed?.edition || monsterBookEditionInput?.value || '').trim(),
+      coverImage: String(parsed?.coverImage || monsterBookCoverInput?.value || '').trim(),
+      source: parsed?.source || monsterBookSourceInput?.value || 'user'
+    };
+    const targetBook = ensureMonsterBook(bookName, metadata);
     if (!targetBook) {
       updateMonsterImportError('Provide a valid book name.');
       return;
@@ -2799,6 +3029,9 @@ const handleImportMonsters = () => {
     updateMonsterImportError('');
     targetBook.monsters = [...targetBook.monsters, ...additions];
     activeMonsterBookId = targetBook.id;
+    if (!selectedMonsterBookIds.includes(targetBook.id)) {
+      selectedMonsterBookIds = [...selectedMonsterBookIds, targetBook.id];
+    }
     renderMonsterManual();
     renderCombatantPresets();
     saveState();
@@ -5453,6 +5686,12 @@ if (monsterBookSelect) {
     activeMonsterId = null;
     cancelMonsterEdit();
     updateMonsterBookError('');
+    if (
+      activeMonsterBookId &&
+      !selectedMonsterBookIds.includes(activeMonsterBookId)
+    ) {
+      selectedMonsterBookIds = [...selectedMonsterBookIds, activeMonsterBookId];
+    }
     renderMonsterManual();
     renderCombatantPresets();
     renderMonsterDetail();
@@ -5473,6 +5712,9 @@ if (addMonsterBookButton) {
 }
 if (exportMonsterBookButton) {
   exportMonsterBookButton.addEventListener('click', handleExportMonsterBook);
+}
+if (saveMonsterBookButton) {
+  saveMonsterBookButton.addEventListener('click', handleSaveMonsterBook);
 }
 if (cancelMonsterEditButton) {
   cancelMonsterEditButton.addEventListener('click', cancelMonsterEdit);
@@ -5980,6 +6222,7 @@ if (leaveWorldButton) {
     activeWorldId = null;
     monsterBooks = [];
     activeMonsterBookId = null;
+    selectedMonsterBookIds = [];
     activeMonsterId = null;
     editingMonsterId = null;
     setWorldSelectedState(false);
@@ -6144,7 +6387,8 @@ if (exportWorldButton) {
       campaignMilestones,
       encounterPlans,
       monsterBooks,
-      activeMonsterBookId
+      activeMonsterBookId,
+      selectedMonsterBookIds
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -6235,9 +6479,16 @@ if (importWorldInput) {
           monsterBooks: Array.isArray(parsed.monsterBooks)
             ? normalizeMonsterBooks(parsed.monsterBooks)
             : parsed.monsterManual || parsed.monsters
-              ? [createMonsterBook('Monster Manual', parsed.monsterManual || parsed.monsters)]
-              : [createMonsterBook('Monster Manual', baseMonsterPresets)],
-          activeMonsterBookId: parsed.activeMonsterBookId || null
+              ? [
+                createMonsterBook('Monster Manual', parsed.monsterManual || parsed.monsters, {
+                  source: 'core'
+                })
+              ]
+              : [createMonsterBook('Monster Manual', baseMonsterPresets, { source: 'core' })],
+          activeMonsterBookId: parsed.activeMonsterBookId || null,
+          selectedMonsterBookIds: Array.isArray(parsed.selectedMonsterBookIds)
+            ? parsed.selectedMonsterBookIds
+            : []
         };
         worlds[world.id] = world;
         activeWorldId = world.id;
