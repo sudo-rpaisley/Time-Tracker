@@ -2803,6 +2803,10 @@ const renderMonsterDetail = () => {
   }
   if (!selectedMonster) {
     monsterDetailPanel.hidden = true;
+    monsterDetailContent.innerHTML = '';
+    if (monsterDetailRelated) {
+      monsterDetailRelated.innerHTML = '';
+    }
     if (monsterListPanel) {
       monsterListPanel.hidden = false;
     }
