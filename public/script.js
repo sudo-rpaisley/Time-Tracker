@@ -625,6 +625,25 @@ const getMonsterIdFromHash = () => {
   return id || null;
 };
 
+const getMonsterIdFromQuery = () => {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  return id ? id.trim() : null;
+};
+
+const isMonsterDetailPage = () => window.location.pathname.endsWith('monster.html');
+
+const getMonsterIdFromLocation = () => {
+  const hashId = getMonsterIdFromHash();
+  if (hashId) {
+    return hashId;
+  }
+  if (isMonsterDetailPage()) {
+    return getMonsterIdFromQuery();
+  }
+  return null;
+};
+
 const getMonsterBookByName = (name) => {
   const key = String(name || '').trim().toLowerCase();
   if (!key) {
@@ -2213,7 +2232,7 @@ const renderMonsterManual = () => {
       view.className = 'ghost';
       view.textContent = 'View';
       view.addEventListener('click', () => {
-        setActiveMonster(monster.id);
+        window.location.href = `monster.html?id=${monster.id}`;
       });
       actions.append(view);
 
@@ -2407,10 +2426,7 @@ const renderMonsterDetail = () => {
         view.textContent = 'View';
         view.addEventListener('click', () => {
           activeMonsterBookId = monster.bookId;
-          activeMonsterId = monster.id;
-          renderMonsterManual();
-          renderCombatantPresets();
-          renderMonsterDetail();
+          setActiveMonster(monster.id);
           saveState();
         });
         card.append(title, meta, view);
@@ -5382,6 +5398,10 @@ if (cancelMonsterEditButton) {
 }
 if (closeMonsterDetailButton) {
   closeMonsterDetailButton.addEventListener('click', () => {
+    if (isMonsterDetailPage()) {
+      window.location.href = 'monsters.html';
+      return;
+    }
     setActiveMonster(null);
   });
 }
@@ -5871,7 +5891,7 @@ document.addEventListener('click', (event) => {
   }
 });
 window.addEventListener('hashchange', () => {
-  const monsterId = getMonsterIdFromHash();
+  const monsterId = getMonsterIdFromLocation();
   setActiveMonster(monsterId, { syncHash: false });
 });
 if (leaveWorldButton) {
@@ -6206,6 +6226,6 @@ const initializeDefaults = async () => {
 initializeDefaults().then(() => {
   renderInitiative();
   renderProfile();
-  const monsterId = getMonsterIdFromHash();
+  const monsterId = getMonsterIdFromLocation();
   setActiveMonster(monsterId, { syncHash: false });
 });
