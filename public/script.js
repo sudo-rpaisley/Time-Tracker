@@ -2766,7 +2766,7 @@ const renderMonsterDetail = () => {
   if (!monsterDetailPanel || !monsterDetailContent) {
     return;
   }
-  if (!isMonsterDetailPage() && !activeMonsterId) {
+  if (!isMonsterDetailPage()) {
     monsterDetailPanel.hidden = true;
     monsterDetailContent.innerHTML = '';
     if (monsterDetailRelated) {
