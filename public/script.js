@@ -219,6 +219,16 @@ const npcFactionInput = document.getElementById('npcFactionInput');
 const npcNotesInput = document.getElementById('npcNotesInput');
 const addNpcButton = document.getElementById('addNpcButton');
 const npcList = document.getElementById('npcList');
+const monsterSearchInput = document.getElementById('monsterSearchInput');
+const monsterNameInput = document.getElementById('monsterNameInput');
+const monsterTypeInput = document.getElementById('monsterTypeInput');
+const monsterMaxHpInput = document.getElementById('monsterMaxHpInput');
+const monsterNotesInput = document.getElementById('monsterNotesInput');
+const addMonsterButton = document.getElementById('addMonsterButton');
+const monsterList = document.getElementById('monsterList');
+const monsterImportInput = document.getElementById('monsterImportInput');
+const monsterImportError = document.getElementById('monsterImportError');
+const importMonstersButton = document.getElementById('importMonstersButton');
 const factionNameInput = document.getElementById('factionNameInput');
 const factionInfluenceInput = document.getElementById('factionInfluenceInput');
 const factionAlignmentInput = document.getElementById('factionAlignmentInput');
@@ -301,6 +311,7 @@ let rumorBoard = [];
 let sessionNotes = [];
 let campaignMilestones = [];
 let encounterPlans = [];
+let monsterManual = [];
 const updateWorldNotes = (value) => {
   worldNotes = value;
   saveState();
@@ -371,7 +382,7 @@ const EVENT_ACTORS = [
   { value: 'npc', label: 'NPC' }
 ];
 
-const monsterPresets = [
+const baseMonsterPresets = [
   {
     id: 'goblin',
     name: 'Goblin',
@@ -401,6 +412,56 @@ const monsterPresets = [
     notes: 'AC 12, Scimitar +3 to hit'
   }
 ];
+
+const normalizeMonsterEntry = (entry) => {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+  const name = String(entry.name || '').trim();
+  if (!name) {
+    return null;
+  }
+  const type = String(entry.type || 'npc').trim() || 'npc';
+  const parsedMaxHp = Number(entry.maxHp);
+  const maxHp = Number.isNaN(parsedMaxHp) ? null : Math.max(0, parsedMaxHp);
+  const notes = String(entry.notes || '').trim();
+  return {
+    id: entry.id ? String(entry.id) : crypto.randomUUID(),
+    name,
+    type,
+    maxHp,
+    notes
+  };
+};
+
+const normalizeMonsterManual = (entries) => {
+  const list = Array.isArray(entries) ? entries : [];
+  const seen = new Set();
+  return list.reduce((acc, entry) => {
+    const monster = normalizeMonsterEntry(entry);
+    if (!monster) {
+      return acc;
+    }
+    const key = monster.name.toLowerCase();
+    if (seen.has(key)) {
+      return acc;
+    }
+    seen.add(key);
+    acc.push(monster);
+    return acc;
+  }, []);
+};
+
+const getMonsterManualByName = (name) => {
+  const key = name.trim().toLowerCase();
+  if (!key) {
+    return null;
+  }
+  return monsterManual.find((monster) => monster.name.toLowerCase() === key) || null;
+};
+
+const getMonsterById = (id) =>
+  monsterManual.find((monster) => monster.id === id) || null;
 
 const pad = (value) => String(value).padStart(2, '0');
 
@@ -447,7 +508,8 @@ const createWorld = (name) => ({
   rumorBoard: [],
   sessionNotes: [],
   campaignMilestones: [],
-  encounterPlans: []
+  encounterPlans: [],
+  monsterManual: normalizeMonsterManual(baseMonsterPresets)
 });
 
 const openWorldModal = () => {
@@ -578,6 +640,9 @@ const deleteWorld = () => {
     setActiveWorld(activeWorldId);
   } else {
     setWorldSelectedState(false);
+    monsterManual = [];
+    renderMonsterManual();
+    renderCombatantPresets();
   }
   return true;
 };
@@ -659,7 +724,8 @@ const saveState = () => {
       rumorBoard,
       sessionNotes,
       campaignMilestones,
-      encounterPlans
+      encounterPlans,
+      monsterManual
     };
   }
   fetch('/api/state', {
@@ -812,6 +878,9 @@ const setActiveWorld = (worldId) => {
   encounterPlans = Array.isArray(nextWorld.encounterPlans)
     ? nextWorld.encounterPlans
     : [];
+  monsterManual = Array.isArray(nextWorld.monsterManual)
+    ? normalizeMonsterManual(nextWorld.monsterManual)
+    : normalizeMonsterManual(baseMonsterPresets);
   partyMembers = Array.isArray(nextWorld.partyMembers)
     ? nextWorld.partyMembers.map((member) => ({
       ...member,
@@ -868,6 +937,8 @@ const setActiveWorld = (worldId) => {
   renderSessionNotes();
   renderCampaignMilestones();
   renderEncounterPlans();
+  renderMonsterManual();
+  renderCombatantPresets();
   saveState();
 };
 
@@ -1747,6 +1818,207 @@ const renderNpcDirectory = () => {
       item.append(header, meta, notes, actions);
       npcList.appendChild(item);
     });
+};
+
+const renderMonsterManual = () => {
+  if (!monsterList) {
+    return;
+  }
+  monsterList.innerHTML = '';
+  if (!activeWorldId) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'Select a world to manage its monster manual.';
+    monsterList.appendChild(item);
+    return;
+  }
+  if (monsterManual.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No monsters saved yet.';
+    monsterList.appendChild(item);
+    return;
+  }
+  const query = monsterSearchInput?.value.trim().toLowerCase() || '';
+  const filtered = monsterManual.filter((monster) => {
+    if (!query) {
+      return true;
+    }
+    const haystack = `${monster.name} ${monster.type} ${monster.notes || ''}`.toLowerCase();
+    return haystack.includes(query);
+  });
+  if (filtered.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No monsters match that search.';
+    monsterList.appendChild(item);
+    return;
+  }
+  filtered
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((monster) => {
+      const item = document.createElement('li');
+      item.className = 'quest-item';
+
+      const header = document.createElement('div');
+      header.className = 'quest-header';
+      const title = document.createElement('span');
+      title.textContent = monster.name;
+      const typeTag = document.createElement('span');
+      typeTag.className = 'timeline-tag';
+      typeTag.textContent = monster.type || 'npc';
+      header.append(title, typeTag);
+
+      const meta = document.createElement('div');
+      meta.className = 'monster-meta';
+      meta.textContent = Number.isFinite(monster.maxHp)
+        ? `Max HP ${monster.maxHp}`
+        : 'Max HP —';
+
+      const notes = document.createElement('div');
+      notes.className = 'event-description';
+      notes.textContent = monster.notes || 'No notes recorded.';
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'ghost';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => {
+        monsterManual = monsterManual.filter((entry) => entry.id !== monster.id);
+        renderMonsterManual();
+        renderCombatantPresets();
+        saveState();
+      });
+      actions.append(remove);
+
+      item.append(header, meta, notes, actions);
+      monsterList.appendChild(item);
+    });
+};
+
+const renderCombatantPresets = () => {
+  if (!combatantPresetSelect) {
+    return;
+  }
+  combatantPresetSelect.innerHTML = '';
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Custom';
+  combatantPresetSelect.appendChild(defaultOption);
+  monsterManual
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .forEach((preset) => {
+      const option = document.createElement('option');
+      option.value = preset.id;
+      option.textContent = preset.name;
+      combatantPresetSelect.appendChild(option);
+    });
+};
+
+const updateMonsterImportError = (message = '') => {
+  if (monsterImportError) {
+    monsterImportError.textContent = message;
+  }
+};
+
+const addMonsterToManual = (monster) => {
+  if (!activeWorldId) {
+    window.alert('Select a world before adding monsters.');
+    return false;
+  }
+  if (getMonsterManualByName(monster.name)) {
+    updateMonsterImportError(`"${monster.name}" is already in this manual.`);
+    return false;
+  }
+  monsterManual = [...monsterManual, monster];
+  renderMonsterManual();
+  renderCombatantPresets();
+  saveState();
+  return true;
+};
+
+const handleAddMonster = () => {
+  if (!monsterNameInput) {
+    return;
+  }
+  const name = monsterNameInput.value.trim();
+  if (!name) {
+    monsterNameInput.focus();
+    return;
+  }
+  const type = monsterTypeInput?.value.trim() || 'npc';
+  const maxHpValue = Number(monsterMaxHpInput?.value);
+  const maxHp = Number.isNaN(maxHpValue) ? null : Math.max(0, maxHpValue);
+  const notes = monsterNotesInput?.value.trim() || '';
+  const entry = normalizeMonsterEntry({
+    name,
+    type,
+    maxHp,
+    notes
+  });
+  if (!entry) {
+    return;
+  }
+  updateMonsterImportError('');
+  if (addMonsterToManual(entry)) {
+    monsterNameInput.value = '';
+    if (monsterTypeInput) {
+      monsterTypeInput.value = '';
+    }
+    if (monsterMaxHpInput) {
+      monsterMaxHpInput.value = '';
+    }
+    if (monsterNotesInput) {
+      monsterNotesInput.value = '';
+    }
+    monsterNameInput.focus();
+  }
+};
+
+const handleImportMonsters = () => {
+  if (!monsterImportInput) {
+    return;
+  }
+  const raw = monsterImportInput.value.trim();
+  if (!raw) {
+    updateMonsterImportError('Paste some JSON to import.');
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    const entries = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.monsters)
+        ? parsed.monsters
+        : null;
+    if (!entries) {
+      throw new Error('JSON must be an array or an object with a monsters array.');
+    }
+    const normalized = normalizeMonsterManual(entries);
+    if (normalized.length === 0) {
+      updateMonsterImportError('No valid monsters found in the JSON.');
+      return;
+    }
+    const additions = normalized.filter(
+      (monster) => !getMonsterManualByName(monster.name)
+    );
+    if (additions.length === 0) {
+      updateMonsterImportError('All imported monsters already exist.');
+      return;
+    }
+    updateMonsterImportError('');
+    monsterManual = [...monsterManual, ...additions];
+    renderMonsterManual();
+    renderCombatantPresets();
+    saveState();
+    monsterImportInput.value = '';
+  } catch (error) {
+    updateMonsterImportError('Invalid JSON. Please check the format.');
+  }
 };
 
 const renderFactionRoster = () => {
@@ -2975,10 +3247,14 @@ const renderEncounterDraft = () => {
 const generateEncounterDraft = () => {
   const difficulty = Number(encounterDifficulty.value);
   const monsterCount = Math.max(1, Math.ceil(difficulty + Math.random() * 2));
+  if (monsterManual.length === 0) {
+    window.alert('Add monsters to the manual before generating encounters.');
+    return;
+  }
   encounterDraft = [];
   for (let i = 0; i < monsterCount; i += 1) {
     const preset =
-      monsterPresets[Math.floor(Math.random() * monsterPresets.length)];
+      monsterManual[Math.floor(Math.random() * monsterManual.length)];
     const existing = encounterDraft.find((entry) => entry.id === preset.id);
     if (existing) {
       existing.count += 1;
@@ -3708,9 +3984,7 @@ const addCombatant = () => {
     return;
   }
 
-  const preset = monsterPresets.find(
-    (entry) => entry.id === combatantPresetSelect.value
-  );
+  const preset = getMonsterById(combatantPresetSelect.value);
   const maxHpValue = Number(combatantMaxHpInput.value);
   const maxHp = Number.isNaN(maxHpValue)
     ? preset?.maxHp ?? null
@@ -3884,9 +4158,7 @@ if (combatantNameInput) {
 }
 if (combatantPresetSelect) {
   combatantPresetSelect.addEventListener('change', () => {
-    const preset = monsterPresets.find(
-      (entry) => entry.id === combatantPresetSelect.value
-    );
+    const preset = getMonsterById(combatantPresetSelect.value);
     if (!preset) {
       return;
     }
@@ -4362,6 +4634,26 @@ if (addNpcButton) {
     saveState();
   });
 }
+if (addMonsterButton) {
+  addMonsterButton.addEventListener('click', handleAddMonster);
+}
+if (monsterNameInput) {
+  monsterNameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleAddMonster();
+    }
+  });
+}
+if (monsterSearchInput) {
+  monsterSearchInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterImportInput) {
+  monsterImportInput.addEventListener('input', () => updateMonsterImportError(''));
+}
+if (importMonstersButton) {
+  importMonstersButton.addEventListener('click', handleImportMonsters);
+}
 if (addFactionButton) {
   addFactionButton.addEventListener('click', () => {
     if (!factionNameInput) {
@@ -4836,7 +5128,10 @@ document.addEventListener('click', (event) => {
 if (leaveWorldButton) {
   leaveWorldButton.addEventListener('click', () => {
     activeWorldId = null;
+    monsterManual = [];
     setWorldSelectedState(false);
+    renderMonsterManual();
+    renderCombatantPresets();
     saveState();
     window.location.href = 'index.html';
   });
@@ -4993,7 +5288,8 @@ if (exportWorldButton) {
       rumorBoard,
       sessionNotes,
       campaignMilestones,
-      encounterPlans
+      encounterPlans,
+      monsterManual
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: 'application/json'
@@ -5080,7 +5376,10 @@ if (importWorldInput) {
           campaignMilestones: Array.isArray(parsed.campaignMilestones)
             ? parsed.campaignMilestones
             : [],
-          encounterPlans: Array.isArray(parsed.encounterPlans) ? parsed.encounterPlans : []
+          encounterPlans: Array.isArray(parsed.encounterPlans) ? parsed.encounterPlans : [],
+          monsterManual: normalizeMonsterManual(
+            parsed.monsterManual || parsed.monsters || baseMonsterPresets
+          )
         };
         worlds[world.id] = world;
         activeWorldId = world.id;
@@ -5092,15 +5391,6 @@ if (importWorldInput) {
     };
     reader.readAsText(file);
     importWorldInput.value = '';
-  });
-}
-
-if (combatantPresetSelect) {
-  monsterPresets.forEach((preset) => {
-    const option = document.createElement('option');
-    option.value = preset.id;
-    option.textContent = preset.name;
-    combatantPresetSelect.appendChild(option);
   });
 }
 
@@ -5121,6 +5411,8 @@ const initializeDefaults = async () => {
   if (activeWorldId && isAutoClockEnabled()) {
     startAutoClock();
   }
+  renderMonsterManual();
+  renderCombatantPresets();
 
   if (monthsInYearInput) {
     monthsInYearInput.value = calendarSettings.monthsInYear;

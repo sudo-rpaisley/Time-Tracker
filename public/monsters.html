@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Monster Manual</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page monster-page">
+      <header class="page-header">
+        <div>
+          <h2>Monster Manual</h2>
+          <p class="helper-text">
+            Build a searchable monster list for each world and paste JSON to import in bulk.
+          </p>
+        </div>
+      </header>
+
+      <div class="controls">
+        <div class="quest-card">
+          <h3>Add Monster</h3>
+          <div class="input-row">
+            <label>
+              Name
+              <input type="text" id="monsterNameInput" placeholder="e.g. Displacer Beast" />
+            </label>
+            <label>
+              Type
+              <input type="text" id="monsterTypeInput" placeholder="e.g. Beast" />
+            </label>
+            <label>
+              Max HP
+              <input type="number" id="monsterMaxHpInput" min="0" placeholder="e.g. 85" />
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea
+              id="monsterNotesInput"
+              rows="2"
+              placeholder="e.g. Multiattack, Displacement"
+            ></textarea>
+          </label>
+          <button class="primary" id="addMonsterButton" type="button">Add Monster</button>
+        </div>
+
+        <div class="quest-card">
+          <h3>Import Monsters</h3>
+          <p class="helper-text">
+            Paste JSON for a monster array. Supported keys: name, type, maxHp, notes.
+          </p>
+          <textarea
+            id="monsterImportInput"
+            rows="6"
+            placeholder='[{"name":"Owlbear","type":"Monstrosity","maxHp":59,"notes":"Multiattack"}]'
+          ></textarea>
+          <p class="helper-text" id="monsterImportError" role="alert"></p>
+          <button class="ghost" id="importMonstersButton" type="button">Import JSON</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <div class="input-row">
+            <label>
+              Search
+              <input type="search" id="monsterSearchInput" placeholder="Search monsters" />
+            </label>
+          </div>
+          <ul class="quest-list" id="monsterList"></ul>
+        </div>
+      </div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>

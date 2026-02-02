@@ -1336,6 +1336,11 @@ button.primary {
   font-size: 0.9rem;
 }
 
+.monster-meta {
+  color: #cfd3e3;
+  font-size: 0.9rem;
+}
+
 .quest-card {
   background: rgba(18, 21, 31, 0.95);
   border-radius: 16px;
