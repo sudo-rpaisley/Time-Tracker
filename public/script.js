@@ -2766,6 +2766,17 @@ const renderMonsterDetail = () => {
   if (!monsterDetailPanel || !monsterDetailContent) {
     return;
   }
+  if (!isMonsterDetailPage() && !activeMonsterId) {
+    monsterDetailPanel.hidden = true;
+    monsterDetailContent.innerHTML = '';
+    if (monsterDetailRelated) {
+      monsterDetailRelated.innerHTML = '';
+    }
+    if (monsterListPanel) {
+      monsterListPanel.hidden = false;
+    }
+    return;
+  }
   let activeBook = getActiveMonsterBook();
   let selectedMonster = activeBook?.monsters.find(
     (monster) => monster.id === activeMonsterId
