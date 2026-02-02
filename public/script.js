@@ -2912,8 +2912,17 @@ const saveMonsterBookToLibrary = async (book, { silent = false } = {}) => {
     if (!response.ok) {
       throw new Error('Save failed');
     }
+    const payload = await response.json();
+    if (payload?.book) {
+      monsterBooks = monsterBooks.map((entry) =>
+        entry.id === book.id ? { ...payload.book } : entry
+      );
+      if (activeMonsterBookId === book.id) {
+        renderMonsterManual();
+        renderMonsterDetail();
+      }
+    }
     if (!silent) {
-      const payload = await response.json();
       updateMonsterBookError(
         payload?.message || `Saved "${book.name}" to the ${book.source} library.`
       );

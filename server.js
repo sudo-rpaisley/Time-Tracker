@@ -306,7 +306,13 @@ const server = http.createServer(async (req, res) => {
         };
         await writeJsonFile(booksIndexFile, index);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, message: 'Book saved to library.' }));
+        res.end(
+          JSON.stringify({
+            ok: true,
+            message: 'Book saved to library.',
+            book: payload
+          })
+        );
       } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to save book.' }));
