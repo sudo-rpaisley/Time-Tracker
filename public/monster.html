@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D&amp;D Tracker - Monster Detail</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    @@include('partials/nav.html')
+
+    <section class="page monster-page">
+      <header class="page-header">
+        <div>
+          <h2>Monster Detail</h2>
+          <p class="helper-text">Review and edit a monster from your manuals.</p>
+        </div>
+      </header>
+
+      <section class="monster-detail-panel" id="monsterDetailPanel">
+        <div class="monster-detail-header">
+          <button class="ghost" id="closeMonsterDetailButton" type="button">
+            Back to list
+          </button>
+          <div class="button-row">
+            <button class="ghost" id="editMonsterButton" type="button">Edit Monster</button>
+            <button class="ghost" id="deleteMonsterButton" type="button" hidden>
+              Delete Monster
+            </button>
+          </div>
+        </div>
+        <div id="monsterDetailContent"></div>
+        <div class="monster-related" id="monsterDetailRelated"></div>
+      </section>
+
+      <div class="controls">
+        <div class="quest-card">
+          <h3>Edit Monster</h3>
+          <div class="input-row">
+            <label>
+              Name
+              <input type="text" id="monsterNameInput" placeholder="e.g. Displacer Beast" />
+            </label>
+            <label>
+              Type
+              <input type="text" id="monsterTypeInput" placeholder="e.g. Beast" />
+            </label>
+            <label>
+              Max HP
+              <input type="number" id="monsterMaxHpInput" min="0" placeholder="e.g. 85" />
+            </label>
+            <label>
+              Image URLs
+              <textarea
+                id="monsterImageInput"
+                rows="2"
+                placeholder="Add one image URL per line"
+              ></textarea>
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea
+              id="monsterNotesInput"
+              rows="2"
+              placeholder="e.g. Multiattack, Displacement"
+            ></textarea>
+          </label>
+          <div class="button-row">
+            <button class="primary" id="addMonsterButton" type="button">Save Monster</button>
+            <button class="ghost" id="cancelMonsterEditButton" type="button" hidden>
+              Cancel Edit
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    @@include('partials/modals.html')
+    <script src="script.js"></script>
+  </body>
+</html>
