@@ -225,10 +225,12 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         const bookId = book.id ? String(book.id) : crypto.randomUUID();
-        const source = normalizeBookSource(book.source);
-        const folderName = sanitizeFolderName(
-          `${book.name}${book.edition ? ` ${book.edition}` : ''}`
-        );
+        const index = await loadBooksIndex();
+        const existingEntry = index[bookId];
+        const source = normalizeBookSource(existingEntry?.source || book.source);
+        const folderName =
+          existingEntry?.folderName ||
+          sanitizeFolderName(`${book.name}${book.edition ? ` ${book.edition}` : ''}`);
         const fileBase = slugify(folderName);
         const bookDir = path.join(booksDir, source, folderName);
         const imagesDir = path.join(bookDir, 'images');
@@ -296,7 +298,6 @@ const server = http.createServer(async (req, res) => {
         const fileName = `${fileBase}.json`;
         const filePath = path.join(bookDir, fileName);
         await writeJsonFile(filePath, payload);
-        const index = await loadBooksIndex();
         index[bookId] = {
           source,
           folderName,
