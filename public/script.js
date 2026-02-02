@@ -2704,8 +2704,7 @@ const renderMonsterDetail = () => {
         view.textContent = 'View';
         view.addEventListener('click', () => {
           activeMonsterBookId = monster.bookId;
-          setActiveMonster(monster.id);
-          saveState();
+          window.location.href = `monster.html?id=${monster.id}`;
         });
         card.append(title, meta, view);
         list.appendChild(card);
