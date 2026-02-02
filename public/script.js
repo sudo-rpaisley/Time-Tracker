@@ -626,6 +626,53 @@ const getMonsterBookById = (id) =>
 
 const getActiveMonsterBook = () => getMonsterBookById(activeMonsterBookId);
 
+const storeMonsterDetailSnapshot = ({ monster, book, worldId } = {}) => {
+  if (!monster || typeof sessionStorage === 'undefined') {
+    return;
+  }
+  const payload = {
+    monster,
+    bookId: book?.id || null,
+    bookName: book?.name || null,
+    worldId: worldId || null
+  };
+  try {
+    sessionStorage.setItem('monsterDetailSnapshot', JSON.stringify(payload));
+  } catch (error) {
+    // Ignore storage errors.
+  }
+};
+
+const getMonsterDetailSnapshot = () => {
+  if (typeof sessionStorage === 'undefined') {
+    return null;
+  }
+  try {
+    const raw = sessionStorage.getItem('monsterDetailSnapshot');
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    return null;
+  }
+};
+
+const clearMonsterDetailSnapshot = () => {
+  if (typeof sessionStorage === 'undefined') {
+    return;
+  }
+  try {
+    sessionStorage.removeItem('monsterDetailSnapshot');
+  } catch (error) {
+    // Ignore storage errors.
+  }
+};
+
 const findWorldForMonsterId = (monsterId) => {
   if (!monsterId) {
     return null;
@@ -670,6 +717,9 @@ const findMonsterById = (monsterId) => {
 };
 
 const setActiveMonster = (monsterId, { syncHash = true } = {}) => {
+  if (!monsterId) {
+    clearMonsterDetailSnapshot();
+  }
   ensureWorldForMonster(monsterId);
   const match = findMonsterById(monsterId);
   if (match) {
@@ -702,11 +752,19 @@ const getMonsterIdFromHash = () => {
   return id || null;
 };
 
-const getMonsterIdFromQuery = () => {
+const getMonsterQueryParams = () => {
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
-  return id ? id.trim() : null;
+  const bookId = params.get('book');
+  const worldId = params.get('world');
+  return {
+    id: id ? id.trim() : null,
+    bookId: bookId ? bookId.trim() : null,
+    worldId: worldId ? worldId.trim() : null
+  };
 };
+
+const getMonsterIdFromQuery = () => getMonsterQueryParams().id;
 
 const isMonsterDetailPage = () => window.location.pathname.endsWith('monster.html');
 
@@ -719,6 +777,21 @@ const getMonsterIdFromLocation = () => {
     return getMonsterIdFromQuery();
   }
   return null;
+};
+
+const buildMonsterDetailUrl = ({ id, bookId, worldId } = {}) => {
+  const params = new URLSearchParams();
+  if (id) {
+    params.set('id', id);
+  }
+  if (bookId) {
+    params.set('book', bookId);
+  }
+  if (worldId) {
+    params.set('world', worldId);
+  }
+  const query = params.toString();
+  return `monster.html${query ? `?${query}` : ''}`;
 };
 
 const getMonsterBookByName = (name) => {
@@ -2462,7 +2535,12 @@ const renderMonsterManual = () => {
       view.textContent = 'View';
       view.addEventListener('click', () => {
         activeMonsterBookId = book.id;
-        window.location.href = `monster.html?id=${monster.id}`;
+        storeMonsterDetailSnapshot({ monster, book, worldId: activeWorldId });
+        window.location.href = buildMonsterDetailUrl({
+          id: monster.id,
+          bookId: book.id,
+          worldId: activeWorldId
+        });
       });
       actions.append(view);
 
@@ -2542,16 +2620,207 @@ const createMonsterImageCarousel = (images, name) => {
   return wrapper;
 };
 
+const getMonsterImageModal = () => {
+  if (!monsterDetailPanel) {
+    return null;
+  }
+  let modal = monsterDetailPanel.querySelector('.monster-image-modal');
+  if (modal) {
+    return modal;
+  }
+  modal = document.createElement('div');
+  modal.className = 'monster-image-modal';
+  modal.hidden = true;
+  modal.style.display = 'none';
+
+  const content = document.createElement('div');
+  content.className = 'monster-image-modal-content';
+
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'ghost monster-image-modal-close';
+  close.setAttribute('aria-label', 'Close image preview');
+  close.textContent = '✕';
+
+  const body = document.createElement('div');
+  body.className = 'monster-image-modal-body';
+
+  const closeModal = () => {
+    modal.hidden = true;
+    modal.style.display = 'none';
+    body.innerHTML = '';
+  };
+
+  close.addEventListener('click', () => {
+    closeModal();
+  });
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+  content.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !modal.hidden) {
+      closeModal();
+    }
+  });
+
+  content.append(close, body);
+  modal.appendChild(content);
+  monsterDetailPanel.appendChild(modal);
+  return modal;
+};
+
+const openMonsterImageModal = (images, name) => {
+  const modal = getMonsterImageModal();
+  if (!modal) {
+    return;
+  }
+  const body = modal.querySelector('.monster-image-modal-body');
+  if (!body) {
+    return;
+  }
+  body.innerHTML = '';
+  body.appendChild(createMonsterImageCarousel(images, name));
+  modal.style.display = 'grid';
+  modal.hidden = false;
+};
+
+const getDetailInputValue = (id) => {
+  const input = document.getElementById(id);
+  return input ? input.value.trim() : '';
+};
+
+const saveMonsterDetailEdits = () => {
+  const activeBook = getActiveMonsterBook();
+  const selected = activeBook?.monsters.find((monster) => monster.id === activeMonsterId);
+  if (!activeBook || !selected) {
+    return;
+  }
+  const name = getDetailInputValue('detailMonsterNameInput');
+  if (!name) {
+    return;
+  }
+  const type = getDetailInputValue('detailMonsterTypeInput') || selected.type || 'npc';
+  const metaValue = getDetailInputValue('detailMonsterMetaInput');
+  const meta = metaValue || type;
+  const armorClass = getDetailInputValue('detailMonsterArmorClassInput');
+  const hitPoints = getDetailInputValue('detailMonsterHitPointsInput');
+  const speed = getDetailInputValue('detailMonsterSpeedInput');
+  const imageUrls = normalizeImageUrls(getDetailInputValue('detailMonsterImageInput'));
+  const imageUrl = imageUrls[0] || '';
+  const maxHpValue = Number(getDetailInputValue('detailMonsterMaxHpInput'));
+  const maxHp = Number.isNaN(maxHpValue) ? selected.maxHp : Math.max(0, maxHpValue);
+  const stats = {
+    str: getDetailInputValue('detailMonsterStrInput'),
+    dex: getDetailInputValue('detailMonsterDexInput'),
+    con: getDetailInputValue('detailMonsterConInput'),
+    int: getDetailInputValue('detailMonsterIntInput'),
+    wis: getDetailInputValue('detailMonsterWisInput'),
+    cha: getDetailInputValue('detailMonsterChaInput'),
+    strMod: getDetailInputValue('detailMonsterStrModInput'),
+    dexMod: getDetailInputValue('detailMonsterDexModInput'),
+    conMod: getDetailInputValue('detailMonsterConModInput'),
+    intMod: getDetailInputValue('detailMonsterIntModInput'),
+    wisMod: getDetailInputValue('detailMonsterWisModInput'),
+    chaMod: getDetailInputValue('detailMonsterChaModInput')
+  };
+  const updated = {
+    ...selected,
+    name,
+    type,
+    meta,
+    armorClass,
+    hitPoints,
+    maxHp,
+    speed,
+    savingThrows: getDetailInputValue('detailMonsterSavingThrowsInput'),
+    skills: getDetailInputValue('detailMonsterSkillsInput'),
+    senses: getDetailInputValue('detailMonsterSensesInput'),
+    languages: getDetailInputValue('detailMonsterLanguagesInput'),
+    challenge: getDetailInputValue('detailMonsterChallengeInput'),
+    traits: getDetailInputValue('detailMonsterTraitsInput'),
+    actions: getDetailInputValue('detailMonsterActionsInput'),
+    legendaryActions: getDetailInputValue('detailMonsterLegendaryActionsInput'),
+    notes: getDetailInputValue('detailMonsterNotesInput'),
+    imageUrl,
+    imageUrls,
+    stats
+  };
+  activeBook.monsters = activeBook.monsters.map((monster) =>
+    monster.id === selected.id ? updated : monster
+  );
+  updateMonsterImportError('');
+  setMonsterEditState(false);
+  renderMonsterManual();
+  renderCombatantPresets();
+  renderMonsterDetail();
+  saveState();
+  saveMonsterBookToLibrary(activeBook, { silent: true });
+};
+
 const renderMonsterDetail = () => {
   if (!monsterDetailPanel || !monsterDetailContent) {
     return;
   }
-  const activeBook = getActiveMonsterBook();
-  const selectedMonster = activeBook?.monsters.find(
+  if (!isMonsterDetailPage()) {
+    monsterDetailPanel.hidden = true;
+    monsterDetailContent.innerHTML = '';
+    if (monsterDetailRelated) {
+      monsterDetailRelated.innerHTML = '';
+    }
+    if (monsterListPanel) {
+      monsterListPanel.hidden = false;
+    }
+    return;
+  }
+  let activeBook = getActiveMonsterBook();
+  let selectedMonster = activeBook?.monsters.find(
     (monster) => monster.id === activeMonsterId
   );
+  if (!selectedMonster && activeMonsterId) {
+    const match = findMonsterById(activeMonsterId);
+    if (match) {
+      activeBook = match.book;
+      activeMonsterBookId = match.book.id;
+      if (!selectedMonsterBookIds.includes(match.book.id)) {
+        selectedMonsterBookIds = [...selectedMonsterBookIds, match.book.id];
+      }
+      selectedMonster = match.monster;
+    }
+  }
+  if (!selectedMonster && isMonsterDetailPage()) {
+    const snapshot = getMonsterDetailSnapshot();
+    if (snapshot?.monster && (!activeMonsterId || snapshot.monster.id === activeMonsterId)) {
+      selectedMonster = snapshot.monster;
+      if (!activeMonsterId) {
+        activeMonsterId = snapshot.monster.id;
+      }
+      const snapshotBookId = snapshot.bookId || snapshot.monster.bookId;
+      if (snapshotBookId) {
+        activeMonsterBookId = snapshotBookId;
+      }
+      const existingBook = snapshotBookId ? getMonsterBookById(snapshotBookId) : null;
+      activeBook =
+        existingBook ||
+        (snapshotBookId || snapshot.bookName
+          ? {
+            id: snapshotBookId || 'snapshot-book',
+            name: snapshot.bookName || 'Monster Book',
+            monsters: [snapshot.monster]
+          }
+          : activeBook);
+    }
+  }
   if (!selectedMonster) {
     monsterDetailPanel.hidden = true;
+    monsterDetailContent.innerHTML = '';
+    if (monsterDetailRelated) {
+      monsterDetailRelated.innerHTML = '';
+    }
     if (monsterListPanel) {
       monsterListPanel.hidden = false;
     }
@@ -2572,16 +2841,40 @@ const renderMonsterDetail = () => {
     monsterDetailRelated.innerHTML = '';
   }
 
+  const isEditing = editingMonsterId === selectedMonster.id;
   const block = document.createElement('div');
   block.className = 'stat-block';
 
   const header = document.createElement('div');
   header.className = 'stat-block-header';
   const title = document.createElement('h2');
-  title.textContent = selectedMonster.name;
+  if (isEditing) {
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = 'detailMonsterNameInput';
+    nameInput.className = 'stat-block-input';
+    nameInput.value = selectedMonster.name || '';
+    title.appendChild(nameInput);
+  } else {
+    title.textContent = selectedMonster.name;
+  }
   const meta = document.createElement('div');
   meta.className = 'stat-block-meta';
-  meta.textContent = selectedMonster.meta || selectedMonster.type || '';
+  if (isEditing) {
+    const metaInput = document.createElement('input');
+    metaInput.type = 'text';
+    metaInput.id = 'detailMonsterMetaInput';
+    metaInput.className = 'stat-block-input';
+    metaInput.value = selectedMonster.meta || selectedMonster.type || '';
+    const typeInput = document.createElement('input');
+    typeInput.type = 'text';
+    typeInput.id = 'detailMonsterTypeInput';
+    typeInput.className = 'stat-block-input';
+    typeInput.value = selectedMonster.type || '';
+    meta.append(metaInput, typeInput);
+  } else {
+    meta.textContent = selectedMonster.meta || selectedMonster.type || '';
+  }
   header.append(title, meta);
 
   const top = document.createElement('div');
@@ -2593,22 +2886,31 @@ const renderMonsterDetail = () => {
         ? [selectedMonster.imageUrl]
         : [];
   if (detailImages.length > 0) {
-    top.appendChild(createMonsterImageCarousel(detailImages, selectedMonster.name));
+    const carousel = createMonsterImageCarousel(detailImages, selectedMonster.name);
+    const image = carousel.querySelector('img');
+    if (image) {
+      image.addEventListener('click', () =>
+        openMonsterImageModal(detailImages, selectedMonster.name)
+      );
+    }
+    top.appendChild(carousel);
   }
 
   const core = document.createElement('div');
   core.className = 'stat-block-core';
   const coreFields = [
-    ['Armor Class', selectedMonster.armorClass],
+    ['Armor Class', selectedMonster.armorClass, 'detailMonsterArmorClassInput'],
     [
       'Hit Points',
       selectedMonster.hitPoints ||
-        (Number.isFinite(selectedMonster.maxHp) ? selectedMonster.maxHp : '')
+        (Number.isFinite(selectedMonster.maxHp) ? selectedMonster.maxHp : ''),
+      'detailMonsterHitPointsInput'
     ],
-    ['Speed', selectedMonster.speed]
+    ['Max HP', Number.isFinite(selectedMonster.maxHp) ? selectedMonster.maxHp : '', 'detailMonsterMaxHpInput'],
+    ['Speed', selectedMonster.speed, 'detailMonsterSpeedInput']
   ];
-  coreFields.forEach(([label, value]) => {
-    if (!value) {
+  coreFields.forEach(([label, value, id]) => {
+    if (!value && !isEditing) {
       return;
     }
     const row = document.createElement('div');
@@ -2616,7 +2918,16 @@ const renderMonsterDetail = () => {
     const labelEl = document.createElement('span');
     labelEl.textContent = `${label} `;
     const valueEl = document.createElement('span');
-    valueEl.textContent = value;
+    if (isEditing) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = id;
+      input.className = 'stat-block-input';
+      input.value = value || '';
+      valueEl.appendChild(input);
+    } else {
+      valueEl.textContent = value;
+    }
     row.append(labelEl, valueEl);
     core.appendChild(row);
   });
@@ -2631,8 +2942,16 @@ const renderMonsterDetail = () => {
     ['WIS', selectedMonster.stats?.wis, selectedMonster.stats?.wisMod],
     ['CHA', selectedMonster.stats?.cha, selectedMonster.stats?.chaMod]
   ];
+  const abilityIds = {
+    STR: ['detailMonsterStrInput', 'detailMonsterStrModInput'],
+    DEX: ['detailMonsterDexInput', 'detailMonsterDexModInput'],
+    CON: ['detailMonsterConInput', 'detailMonsterConModInput'],
+    INT: ['detailMonsterIntInput', 'detailMonsterIntModInput'],
+    WIS: ['detailMonsterWisInput', 'detailMonsterWisModInput'],
+    CHA: ['detailMonsterChaInput', 'detailMonsterChaModInput']
+  };
   abilityData.forEach(([label, score, mod]) => {
-    if (!score) {
+    if (!score && !isEditing) {
       return;
     }
     const cell = document.createElement('div');
@@ -2640,39 +2959,102 @@ const renderMonsterDetail = () => {
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
     const valueEl = document.createElement('strong');
-    valueEl.textContent = mod ? `${score} ${mod}` : score;
+    if (isEditing) {
+      const [scoreId, modId] = abilityIds[label];
+      const scoreInput = document.createElement('input');
+      scoreInput.type = 'text';
+      scoreInput.id = scoreId;
+      scoreInput.className = 'stat-block-input';
+      scoreInput.value = score || '';
+      const modInput = document.createElement('input');
+      modInput.type = 'text';
+      modInput.id = modId;
+      modInput.className = 'stat-block-input';
+      modInput.value = mod || '';
+      valueEl.append(scoreInput, modInput);
+    } else {
+      valueEl.textContent = mod ? `${score} ${mod}` : score;
+    }
     cell.append(labelEl, valueEl);
     abilities.appendChild(cell);
   });
 
   const sections = [];
-  const addSection = (titleText, contentText) => {
-    if (!contentText) {
+  const addSection = (titleText, contentText, inputId) => {
+    if (!contentText && !isEditing) {
       return;
     }
     const section = document.createElement('div');
     section.className = 'stat-block-section';
     const titleEl = document.createElement('h3');
     titleEl.textContent = titleText;
-    const bodyEl = document.createElement('p');
-    bodyEl.textContent = contentText;
+    const bodyEl = isEditing ? document.createElement('textarea') : document.createElement('p');
+    if (isEditing) {
+      bodyEl.id = inputId;
+      bodyEl.className = 'stat-block-input';
+      bodyEl.value = contentText || '';
+      bodyEl.rows = 3;
+    } else {
+      bodyEl.textContent = contentText;
+    }
     section.append(titleEl, bodyEl);
     sections.push(section);
   };
 
-  addSection('Saving Throws', selectedMonster.savingThrows);
-  addSection('Skills', selectedMonster.skills);
-  addSection('Senses', selectedMonster.senses);
-  addSection('Languages', selectedMonster.languages);
-  addSection('Challenge', selectedMonster.challenge);
-  addSection('Traits', selectedMonster.traits);
-  addSection('Actions', selectedMonster.actions);
-  addSection('Legendary Actions', selectedMonster.legendaryActions);
-  addSection('Notes', selectedMonster.notes);
+  addSection('Saving Throws', selectedMonster.savingThrows, 'detailMonsterSavingThrowsInput');
+  addSection('Skills', selectedMonster.skills, 'detailMonsterSkillsInput');
+  addSection('Senses', selectedMonster.senses, 'detailMonsterSensesInput');
+  addSection('Languages', selectedMonster.languages, 'detailMonsterLanguagesInput');
+  addSection('Challenge', selectedMonster.challenge, 'detailMonsterChallengeInput');
+  addSection('Traits', selectedMonster.traits, 'detailMonsterTraitsInput');
+  addSection('Actions', selectedMonster.actions, 'detailMonsterActionsInput');
+  addSection(
+    'Legendary Actions',
+    selectedMonster.legendaryActions,
+    'detailMonsterLegendaryActionsInput'
+  );
+  addSection('Notes', selectedMonster.notes, 'detailMonsterNotesInput');
+
+  if (isEditing) {
+    const imageSection = document.createElement('div');
+    imageSection.className = 'stat-block-section';
+    const titleEl = document.createElement('h3');
+    titleEl.textContent = 'Image URLs';
+    const bodyEl = document.createElement('textarea');
+    bodyEl.id = 'detailMonsterImageInput';
+    bodyEl.className = 'stat-block-input';
+    bodyEl.rows = 3;
+    const urls =
+      selectedMonster.imageUrls?.length > 0
+        ? selectedMonster.imageUrls
+        : selectedMonster.imageUrl
+          ? [selectedMonster.imageUrl]
+          : [];
+    bodyEl.value = urls.join('\n');
+    imageSection.append(titleEl, bodyEl);
+    sections.unshift(imageSection);
+  }
 
   top.appendChild(core);
   block.append(header, top, abilities, ...sections);
   monsterDetailContent.appendChild(block);
+
+  if (isEditing) {
+    const actions = document.createElement('div');
+    actions.className = 'button-row monster-detail-actions';
+    const saveButton = document.createElement('button');
+    saveButton.type = 'button';
+    saveButton.className = 'primary';
+    saveButton.textContent = 'Save Changes';
+    saveButton.addEventListener('click', saveMonsterDetailEdits);
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.className = 'ghost';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.addEventListener('click', cancelMonsterEdit);
+    actions.append(saveButton, cancelButton);
+    monsterDetailContent.appendChild(actions);
+  }
 
   if (monsterDetailRelated) {
     const related = monsterBooks
@@ -2704,8 +3086,16 @@ const renderMonsterDetail = () => {
         view.textContent = 'View';
         view.addEventListener('click', () => {
           activeMonsterBookId = monster.bookId;
-          setActiveMonster(monster.id);
-          saveState();
+          storeMonsterDetailSnapshot({
+            monster,
+            book: { id: monster.bookId, name: monster.bookName },
+            worldId: activeWorldId
+          });
+          window.location.href = buildMonsterDetailUrl({
+            id: monster.id,
+            bookId: monster.bookId,
+            worldId: activeWorldId
+          });
         });
         card.append(title, meta, view);
         list.appendChild(card);
@@ -5770,6 +6160,7 @@ if (closeMonsterDetailButton) {
       window.location.href = 'monsters.html';
       return;
     }
+    clearMonsterDetailSnapshot();
     setActiveMonster(null);
   });
 }
@@ -5779,9 +6170,15 @@ if (editMonsterButton) {
     const selected = activeBook?.monsters.find(
       (monster) => monster.id === activeMonsterId
     );
-    if (selected) {
-      startMonsterEdit(selected);
+    if (!selected) {
+      return;
     }
+    if (editingMonsterId === selected.id) {
+      saveMonsterDetailEdits();
+      return;
+    }
+    startMonsterEdit(selected);
+    renderMonsterDetail();
   });
 }
 if (deleteMonsterButton) {
@@ -6603,6 +7000,21 @@ const initializeDefaults = async () => {
 initializeDefaults().then(() => {
   renderInitiative();
   renderProfile();
-  const monsterId = getMonsterIdFromLocation();
+  const snapshot = getMonsterDetailSnapshot();
+  const monsterId = getMonsterIdFromLocation() || snapshot?.monster?.id || null;
+  if (isMonsterDetailPage()) {
+    const { bookId, worldId } = getMonsterQueryParams();
+    const targetWorldId = worldId || snapshot?.worldId;
+    if (targetWorldId && worlds[targetWorldId]) {
+      setActiveWorld(targetWorldId);
+    }
+    const targetBookId = bookId || snapshot?.bookId;
+    if (targetBookId && getMonsterBookById(targetBookId)) {
+      activeMonsterBookId = targetBookId;
+      if (!selectedMonsterBookIds.includes(targetBookId)) {
+        selectedMonsterBookIds = [...selectedMonsterBookIds, targetBookId];
+      }
+    }
+  }
   setActiveMonster(monsterId, { syncHash: false });
 });
