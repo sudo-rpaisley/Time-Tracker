@@ -256,6 +256,7 @@ const monsterBookNameInput = document.getElementById('monsterBookNameInput');
 const monsterBookEditionInput = document.getElementById('monsterBookEditionInput');
 const monsterBookCoverInput = document.getElementById('monsterBookCoverInput');
 const monsterBookSourceInput = document.getElementById('monsterBookSourceInput');
+const monsterBookScaleInput = document.getElementById('monsterBookScaleInput');
 const addMonsterBookButton = document.getElementById('addMonsterBookButton');
 const exportMonsterBookButton = document.getElementById('exportMonsterBookButton');
 const saveMonsterBookButton = document.getElementById('saveMonsterBookButton');
@@ -1371,6 +1372,19 @@ const getCurrentWorld = () => worlds[activeWorldId];
 
 const setWorldSelectedState = (isSelected) => {
   document.body.classList.toggle('world-selected', Boolean(isSelected));
+};
+
+const applyMonsterBookScale = (scaleValue) => {
+  if (!monsterBookTiles) {
+    return;
+  }
+  const parsed = Number(scaleValue);
+  const clamped = Number.isNaN(parsed) ? 1 : Math.min(1.3, Math.max(0.7, parsed));
+  monsterBookTiles.style.setProperty('--monster-book-scale', clamped);
+  if (monsterBookScaleInput) {
+    monsterBookScaleInput.value = clamped.toFixed(1);
+  }
+  localStorage.setItem('monsterBookScale', String(clamped));
 };
 
 const applyWorldScale = (scaleValue) => {
@@ -6585,6 +6599,11 @@ if (partyProfileNotes) {
     });
   });
 }
+if (monsterBookScaleInput) {
+  monsterBookScaleInput.addEventListener('input', () => {
+    applyMonsterBookScale(monsterBookScaleInput.value);
+  });
+}
 const updatePartyCoins = (updates) => {
   if (!selectedPartyMemberId) {
     return;
@@ -7782,6 +7801,10 @@ const initializeDefaults = async () => {
   renderEncounterPresets();
   renderQuestBoard();
   renderDowntimeTracker();
+  if (monsterBookTiles) {
+    const savedScale = localStorage.getItem('monsterBookScale');
+    applyMonsterBookScale(savedScale || 1);
+  }
   if (worldGrid) {
     const savedScale = localStorage.getItem('worldTileScale');
     if (savedScale) {

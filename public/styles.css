@@ -395,19 +395,46 @@ body.world-selected .nav-no-world {
   gap: 12px;
 }
 
+.monster-book-tiles-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .monster-book-tiles-header h3 {
   margin-bottom: 4px;
 }
 
+.monster-book-scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c9ccda;
+  font-size: 0.9rem;
+}
+
+.monster-book-scale input {
+  accent-color: #7a52ff;
+}
+
 .monster-book-grid {
+  --monster-book-scale: 1;
+  --monster-book-tile-width: 180px;
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(calc(var(--monster-book-tile-width) * var(--monster-book-scale)), 1fr)
+  );
 }
 
 .monster-book-tile {
   aspect-ratio: 2 / 3;
-  width: clamp(160px, 18vw, 240px);
+  width: 100%;
+  min-width: calc(var(--monster-book-tile-width) * var(--monster-book-scale));
+  max-width: calc(220px * var(--monster-book-scale));
   min-height: unset;
   position: relative;
   border-radius: 14px;
