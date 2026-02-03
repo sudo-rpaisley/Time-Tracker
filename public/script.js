@@ -2921,13 +2921,7 @@ const renderMonsterManual = () => {
       details.append(statLine, extra, preview);
       content.appendChild(details);
 
-      const actions = document.createElement('div');
-      actions.className = 'button-row';
-      const view = document.createElement('button');
-      view.type = 'button';
-      view.className = 'ghost';
-      view.textContent = 'View';
-      view.addEventListener('click', () => {
+      const openDetail = () => {
         activeMonsterBookId = book.id;
         storeMonsterDetailSnapshot({ monster, book, worldId: activeWorldId });
         window.location.href = buildMonsterDetailUrl({
@@ -2935,10 +2929,18 @@ const renderMonsterManual = () => {
           bookId: book.id,
           worldId: activeWorldId
         });
+      };
+      item.tabIndex = 0;
+      item.setAttribute('role', 'button');
+      item.addEventListener('click', openDetail);
+      item.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openDetail();
+        }
       });
-      actions.append(view);
 
-      item.append(header, meta, content, actions);
+      item.append(header, meta, content);
       monsterList.appendChild(item);
     });
 };
