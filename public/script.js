@@ -469,6 +469,96 @@ const parseFirstNumber = (value) => {
   return match ? Number(match[0]) : null;
 };
 
+const getXmlText = (root, selector) =>
+  root?.querySelector(selector)?.textContent?.trim() || '';
+
+const parseXmlEntries = (root, selector) =>
+  Array.from(root?.querySelectorAll(selector) || []);
+
+const formatXmlTraitList = (nodes) =>
+  nodes
+    .map((node) => {
+      const name = getXmlText(node, 'name');
+      const texts = parseXmlEntries(node, 'text')
+        .map((textNode) => textNode.textContent?.trim())
+        .filter(Boolean);
+      const detail = texts.join('\n');
+      if (!name && !detail) {
+        return '';
+      }
+      if (!name) {
+        return detail;
+      }
+      if (!detail) {
+        return name;
+      }
+      return `${name}: ${detail}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
+const parseMonsterXml = (raw) => {
+  if (typeof DOMParser === 'undefined') {
+    throw new Error('XML parsing is not supported in this environment.');
+  }
+  const parser = new DOMParser();
+  const document = parser.parseFromString(raw, 'application/xml');
+  if (document.querySelector('parsererror')) {
+    throw new Error('Invalid XML.');
+  }
+  const monsters = Array.from(document.querySelectorAll('monster'));
+  return monsters.map((monster) => {
+    const name = getXmlText(monster, 'name');
+    const size = getXmlText(monster, 'size');
+    const type = getXmlText(monster, 'type');
+    const alignment = getXmlText(monster, 'alignment');
+    const armorClass = getXmlText(monster, 'ac');
+    const hitPoints = getXmlText(monster, 'hp');
+    const speed = getXmlText(monster, 'speed');
+    const savingThrows = getXmlText(monster, 'save');
+    const skills = getXmlText(monster, 'skill');
+    const senses = getXmlText(monster, 'senses');
+    const passive = getXmlText(monster, 'passive');
+    const languages = getXmlText(monster, 'languages');
+    const challenge = getXmlText(monster, 'cr');
+    const traits = formatXmlTraitList(parseXmlEntries(monster, 'trait'));
+    const actions = formatXmlTraitList(parseXmlEntries(monster, 'action'));
+    const spells = getXmlText(monster, 'spells');
+    const slots = getXmlText(monster, 'slots');
+    const notesParts = [
+      alignment ? `Alignment: ${alignment}` : '',
+      passive ? `Passive Perception: ${passive}` : '',
+      spells ? `Spells: ${spells}` : '',
+      slots ? `Spell Slots: ${slots}` : ''
+    ].filter(Boolean);
+    return {
+      name,
+      type: type || 'npc',
+      meta: size,
+      maxHp: parseFirstNumber(hitPoints),
+      armorClass,
+      hitPoints,
+      speed,
+      savingThrows,
+      skills,
+      senses,
+      languages,
+      challenge,
+      traits,
+      actions,
+      stats: {
+        str: getXmlText(monster, 'str'),
+        dex: getXmlText(monster, 'dex'),
+        con: getXmlText(monster, 'con'),
+        int: getXmlText(monster, 'int'),
+        wis: getXmlText(monster, 'wis'),
+        cha: getXmlText(monster, 'cha')
+      },
+      notes: notesParts.join('\n')
+    };
+  });
+};
+
 const truncateText = (value, maxLength = 140) => {
   const text = String(value || '').trim();
   if (text.length <= maxLength) {
@@ -3537,8 +3627,63 @@ const handleImportMonsters = () => {
   }
   const raw = monsterImportInput.value.trim();
   if (!raw) {
-    updateMonsterImportError('Paste some JSON to import.');
+    updateMonsterImportError('Paste some JSON or XML to import.');
     return;
+  }
+  if (raw.startsWith('<')) {
+    try {
+      const entries = parseMonsterXml(raw);
+      if (entries.length === 0) {
+        updateMonsterImportError('No valid monsters found in the XML.');
+        return;
+      }
+      const bookName =
+        String(monsterBookNameInput?.value || '').trim() ||
+        getActiveMonsterBook()?.name ||
+        'Imported Monsters';
+      const metadata = {
+        edition: String(monsterBookEditionInput?.value || '').trim(),
+        coverImage: String(monsterBookCoverInput?.value || '').trim(),
+        source: monsterBookSourceInput?.value || 'user'
+      };
+      const targetBook = ensureMonsterBook(bookName, metadata);
+      if (!targetBook) {
+        updateMonsterImportError('Provide a valid book name.');
+        return;
+      }
+      const normalized = normalizeMonsterManual(entries);
+      if (normalized.length === 0) {
+        updateMonsterImportError('No valid monsters found in the XML.');
+        return;
+      }
+      const additions = normalized.filter((monster) =>
+        targetBook.monsters.every(
+          (existing) => existing.name.toLowerCase() !== monster.name.toLowerCase()
+        )
+      );
+      if (additions.length === 0) {
+        updateMonsterImportError('All imported monsters already exist.');
+        return;
+      }
+      updateMonsterImportError('');
+      targetBook.monsters = [...targetBook.monsters, ...additions];
+      activeMonsterBookId = targetBook.id;
+      if (!selectedMonsterBookIds.includes(targetBook.id)) {
+        selectedMonsterBookIds = [...selectedMonsterBookIds, targetBook.id];
+      }
+      renderMonsterManual();
+      renderCombatantPresets();
+      saveState();
+      saveMonsterBookToLibrary(targetBook, { silent: true });
+      monsterImportInput.value = '';
+      if (monsterBookNameInput) {
+        monsterBookNameInput.value = '';
+      }
+      return;
+    } catch (error) {
+      updateMonsterImportError('Invalid XML. Please check the format.');
+      return;
+    }
   }
   try {
     const parsed = JSON.parse(raw);
