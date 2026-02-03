@@ -751,6 +751,28 @@ const normalizeImageUrls = (value) => {
     .filter(Boolean);
 };
 
+const getMonsterPreviewImage = (monster) => {
+  if (!monster) {
+    return '';
+  }
+  if (monster.imageUrls?.length) {
+    return monster.imageUrls[0];
+  }
+  if (monster.imageUrl) {
+    return monster.imageUrl;
+  }
+  return '';
+};
+
+const createMonsterPlaceholder = (name = '') => {
+  const label = (name || 'Monster')
+    .trim()
+    .slice(0, 16)
+    .replace(/[^\w\s.-]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="16" fill="#1f2433"/><path d="M30 40c0-9 7-16 18-16s18 7 18 16c0 6-3 11-8 14l6 14H32l6-14c-5-3-8-8-8-14z" fill="#7a52ff" opacity="0.9"/><text x="48" y="84" font-size="10" font-family="Inter, system-ui, sans-serif" text-anchor="middle" fill="#cfd3e3">${label}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const normalizeMonsterEntry = (entry) => {
   if (!entry || typeof entry !== 'object') {
     return null;
@@ -2849,7 +2871,7 @@ const renderMonsterManual = () => {
 
       const content = document.createElement('div');
       content.className = 'monster-content';
-      const previewImage = monster.imageUrls?.[0] || monster.imageUrl;
+      const previewImage = getMonsterPreviewImage(monster) || createMonsterPlaceholder(monster.name);
       if (previewImage) {
         const image = document.createElement('img');
         image.className = 'monster-image';
