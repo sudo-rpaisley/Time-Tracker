@@ -744,15 +744,17 @@ const normalizeMonsterBooks = (books) => {
     if (!name) {
       return acc;
     }
-    const key = name.toLowerCase();
+    const edition = String(entry?.edition || '').trim();
+    const id = entry?.id ? String(entry.id) : '';
+    const key = id ? `id:${id}` : `${name.toLowerCase()}|${edition.toLowerCase()}`;
     if (seen.has(key)) {
       return acc;
     }
     seen.add(key);
     acc.push({
-      id: entry.id ? String(entry.id) : crypto.randomUUID(),
+      id: id || crypto.randomUUID(),
       name,
-      edition: String(entry?.edition || '').trim(),
+      edition,
       coverImage: String(entry?.coverImage || '').trim(),
       source: normalizeBookSource(entry?.source),
       monsters: normalizeMonsterManual(entry.monsters || entry.entries || [])
