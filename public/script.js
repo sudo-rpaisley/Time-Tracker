@@ -497,6 +497,21 @@ const formatXmlTraitList = (nodes) =>
     .filter(Boolean)
     .join('\n');
 
+const parseInteger = (value) => {
+  const parsed = Number.parseInt(String(value || '').trim(), 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const formatAbilityModifier = (score) => {
+  const numeric = Number.parseInt(String(score || '').trim(), 10);
+  if (Number.isNaN(numeric)) {
+    return '';
+  }
+  const modifier = Math.floor((numeric - 10) / 2);
+  const sign = modifier >= 0 ? '+' : '';
+  return `(${sign}${modifier})`;
+};
+
 const formatMonsterSize = (value) => {
   const raw = String(value || '').trim();
   if (!raw) {
@@ -519,6 +534,52 @@ const formatMonsterSize = (value) => {
     .join(' ');
 };
 
+const splitCreatureType = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return { creatureType: '', source: '' };
+  }
+  const [left, ...rest] = raw.split(',');
+  return {
+    creatureType: left.trim(),
+    source: rest.join(',').trim()
+  };
+};
+
+const parseXmlTextList = (node, selector) =>
+  parseXmlEntries(node, selector)
+    .map((textNode) => textNode.textContent?.trim())
+    .filter(Boolean);
+
+const parseXmlActionBlocks = (nodes, { includeAttacks = false } = {}) =>
+  nodes.map((node) => ({
+    name: getXmlText(node, 'name'),
+    text: parseXmlTextList(node, 'text'),
+    attacks: includeAttacks
+      ? parseXmlEntries(node, 'attack')
+          .map((attackNode) => attackNode.textContent?.trim())
+          .filter(Boolean)
+      : []
+  }));
+
+const formatLegacyActionText = (blocks) =>
+  blocks
+    .map((block) => {
+      const text = block.text.join('\n');
+      if (!block.name && !text) {
+        return '';
+      }
+      if (!block.name) {
+        return text;
+      }
+      if (!text) {
+        return block.name;
+      }
+      return `${block.name}. ${text}`;
+    })
+    .filter(Boolean)
+    .join('\n\n');
+
 const parseMonsterXml = (raw) => {
   if (typeof DOMParser === 'undefined') {
     throw new Error('XML parsing is not supported in this environment.');
@@ -532,52 +593,120 @@ const parseMonsterXml = (raw) => {
   return monsters.map((monster) => {
     const name = getXmlText(monster, 'name');
     const size = formatMonsterSize(getXmlText(monster, 'size'));
-    const type = getXmlText(monster, 'type');
+    const typeValue = getXmlText(monster, 'type');
+    const { creatureType, source } = splitCreatureType(typeValue);
     const alignment = getXmlText(monster, 'alignment');
     const armorClass = getXmlText(monster, 'ac');
     const hitPoints = getXmlText(monster, 'hp');
     const speed = getXmlText(monster, 'speed');
     const savingThrows = getXmlText(monster, 'save');
     const skills = getXmlText(monster, 'skill');
+    const damageVulnerabilities = getXmlText(monster, 'vulnerable');
+    const damageResistances = getXmlText(monster, 'resist');
+    const damageImmunities = getXmlText(monster, 'immune');
+    const conditionImmunities = getXmlText(monster, 'conditionImmune');
     const senses = getXmlText(monster, 'senses');
     const passive = getXmlText(monster, 'passive');
     const languages = getXmlText(monster, 'languages');
-    const challenge = getXmlText(monster, 'cr');
-    const traits = formatXmlTraitList(parseXmlEntries(monster, 'trait'));
-    const actions = formatXmlTraitList(parseXmlEntries(monster, 'action'));
-    const metaParts = [size, type].filter(Boolean);
-    const metaBase = metaParts.join(' ');
-    const meta = alignment
-      ? `${metaBase}${metaBase ? ', ' : ''}${alignment}`
-      : metaBase;
-    const passiveText = passive ? `Passive Perception ${passive}` : '';
-    const mergedSenses =
-      passiveText && senses && !senses.toLowerCase().includes('passive')
-        ? `${senses}, ${passiveText}`
-        : senses || passiveText;
+    const cr = getXmlText(monster, 'cr');
+    const xp = parseInteger(getXmlText(monster, 'xp'));
+    const traitList = parseXmlActionBlocks(parseXmlEntries(monster, 'trait'));
+    const actionList = parseXmlActionBlocks(parseXmlEntries(monster, 'action'), {
+      includeAttacks: true
+    });
+    const bonusActionList = parseXmlActionBlocks(parseXmlEntries(monster, 'bonus'));
+    const reactionList = parseXmlActionBlocks(parseXmlEntries(monster, 'reaction'));
+    const legendaryActionIntro = parseXmlTextList(monster, 'lemma > text');
+    const legendaryActionList = parseXmlEntries(monster, 'lemmaction').map((node) => ({
+      name: getXmlText(node, 'name'),
+      text: parseXmlTextList(node, 'text'),
+      cost: Math.max(1, parseInteger(getXmlText(node, 'cost')))
+    }));
+    const mythicActionList = parseXmlActionBlocks(parseXmlEntries(monster, 'mythic'));
+    const traits = formatLegacyActionText(traitList);
+    const actions = formatLegacyActionText(actionList);
+    const bonusActions = formatLegacyActionText(bonusActionList);
+    const reactions = formatLegacyActionText(reactionList);
+    const legendaryActions = [
+      ...legendaryActionIntro,
+      formatLegacyActionText(legendaryActionList)
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    const mythicActions = formatLegacyActionText(mythicActionList);
+    const passivePerception = parseInteger(passive);
+    const meta = `${size} ${creatureType}${alignment ? `, ${alignment}` : ''}`.trim();
+    const challenge = xp ? `${cr} (${xp.toLocaleString()} XP)` : cr;
     return {
+      id: crypto.randomUUID(),
       name,
-      type: type || 'npc',
+      size,
+      creatureType,
+      source,
+      alignment,
+      type: 'npc',
       meta,
+      hitPoints,
       maxHp: parseFirstNumber(hitPoints),
       armorClass,
-      hitPoints,
       speed,
-      savingThrows,
-      skills,
-      senses: mergedSenses,
-      languages,
-      challenge,
-      traits,
-      actions,
       stats: {
         str: getXmlText(monster, 'str'),
         dex: getXmlText(monster, 'dex'),
         con: getXmlText(monster, 'con'),
         int: getXmlText(monster, 'int'),
         wis: getXmlText(monster, 'wis'),
-        cha: getXmlText(monster, 'cha')
+        cha: getXmlText(monster, 'cha'),
+        strMod: formatAbilityModifier(getXmlText(monster, 'str')),
+        dexMod: formatAbilityModifier(getXmlText(monster, 'dex')),
+        conMod: formatAbilityModifier(getXmlText(monster, 'con')),
+        intMod: formatAbilityModifier(getXmlText(monster, 'int')),
+        wisMod: formatAbilityModifier(getXmlText(monster, 'wis')),
+        chaMod: formatAbilityModifier(getXmlText(monster, 'cha'))
       },
+      savingThrows,
+      skills,
+      damageVulnerabilities,
+      damageResistances,
+      damageImmunities,
+      conditionImmunities,
+      senses,
+      passivePerception,
+      languages,
+      challenge,
+      cr,
+      xp,
+      traits,
+      actions,
+      bonusActions,
+      reactions,
+      legendaryActions,
+      mythicActions,
+      traitList,
+      actionList,
+      bonusActionList,
+      reactionList,
+      legendaryActionIntro,
+      legendaryActionList,
+      mythicActionList,
+      spellcasting: {
+        spells: getXmlText(monster, 'spells')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+        slots: getXmlText(monster, 'slots')
+          .split(',')
+          .map((value) => parseInteger(value))
+          .concat(Array(9).fill(0))
+          .slice(0, 9)
+      },
+      environment: getXmlText(monster, 'environment'),
+      description: getXmlText(monster, 'description'),
+      token: getXmlText(monster, 'token'),
+      art: getXmlText(monster, 'art'),
+      url: getXmlText(monster, 'url'),
+      imageUrl: '',
+      imageUrls: [],
       notes: ''
     };
   });
