@@ -32,8 +32,49 @@
         <div class="map-viewport" id="mapViewport">
           <img class="map-image" id="mapImage" alt="World map" />
           <div class="map-markers" id="mapMarkers"></div>
+          <div class="map-player-markers" id="mapPlayerMarkers"></div>
+        </div>
+        <div class="map-scale-display" id="mapScaleDisplay" aria-hidden="true">
+          <div class="map-scale-bar" aria-hidden="true"></div>
+          <span id="mapScaleLabel"></span>
         </div>
       </div>
+
+      <section class="map-tools">
+        <div class="control-group">
+          <h3>Distance Scale</h3>
+          <div class="input-row">
+            <label>
+              Distance per 100 px
+              <input type="number" id="mapScaleDistanceInput" min="0" step="0.1" />
+            </label>
+            <label>
+              Unit
+              <input type="text" id="mapScaleUnitInput" placeholder="e.g. mi" />
+            </label>
+          </div>
+          <p class="helper-text" id="mapScaleHint">
+            Set how much distance 100 pixels represents on your map.
+          </p>
+        </div>
+        <div class="control-group">
+          <h3>Player Markers</h3>
+          <div class="input-row">
+            <label>
+              Name
+              <input type="text" id="mapPlayerNameInput" placeholder="e.g. Aria" />
+            </label>
+            <button class="ghost" id="mapAddPlayerButton" type="button">Add Player</button>
+            <button class="ghost" id="mapCancelMoveButton" type="button" hidden>
+              Cancel Placement
+            </button>
+          </div>
+          <p class="helper-text" id="mapPlayerHelp">
+            Add a player, then click “Set Position” and choose their spot on the map.
+          </p>
+          <ul class="quest-list" id="mapPlayerList"></ul>
+        </div>
+      </section>
 
       <section class="map-tags">
         <h3>Map Tags</h3>

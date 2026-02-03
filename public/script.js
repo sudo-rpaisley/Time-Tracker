@@ -190,6 +190,16 @@ const mapViewport = document.getElementById('mapViewport');
 const mapImage = document.getElementById('mapImage');
 const mapMarkers = document.getElementById('mapMarkers');
 const mapTagList = document.getElementById('mapTagList');
+const mapPlayerMarkers = document.getElementById('mapPlayerMarkers');
+const mapScaleDistanceInput = document.getElementById('mapScaleDistanceInput');
+const mapScaleUnitInput = document.getElementById('mapScaleUnitInput');
+const mapScaleLabel = document.getElementById('mapScaleLabel');
+const mapScaleDisplay = document.getElementById('mapScaleDisplay');
+const mapPlayerNameInput = document.getElementById('mapPlayerNameInput');
+const mapAddPlayerButton = document.getElementById('mapAddPlayerButton');
+const mapPlayerList = document.getElementById('mapPlayerList');
+const mapPlayerHelp = document.getElementById('mapPlayerHelp');
+const mapCancelMoveButton = document.getElementById('mapCancelMoveButton');
 const encounterPresetName = document.getElementById('encounterPresetName');
 const saveEncounterPresetButton = document.getElementById('saveEncounterPresetButton');
 const encounterPresetList = document.getElementById('encounterPresetList');
@@ -217,9 +227,19 @@ const npcRoleInput = document.getElementById('npcRoleInput');
 const npcStatusInput = document.getElementById('npcStatusInput');
 const npcFactionInput = document.getElementById('npcFactionInput');
 const npcNotesInput = document.getElementById('npcNotesInput');
+const npcSearchInput = document.getElementById('npcSearchInput');
+const npcStatusFilterInput = document.getElementById('npcStatusFilterInput');
+const npcFactionFilterInput = document.getElementById('npcFactionFilterInput');
+const npcFilterResetButton = document.getElementById('npcFilterResetButton');
 const addNpcButton = document.getElementById('addNpcButton');
 const npcList = document.getElementById('npcList');
+const factionFilterOptions = document.getElementById('factionFilterOptions');
 const monsterSearchInput = document.getElementById('monsterSearchInput');
+const monsterTypeFilterInput = document.getElementById('monsterTypeFilterInput');
+const monsterCrMinInput = document.getElementById('monsterCrMinInput');
+const monsterCrMaxInput = document.getElementById('monsterCrMaxInput');
+const monsterSourceFilterInput = document.getElementById('monsterSourceFilterInput');
+const monsterFilterResetButton = document.getElementById('monsterFilterResetButton');
 const monsterNameInput = document.getElementById('monsterNameInput');
 const monsterTypeInput = document.getElementById('monsterTypeInput');
 const monsterMaxHpInput = document.getElementById('monsterMaxHpInput');
@@ -319,7 +339,12 @@ let worldMap = {
   zoom: 1,
   offsetX: 0,
   offsetY: 0,
-  markers: []
+  markers: [],
+  scale: {
+    distancePer100Pixels: 1,
+    unit: 'mi'
+  },
+  players: []
 };
 let worldNotes = '';
 let questBoard = [];
@@ -335,6 +360,7 @@ let activeMonsterBookId = null;
 let selectedMonsterBookIds = [];
 let activeMonsterId = null;
 let editingMonsterId = null;
+let mapActivePlayerId = null;
 const updateWorldNotes = (value) => {
   worldNotes = value;
   saveState();
@@ -1273,8 +1299,24 @@ const setActiveWorld = (worldId) => {
         ...marker,
         url: marker.url || ''
       }))
+      : [],
+    scale: {
+      distancePer100Pixels:
+        Number(nextWorld.worldMap?.scale?.distancePer100Pixels) || 1,
+      unit: nextWorld.worldMap?.scale?.unit || 'mi'
+    },
+    players: Array.isArray(nextWorld.worldMap?.players)
+      ? nextWorld.worldMap.players.map((player) => ({
+        ...player,
+        distanceTravelled: Number(player.distanceTravelled) || 0
+      }))
       : []
   };
+  mapActivePlayerId = null;
+  updateMapPlayerHelp();
+  if (mapCancelMoveButton) {
+    mapCancelMoveButton.hidden = true;
+  }
   worldNotes = nextWorld.worldNotes || '';
   worldCoverImage = nextWorld.coverImage || '';
   questBoard = Array.isArray(nextWorld.questBoard) ? nextWorld.questBoard : [];
@@ -2173,17 +2215,26 @@ const getCalendarEventById = (eventId) =>
   calendarEvents.find((event) => event.id === eventId);
 
 const updateFactionOptions = () => {
-  if (!factionOptions) {
-    return;
+  if (factionOptions) {
+    factionOptions.innerHTML = '';
   }
-  factionOptions.innerHTML = '';
+  if (factionFilterOptions) {
+    factionFilterOptions.innerHTML = '';
+  }
   factionRoster
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((faction) => {
-      const option = document.createElement('option');
-      option.value = faction.name;
-      factionOptions.appendChild(option);
+      if (factionOptions) {
+        const option = document.createElement('option');
+        option.value = faction.name;
+        factionOptions.appendChild(option);
+      }
+      if (factionFilterOptions) {
+        const option = document.createElement('option');
+        option.value = faction.name;
+        factionFilterOptions.appendChild(option);
+      }
     });
 };
 
@@ -2200,7 +2251,36 @@ const renderNpcDirectory = () => {
     npcList.appendChild(item);
     return;
   }
-  npcDirectory
+  const query = npcSearchInput?.value.trim().toLowerCase() || '';
+  const statusFilter = npcStatusFilterInput?.value || '';
+  const factionFilter = npcFactionFilterInput?.value.trim().toLowerCase() || '';
+  const filtered = npcDirectory
+    .filter((npc) => {
+      if (statusFilter && npc.status !== statusFilter) {
+        return false;
+      }
+      if (factionFilter) {
+        const factionValue = (npc.faction || '').toLowerCase();
+        if (!factionValue.includes(factionFilter)) {
+          return false;
+        }
+      }
+      if (!query) {
+        return true;
+      }
+      const haystack = `${npc.name} ${npc.role || ''} ${npc.faction || ''} ${
+        npc.notes || ''
+      }`.toLowerCase();
+      return haystack.includes(query);
+    });
+  if (filtered.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No NPCs match those filters.';
+    npcList.appendChild(item);
+    return;
+  }
+  filtered
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((npc) => {
@@ -2271,6 +2351,23 @@ const getSelectedMonsterBookIds = () =>
 const setSelectedMonsterBookIds = (ids) => {
   selectedMonsterBookIds = ids.filter((id) => monsterBooks.some((book) => book.id === id));
   saveState();
+};
+
+const parseChallengeRating = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return null;
+  }
+  if (raw.includes('/')) {
+    const [numerator, denominator] = raw.split('/');
+    const num = Number(numerator);
+    const den = Number(denominator);
+    if (Number.isFinite(num) && Number.isFinite(den) && den !== 0) {
+      return num / den;
+    }
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const renderMonsterBookTiles = () => {
@@ -2412,6 +2509,10 @@ const renderMonsterManual = () => {
     return;
   }
   const query = monsterSearchInput?.value.trim().toLowerCase() || '';
+  const typeFilter = monsterTypeFilterInput?.value.trim().toLowerCase() || '';
+  const sourceFilter = monsterSourceFilterInput?.value || '';
+  const crMin = parseChallengeRating(monsterCrMinInput?.value);
+  const crMax = parseChallengeRating(monsterCrMaxInput?.value);
   const filtered = selectedBooks
     .flatMap((book) =>
       book.monsters.map((monster) => ({
@@ -2420,6 +2521,27 @@ const renderMonsterManual = () => {
       }))
     )
     .filter(({ monster, book }) => {
+      if (sourceFilter && book.source !== sourceFilter) {
+        return false;
+      }
+      if (typeFilter) {
+        const typeValue = `${monster.type || ''} ${monster.meta || ''}`.toLowerCase();
+        if (!typeValue.includes(typeFilter)) {
+          return false;
+        }
+      }
+      if (crMin !== null || crMax !== null) {
+        const challengeValue = parseChallengeRating(monster.challenge);
+        if (challengeValue === null) {
+          return false;
+        }
+        if (crMin !== null && challengeValue < crMin) {
+          return false;
+        }
+        if (crMax !== null && challengeValue > crMax) {
+          return false;
+        }
+      }
       if (!query) {
         return true;
       }
@@ -3853,7 +3975,194 @@ const renderEncounterPlans = () => {
       item.appendChild(roster);
     }
     item.append(actions);
-    encounterPlanList.appendChild(item);
+  encounterPlanList.appendChild(item);
+  });
+};
+
+const getMapBaseDimensions = () => {
+  if (!mapImage || !mapViewport || !worldMap.image) {
+    return null;
+  }
+  const rect = mapImage.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return null;
+  }
+  const zoom = Number(worldMap.zoom) || 1;
+  return {
+    rect,
+    width: rect.width / zoom,
+    height: rect.height / zoom
+  };
+};
+
+const updateMapScaleDisplay = () => {
+  if (!mapScaleDisplay || !mapScaleLabel) {
+    return;
+  }
+  const distancePer100Pixels = Number(worldMap.scale?.distancePer100Pixels) || 0;
+  const unit = worldMap.scale?.unit || '';
+  if (distancePer100Pixels > 0 && unit) {
+    mapScaleLabel.textContent = `100 px = ${distancePer100Pixels} ${unit}`;
+    mapScaleDisplay.removeAttribute('aria-hidden');
+  } else {
+    mapScaleLabel.textContent = '';
+    mapScaleDisplay.setAttribute('aria-hidden', 'true');
+  }
+  if (mapScaleDistanceInput) {
+    mapScaleDistanceInput.value = distancePer100Pixels ? String(distancePer100Pixels) : '';
+  }
+  if (mapScaleUnitInput) {
+    mapScaleUnitInput.value = unit;
+  }
+};
+
+const updateMapPlayerHelp = (message) => {
+  if (!mapPlayerHelp) {
+    return;
+  }
+  mapPlayerHelp.textContent =
+    message || 'Add a player, then click “Set Position” and choose their spot on the map.';
+};
+
+const getPlayerMarkerInitials = (name) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || '?';
+
+const formatTravelDistance = (value) => {
+  const unit = worldMap.scale?.unit || 'units';
+  const amount = Number.isFinite(value) ? value : 0;
+  return `${amount.toFixed(2)} ${unit}`;
+};
+
+const setMapPlayerPosition = (playerId, x, y) => {
+  const dimensions = getMapBaseDimensions();
+  if (!dimensions) {
+    return;
+  }
+  const distancePer100Pixels = Number(worldMap.scale?.distancePer100Pixels) || 0;
+  const distancePerPixel = distancePer100Pixels / 100;
+  worldMap.players = worldMap.players.map((player) => {
+    if (player.id !== playerId) {
+      return player;
+    }
+    const prevX = Number(player.x) || 0;
+    const prevY = Number(player.y) || 0;
+    const deltaX = ((x - prevX) / 100) * dimensions.width;
+    const deltaY = ((y - prevY) / 100) * dimensions.height;
+    const distance = distancePerPixel
+      ? Math.hypot(deltaX, deltaY) * distancePerPixel
+      : 0;
+    if (distance) {
+      worldStats = {
+        ...worldStats,
+        distanceTravelled: (worldStats.distanceTravelled || 0) + distance
+      };
+    }
+    return {
+      ...player,
+      x,
+      y,
+      distanceTravelled: (player.distanceTravelled || 0) + distance
+    };
+  });
+  renderWorldMap();
+  saveState();
+};
+
+const renderMapPlayers = () => {
+  if (mapPlayerMarkers) {
+    mapPlayerMarkers.innerHTML = '';
+  }
+  if (mapPlayerList) {
+    mapPlayerList.innerHTML = '';
+  }
+  if (!worldMap.players.length) {
+    if (mapPlayerList) {
+      const item = document.createElement('li');
+      item.className = 'helper-text';
+      item.textContent = 'No player markers yet.';
+      mapPlayerList.appendChild(item);
+    }
+    return;
+  }
+  worldMap.players.forEach((player) => {
+    const safeX = Number.isFinite(player.x) ? player.x : 50;
+    const safeY = Number.isFinite(player.y) ? player.y : 50;
+    if (mapPlayerMarkers) {
+      const marker = document.createElement('button');
+      marker.type = 'button';
+      marker.className = 'map-player-marker';
+      marker.textContent = getPlayerMarkerInitials(player.name);
+      marker.style.left = `${safeX}%`;
+      marker.style.top = `${safeY}%`;
+      marker.title = player.name;
+      marker.addEventListener('click', (event) => {
+        event.stopPropagation();
+        mapActivePlayerId = player.id;
+        updateMapPlayerHelp(`Click the map to move ${player.name}.`);
+        if (mapCancelMoveButton) {
+          mapCancelMoveButton.hidden = false;
+        }
+      });
+      mapPlayerMarkers.appendChild(marker);
+    }
+    if (mapPlayerList) {
+      const item = document.createElement('li');
+      item.className = 'quest-item';
+
+      const header = document.createElement('div');
+      header.className = 'quest-header';
+      const name = document.createElement('span');
+      name.textContent = player.name;
+      const distance = document.createElement('span');
+      distance.className = 'timeline-tag';
+      distance.textContent = formatTravelDistance(player.distanceTravelled || 0);
+      header.append(name, distance);
+
+      const meta = document.createElement('div');
+      meta.className = 'timeline-meta';
+      const coords = document.createElement('span');
+      coords.textContent = `Position: ${safeX.toFixed(1)}%, ${safeY.toFixed(1)}%`;
+      meta.appendChild(coords);
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row';
+      const move = document.createElement('button');
+      move.type = 'button';
+      move.className = 'ghost';
+      move.textContent = 'Set Position';
+      move.addEventListener('click', () => {
+        mapActivePlayerId = player.id;
+        updateMapPlayerHelp(`Click the map to move ${player.name}.`);
+        if (mapCancelMoveButton) {
+          mapCancelMoveButton.hidden = false;
+        }
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'ghost';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => {
+        worldMap.players = worldMap.players.filter((entry) => entry.id !== player.id);
+        if (mapActivePlayerId === player.id) {
+          mapActivePlayerId = null;
+          updateMapPlayerHelp();
+          if (mapCancelMoveButton) {
+            mapCancelMoveButton.hidden = true;
+          }
+        }
+        renderWorldMap();
+        saveState();
+      });
+      actions.append(move, remove);
+
+      item.append(header, meta, actions);
+      mapPlayerList.appendChild(item);
+    }
   });
 };
 
@@ -3862,6 +4171,7 @@ const handleMapDragStart = (event) => {
     return;
   }
   mapViewport.dataset.dragging = 'true';
+  mapViewport.dataset.wasDragged = 'false';
   mapViewport.classList.add('is-dragging');
   mapViewport.dataset.dragStartX = event.clientX;
   mapViewport.dataset.dragStartY = event.clientY;
@@ -3879,6 +4189,7 @@ const handleMapDragMove = (event) => {
   const originY = Number(mapViewport.dataset.dragOriginY) || 0;
   worldMap.offsetX = originX + (event.clientX - startX);
   worldMap.offsetY = originY + (event.clientY - startY);
+  mapViewport.dataset.wasDragged = 'true';
   renderWorldMap();
 };
 
@@ -3892,11 +4203,11 @@ const handleMapDragEnd = () => {
 };
 
 const addMapMarker = (event) => {
-  if (!mapImage || !mapViewport || !worldMap.image) {
+  if (!mapImage || !mapViewport || !worldMap.image || mapActivePlayerId) {
     return;
   }
-  const rect = mapImage.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) {
+  const dimensions = getMapBaseDimensions();
+  if (!dimensions) {
     return;
   }
   const label = window.prompt('Label this location');
@@ -3906,14 +4217,36 @@ const addMapMarker = (event) => {
   const url = window
     .prompt('Optional wiki URL for this location', '')
     ?.trim() || '';
-  const x = ((event.clientX - rect.left) / rect.width) * 100;
-  const y = ((event.clientY - rect.top) / rect.height) * 100;
+  const x = ((event.clientX - dimensions.rect.left) / dimensions.rect.width) * 100;
+  const y = ((event.clientY - dimensions.rect.top) / dimensions.rect.height) * 100;
   worldMap.markers = [
     ...worldMap.markers,
     { id: crypto.randomUUID(), label: label.trim(), url, x, y }
   ];
   renderWorldMap();
   saveState();
+};
+
+const handleMapPlayerPlacement = (event) => {
+  if (!mapActivePlayerId || !mapViewport) {
+    return;
+  }
+  if (mapViewport.dataset.wasDragged === 'true') {
+    mapViewport.dataset.wasDragged = 'false';
+    return;
+  }
+  const dimensions = getMapBaseDimensions();
+  if (!dimensions) {
+    return;
+  }
+  const x = ((event.clientX - dimensions.rect.left) / dimensions.rect.width) * 100;
+  const y = ((event.clientY - dimensions.rect.top) / dimensions.rect.height) * 100;
+  setMapPlayerPosition(mapActivePlayerId, x, y);
+  mapActivePlayerId = null;
+  updateMapPlayerHelp();
+  if (mapCancelMoveButton) {
+    mapCancelMoveButton.hidden = true;
+  }
 };
 
 const renderWorldMap = () => {
@@ -3924,9 +4257,13 @@ const renderWorldMap = () => {
   if (mapZoomInput) {
     mapZoomInput.value = worldMap.zoom;
   }
+  updateMapScaleDisplay();
   const transform = `translate(${worldMap.offsetX}px, ${worldMap.offsetY}px) scale(${worldMap.zoom})`;
   mapImage.style.transform = transform;
   mapMarkers.style.transform = transform;
+  if (mapPlayerMarkers) {
+    mapPlayerMarkers.style.transform = transform;
+  }
   mapMarkers.innerHTML = '';
   worldMap.markers.forEach((marker) => {
     const pin = document.createElement('button');
@@ -3941,6 +4278,7 @@ const renderWorldMap = () => {
     }
     mapMarkers.appendChild(pin);
   });
+  renderMapPlayers();
   if (mapTagList) {
     mapTagList.innerHTML = '';
     if (worldMap.markers.length === 0) {
@@ -5736,11 +6074,74 @@ if (mapResetButton) {
     saveState();
   });
 }
+if (mapScaleDistanceInput) {
+  mapScaleDistanceInput.addEventListener('input', () => {
+    const value = Number(mapScaleDistanceInput.value);
+    worldMap = {
+      ...worldMap,
+      scale: {
+        ...worldMap.scale,
+        distancePer100Pixels: Number.isFinite(value) ? value : 0
+      }
+    };
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapScaleUnitInput) {
+  mapScaleUnitInput.addEventListener('input', () => {
+    worldMap = {
+      ...worldMap,
+      scale: {
+        ...worldMap.scale,
+        unit: mapScaleUnitInput.value.trim()
+      }
+    };
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapAddPlayerButton) {
+  mapAddPlayerButton.addEventListener('click', () => {
+    if (!mapPlayerNameInput) {
+      return;
+    }
+    const name = mapPlayerNameInput.value.trim();
+    if (!name) {
+      mapPlayerNameInput.focus();
+      return;
+    }
+    const player = {
+      id: crypto.randomUUID(),
+      name,
+      x: 50,
+      y: 50,
+      distanceTravelled: 0
+    };
+    worldMap.players = [...worldMap.players, player];
+    mapPlayerNameInput.value = '';
+    mapActivePlayerId = player.id;
+    updateMapPlayerHelp(`Click the map to place ${player.name}.`);
+    if (mapCancelMoveButton) {
+      mapCancelMoveButton.hidden = false;
+    }
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapCancelMoveButton) {
+  mapCancelMoveButton.addEventListener('click', () => {
+    mapActivePlayerId = null;
+    updateMapPlayerHelp();
+    mapCancelMoveButton.hidden = true;
+  });
+}
 if (mapViewport) {
   mapViewport.addEventListener('mousedown', handleMapDragStart);
   mapViewport.addEventListener('mousemove', handleMapDragMove);
   mapViewport.addEventListener('mouseup', handleMapDragEnd);
   mapViewport.addEventListener('mouseleave', handleMapDragEnd);
+  mapViewport.addEventListener('click', handleMapPlayerPlacement);
   mapViewport.addEventListener('dblclick', addMapMarker);
 }
 if (partyMemberName) {
@@ -6095,6 +6496,29 @@ if (addNpcButton) {
     saveState();
   });
 }
+if (npcSearchInput) {
+  npcSearchInput.addEventListener('input', renderNpcDirectory);
+}
+if (npcStatusFilterInput) {
+  npcStatusFilterInput.addEventListener('change', renderNpcDirectory);
+}
+if (npcFactionFilterInput) {
+  npcFactionFilterInput.addEventListener('input', renderNpcDirectory);
+}
+if (npcFilterResetButton) {
+  npcFilterResetButton.addEventListener('click', () => {
+    if (npcSearchInput) {
+      npcSearchInput.value = '';
+    }
+    if (npcStatusFilterInput) {
+      npcStatusFilterInput.value = '';
+    }
+    if (npcFactionFilterInput) {
+      npcFactionFilterInput.value = '';
+    }
+    renderNpcDirectory();
+  });
+}
 if (addMonsterButton) {
   addMonsterButton.addEventListener('click', handleAddMonster);
 }
@@ -6108,6 +6532,38 @@ if (monsterNameInput) {
 }
 if (monsterSearchInput) {
   monsterSearchInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterTypeFilterInput) {
+  monsterTypeFilterInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterCrMinInput) {
+  monsterCrMinInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterCrMaxInput) {
+  monsterCrMaxInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterSourceFilterInput) {
+  monsterSourceFilterInput.addEventListener('change', renderMonsterManual);
+}
+if (monsterFilterResetButton) {
+  monsterFilterResetButton.addEventListener('click', () => {
+    if (monsterSearchInput) {
+      monsterSearchInput.value = '';
+    }
+    if (monsterTypeFilterInput) {
+      monsterTypeFilterInput.value = '';
+    }
+    if (monsterCrMinInput) {
+      monsterCrMinInput.value = '';
+    }
+    if (monsterCrMaxInput) {
+      monsterCrMaxInput.value = '';
+    }
+    if (monsterSourceFilterInput) {
+      monsterSourceFilterInput.value = '';
+    }
+    renderMonsterManual();
+  });
 }
 if (monsterImportInput) {
   monsterImportInput.addEventListener('input', () => updateMonsterImportError(''));
@@ -6901,6 +7357,14 @@ if (importWorldInput) {
             offsetY: Number(parsed.worldMap?.offsetY) || 0,
             markers: Array.isArray(parsed.worldMap?.markers)
               ? parsed.worldMap.markers
+              : [],
+            scale: {
+              distancePer100Pixels:
+                Number(parsed.worldMap?.scale?.distancePer100Pixels) || 1,
+              unit: parsed.worldMap?.scale?.unit || 'mi'
+            },
+            players: Array.isArray(parsed.worldMap?.players)
+              ? parsed.worldMap.players
               : []
           },
           worldNotes: parsed.worldNotes || '',

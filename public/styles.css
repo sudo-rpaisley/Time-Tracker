@@ -1860,6 +1860,16 @@ button.primary {
   transform-origin: top left;
 }
 
+.map-player-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  transform-origin: top left;
+}
+
 .map-marker {
   position: absolute;
   transform: translate(-50%, -100%);
@@ -1872,6 +1882,55 @@ button.primary {
   white-space: nowrap;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.map-player-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: #2ec4b6;
+  color: #0f111a;
+  font-weight: 700;
+  font-size: 0.75rem;
+  pointer-events: auto;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.map-scale-display {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 21, 31, 0.9);
+  border-radius: 999px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f6f7fb;
+  font-size: 0.8rem;
+}
+
+.map-scale-display[aria-hidden='true'] {
+  display: none;
+}
+
+.map-scale-bar {
+  width: 100px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7a52ff, #2ec4b6);
+}
+
+.map-tools {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
 }
 
 .death-save {
