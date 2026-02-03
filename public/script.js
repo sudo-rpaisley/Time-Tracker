@@ -502,6 +502,11 @@ const parseInteger = (value) => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
+const normalizeInlineText = (value) =>
+  String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const formatAbilityModifier = (score) => {
   const numeric = Number.parseInt(String(score || '').trim(), 10);
   if (Number.isNaN(numeric)) {
@@ -596,18 +601,18 @@ const parseMonsterXml = (raw) => {
     const typeValue = getXmlText(monster, 'type');
     const { creatureType, source } = splitCreatureType(typeValue);
     const alignment = getXmlText(monster, 'alignment');
-    const armorClass = getXmlText(monster, 'ac');
+    const armorClass = normalizeInlineText(getXmlText(monster, 'ac'));
     const hitPoints = getXmlText(monster, 'hp');
-    const speed = getXmlText(monster, 'speed');
-    const savingThrows = getXmlText(monster, 'save');
-    const skills = getXmlText(monster, 'skill');
+    const speed = normalizeInlineText(getXmlText(monster, 'speed'));
+    const savingThrows = normalizeInlineText(getXmlText(monster, 'save'));
+    const skills = normalizeInlineText(getXmlText(monster, 'skill'));
     const damageVulnerabilities = getXmlText(monster, 'vulnerable');
     const damageResistances = getXmlText(monster, 'resist');
     const damageImmunities = getXmlText(monster, 'immune');
     const conditionImmunities = getXmlText(monster, 'conditionImmune');
-    const senses = getXmlText(monster, 'senses');
+    const senses = normalizeInlineText(getXmlText(monster, 'senses'));
     const passive = getXmlText(monster, 'passive');
-    const languages = getXmlText(monster, 'languages');
+    const languages = normalizeInlineText(getXmlText(monster, 'languages'));
     const cr = getXmlText(monster, 'cr');
     const xp = parseInteger(getXmlText(monster, 'xp'));
     const traitList = parseXmlActionBlocks(parseXmlEntries(monster, 'trait'));
