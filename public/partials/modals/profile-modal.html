@@ -1,0 +1,67 @@
+<div class="modal" id="profileModal" aria-hidden="true">
+  <div class="modal-backdrop" id="profileBackdrop"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="modal-header">
+      <h2 id="profileTitle">Combatant Profile</h2>
+      <button type="button" class="icon-button" id="closeProfileButton" aria-label="Close profile">
+        ✕
+      </button>
+    </div>
+    <p class="helper-text">
+      Edit stats, current HP, notes, and upload an avatar icon.
+    </p>
+    <div class="profile-card" id="profileCard">
+      <div class="empty-profile" id="emptyProfile">
+        Choose a combatant from the initiative order to view details.
+      </div>
+      <div class="profile-details" id="profileDetails" hidden>
+        <div class="input-row">
+          <label>
+            Name
+            <input type="text" id="profileName" />
+          </label>
+          <label>
+            Type
+            <select id="profileType">
+              <option value="player">Player</option>
+              <option value="npc">NPC</option>
+            </select>
+          </label>
+        </div>
+        <div class="input-row">
+          <label>
+            Current HP
+            <input type="number" id="profileCurrentHp" min="0" />
+          </label>
+          <label>
+            Max HP
+            <input type="number" id="profileMaxHp" min="0" />
+          </label>
+          <label>
+            Initiative
+            <input type="number" id="profileInitiative" min="0" />
+          </label>
+        </div>
+        <div class="hp-controls">
+          <button type="button" data-hp-change="-1">-1 HP</button>
+          <button type="button" data-hp-change="-5">-5 HP</button>
+          <button type="button" data-hp-change="1">+1 HP</button>
+          <button type="button" data-hp-change="5">+5 HP</button>
+        </div>
+        <label>
+          Avatar
+          <input type="file" id="profileAvatar" accept="image/*" />
+        </label>
+        <label>
+          Conditions
+          <input type="text" id="profileConditions" placeholder="e.g. Prone, Poisoned" />
+        </label>
+        <label>
+          Notes
+          <textarea id="profileNotes" rows="3" placeholder="Conditions, AC, spells, etc."></textarea>
+        </label>
+        <button class="danger" type="button" id="removeCombatantButton">Remove Combatant</button>
+      </div>
+    </div>
+  </div>
+</div>
