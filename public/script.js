@@ -545,26 +545,27 @@ const parseMonsterXml = (raw) => {
     const challenge = getXmlText(monster, 'cr');
     const traits = formatXmlTraitList(parseXmlEntries(monster, 'trait'));
     const actions = formatXmlTraitList(parseXmlEntries(monster, 'action'));
-    const spells = getXmlText(monster, 'spells');
-    const slots = getXmlText(monster, 'slots');
     const metaParts = [size, type].filter(Boolean);
-    const notesParts = [
-      alignment ? `Alignment: ${alignment}` : '',
-      passive ? `Passive Perception: ${passive}` : '',
-      spells ? `Spells: ${spells}` : '',
-      slots ? `Spell Slots: ${slots}` : ''
-    ].filter(Boolean);
+    const metaBase = metaParts.join(' ');
+    const meta = alignment
+      ? `${metaBase}${metaBase ? ', ' : ''}${alignment}`
+      : metaBase;
+    const passiveText = passive ? `Passive Perception ${passive}` : '';
+    const mergedSenses =
+      passiveText && senses && !senses.toLowerCase().includes('passive')
+        ? `${senses}, ${passiveText}`
+        : senses || passiveText;
     return {
       name,
       type: type || 'npc',
-      meta: metaParts.join(' '),
+      meta,
       maxHp: parseFirstNumber(hitPoints),
       armorClass,
       hitPoints,
       speed,
       savingThrows,
       skills,
-      senses,
+      senses: mergedSenses,
       languages,
       challenge,
       traits,
@@ -577,7 +578,7 @@ const parseMonsterXml = (raw) => {
         wis: getXmlText(monster, 'wis'),
         cha: getXmlText(monster, 'cha')
       },
-      notes: notesParts.join('\n')
+      notes: ''
     };
   });
 };
