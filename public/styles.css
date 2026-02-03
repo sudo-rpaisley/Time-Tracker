@@ -477,12 +477,14 @@ body.world-selected .nav-no-world {
 
 .monster-book-info {
   position: absolute;      /* was relative */
-  left: 0px;
+  left: 5px;
   bottom: 12px;
   z-index: 2;
 
   /* keep it from running off the right edge */
-  max-width: calc(100% - 28px);
+  /* max-width: calc(100%); */
+  width: calc(100% - 10px);
+
 
   /* readable over the cover */
   padding: 10px 12px;
