@@ -257,6 +257,11 @@ const monsterBookEditionInput = document.getElementById('monsterBookEditionInput
 const monsterBookCoverInput = document.getElementById('monsterBookCoverInput');
 const monsterBookSourceInput = document.getElementById('monsterBookSourceInput');
 const monsterBookScaleInput = document.getElementById('monsterBookScaleInput');
+const monsterBookModal = document.getElementById('monsterBookModal');
+const monsterBookBackdrop = document.getElementById('monsterBookBackdrop');
+const closeMonsterBookModalButton = document.getElementById('closeMonsterBookModalButton');
+const cancelMonsterBookButton = document.getElementById('cancelMonsterBookButton');
+const openMonsterBookModalButton = document.getElementById('openMonsterBookModalButton');
 const addMonsterBookButton = document.getElementById('addMonsterBookButton');
 const exportMonsterBookButton = document.getElementById('exportMonsterBookButton');
 const saveMonsterBookButton = document.getElementById('saveMonsterBookButton');
@@ -269,6 +274,12 @@ const monsterBookTiles = document.getElementById('monsterBookTiles');
 const closeMonsterDetailButton = document.getElementById('closeMonsterDetailButton');
 const editMonsterButton = document.getElementById('editMonsterButton');
 const deleteMonsterButton = document.getElementById('deleteMonsterButton');
+const monsterModal = document.getElementById('monsterModal');
+const monsterBackdrop = document.getElementById('monsterBackdrop');
+const closeMonsterModalButton = document.getElementById('closeMonsterModalButton');
+const cancelMonsterModalButton = document.getElementById('cancelMonsterModalButton');
+const openMonsterModalButton = document.getElementById('openMonsterModalButton');
+const monsterModalTitle = document.getElementById('monsterModalTitle');
 const factionNameInput = document.getElementById('factionNameInput');
 const factionInfluenceInput = document.getElementById('factionInfluenceInput');
 const factionAlignmentInput = document.getElementById('factionAlignmentInput');
@@ -1253,6 +1264,53 @@ const openWorldEditModal = (worldId) => {
     worldEditNameInput.select();
   }, 0);
   return true;
+};
+
+const openMonsterBookModal = () => {
+  if (!monsterBookModal) {
+    return false;
+  }
+  monsterBookModal.classList.add('is-open');
+  monsterBookModal.setAttribute('aria-hidden', 'false');
+  updateMonsterBookError('');
+  renderMonsterBookSelect();
+  if (monsterBookNameInput) {
+    monsterBookNameInput.focus();
+  }
+  return true;
+};
+
+const closeMonsterBookModal = () => {
+  if (!monsterBookModal) {
+    return;
+  }
+  monsterBookModal.classList.remove('is-open');
+  monsterBookModal.setAttribute('aria-hidden', 'true');
+  updateMonsterBookError('');
+};
+
+const openMonsterModal = () => {
+  if (!monsterModal) {
+    return false;
+  }
+  monsterModal.classList.add('is-open');
+  monsterModal.setAttribute('aria-hidden', 'false');
+  updateMonsterImportError('');
+  if (monsterNameInput) {
+    monsterNameInput.focus();
+  }
+  return true;
+};
+
+const closeMonsterModal = () => {
+  if (!monsterModal) {
+    return;
+  }
+  monsterModal.classList.remove('is-open');
+  monsterModal.setAttribute('aria-hidden', 'true');
+  setMonsterEditState(false);
+  resetMonsterForm();
+  updateMonsterImportError('');
 };
 
 const closeWorldEditModal = () => {
@@ -3244,14 +3302,14 @@ const renderMonsterDetail = () => {
     monsterListPanel.hidden = true;
   }
   if (deleteMonsterButton) {
-    deleteMonsterButton.hidden = !editingMonsterId;
+    deleteMonsterButton.hidden = false;
   }
   monsterDetailContent.innerHTML = '';
   if (monsterDetailRelated) {
     monsterDetailRelated.innerHTML = '';
   }
 
-  const isEditing = editingMonsterId === selectedMonster.id;
+  const isEditing = false;
   const block = document.createElement('div');
   block.className = 'stat-block';
 
@@ -3537,14 +3595,14 @@ const setMonsterEditState = (isEditing) => {
   if (!isEditing) {
     editingMonsterId = null;
   }
+  if (monsterModalTitle) {
+    monsterModalTitle.textContent = isEditing ? 'Edit Monster' : 'Add Monster';
+  }
   if (addMonsterButton) {
     addMonsterButton.textContent = isEditing ? 'Save Monster' : 'Add Monster';
   }
   if (cancelMonsterEditButton) {
     cancelMonsterEditButton.hidden = !isEditing;
-  }
-  if (deleteMonsterButton) {
-    deleteMonsterButton.hidden = !isEditing;
   }
 };
 
@@ -3578,10 +3636,7 @@ const startMonsterEdit = (monster) => {
 };
 
 const cancelMonsterEdit = () => {
-  editingMonsterId = null;
-  resetMonsterForm();
-  setMonsterEditState(false);
-  renderMonsterDetail();
+  closeMonsterModal();
 };
 
 const deleteActiveMonster = () => {
@@ -3670,6 +3725,7 @@ const handleAddMonsterBook = () => {
   if (monsterBookCoverInput) {
     monsterBookCoverInput.value = '';
   }
+  closeMonsterBookModal();
 };
 
 const handleExportMonsterBook = () => {
@@ -3797,6 +3853,7 @@ const handleAddMonster = () => {
     renderCombatantPresets();
     saveState();
     saveMonsterBookToLibrary(activeBook, { silent: true });
+    closeMonsterModal();
     return;
   }
   const entry = normalizeMonsterEntry({
@@ -3812,10 +3869,7 @@ const handleAddMonster = () => {
   }
   updateMonsterImportError('');
   if (addMonsterToManual(entry)) {
-    resetMonsterForm();
-    if (monsterNameInput) {
-      monsterNameInput.focus();
-    }
+    closeMonsterModal();
   }
 };
 
@@ -6955,8 +7009,44 @@ if (exportMonsterBookButton) {
 if (saveMonsterBookButton) {
   saveMonsterBookButton.addEventListener('click', handleSaveMonsterBook);
 }
+if (openMonsterBookModalButton) {
+  openMonsterBookModalButton.addEventListener('click', () => {
+    openMonsterBookModal();
+  });
+}
+if (closeMonsterBookModalButton) {
+  closeMonsterBookModalButton.addEventListener('click', closeMonsterBookModal);
+}
+if (monsterBookBackdrop) {
+  monsterBookBackdrop.addEventListener('click', closeMonsterBookModal);
+}
+if (cancelMonsterBookButton) {
+  cancelMonsterBookButton.addEventListener('click', closeMonsterBookModal);
+}
 if (cancelMonsterEditButton) {
-  cancelMonsterEditButton.addEventListener('click', cancelMonsterEdit);
+  cancelMonsterEditButton.addEventListener('click', () => {
+    setMonsterEditState(false);
+    resetMonsterForm();
+    if (monsterNameInput) {
+      monsterNameInput.focus();
+    }
+  });
+}
+if (openMonsterModalButton) {
+  openMonsterModalButton.addEventListener('click', () => {
+    setMonsterEditState(false);
+    resetMonsterForm();
+    openMonsterModal();
+  });
+}
+if (closeMonsterModalButton) {
+  closeMonsterModalButton.addEventListener('click', closeMonsterModal);
+}
+if (monsterBackdrop) {
+  monsterBackdrop.addEventListener('click', closeMonsterModal);
+}
+if (cancelMonsterModalButton) {
+  cancelMonsterModalButton.addEventListener('click', closeMonsterModal);
 }
 if (closeMonsterDetailButton) {
   closeMonsterDetailButton.addEventListener('click', () => {
@@ -6977,12 +7067,8 @@ if (editMonsterButton) {
     if (!selected) {
       return;
     }
-    if (editingMonsterId === selected.id) {
-      saveMonsterDetailEdits();
-      return;
-    }
     startMonsterEdit(selected);
-    renderMonsterDetail();
+    openMonsterModal();
   });
 }
 if (deleteMonsterButton) {
@@ -7446,6 +7532,8 @@ document.addEventListener('keydown', (event) => {
     closeWorldModal();
     closeWorldEditModal();
     closeInteractionModal();
+    closeMonsterBookModal();
+    closeMonsterModal();
   }
 });
 document.addEventListener('click', (event) => {
