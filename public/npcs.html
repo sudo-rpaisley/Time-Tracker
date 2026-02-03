@@ -86,6 +86,34 @@
       <div class="controls">
         <div class="control-group">
           <h3>NPC Directory</h3>
+          <div class="input-row">
+            <label>
+              Search
+              <input type="search" id="npcSearchInput" placeholder="Search NPCs" />
+            </label>
+            <label>
+              Status
+              <select id="npcStatusFilterInput">
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="missing">Missing</option>
+                <option value="deceased">Deceased</option>
+              </select>
+            </label>
+            <label>
+              Faction
+              <input
+                type="text"
+                id="npcFactionFilterInput"
+                placeholder="e.g. Sapphire Fleet"
+                list="factionFilterOptions"
+              />
+            </label>
+            <datalist id="factionFilterOptions"></datalist>
+            <button class="ghost" id="npcFilterResetButton" type="button">
+              Reset Filters
+            </button>
+          </div>
           <ul class="quest-list" id="npcList"></ul>
         </div>
         <div class="control-group">
@@ -95,7 +123,7 @@
       </div>
     </section>
 
-    @@include('partials/modals.html')
+    @@include('partials/modals/party-profile-modal.html')
     <script src="script.js"></script>
   </body>
 </html>

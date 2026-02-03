@@ -190,6 +190,16 @@ const mapViewport = document.getElementById('mapViewport');
 const mapImage = document.getElementById('mapImage');
 const mapMarkers = document.getElementById('mapMarkers');
 const mapTagList = document.getElementById('mapTagList');
+const mapPlayerMarkers = document.getElementById('mapPlayerMarkers');
+const mapScaleDistanceInput = document.getElementById('mapScaleDistanceInput');
+const mapScaleUnitInput = document.getElementById('mapScaleUnitInput');
+const mapScaleLabel = document.getElementById('mapScaleLabel');
+const mapScaleDisplay = document.getElementById('mapScaleDisplay');
+const mapPlayerNameInput = document.getElementById('mapPlayerNameInput');
+const mapAddPlayerButton = document.getElementById('mapAddPlayerButton');
+const mapPlayerList = document.getElementById('mapPlayerList');
+const mapPlayerHelp = document.getElementById('mapPlayerHelp');
+const mapCancelMoveButton = document.getElementById('mapCancelMoveButton');
 const encounterPresetName = document.getElementById('encounterPresetName');
 const saveEncounterPresetButton = document.getElementById('saveEncounterPresetButton');
 const encounterPresetList = document.getElementById('encounterPresetList');
@@ -217,9 +227,19 @@ const npcRoleInput = document.getElementById('npcRoleInput');
 const npcStatusInput = document.getElementById('npcStatusInput');
 const npcFactionInput = document.getElementById('npcFactionInput');
 const npcNotesInput = document.getElementById('npcNotesInput');
+const npcSearchInput = document.getElementById('npcSearchInput');
+const npcStatusFilterInput = document.getElementById('npcStatusFilterInput');
+const npcFactionFilterInput = document.getElementById('npcFactionFilterInput');
+const npcFilterResetButton = document.getElementById('npcFilterResetButton');
 const addNpcButton = document.getElementById('addNpcButton');
 const npcList = document.getElementById('npcList');
+const factionFilterOptions = document.getElementById('factionFilterOptions');
 const monsterSearchInput = document.getElementById('monsterSearchInput');
+const monsterTypeFilterInput = document.getElementById('monsterTypeFilterInput');
+const monsterCrMinInput = document.getElementById('monsterCrMinInput');
+const monsterCrMaxInput = document.getElementById('monsterCrMaxInput');
+const monsterSourceFilterInput = document.getElementById('monsterSourceFilterInput');
+const monsterFilterResetButton = document.getElementById('monsterFilterResetButton');
 const monsterNameInput = document.getElementById('monsterNameInput');
 const monsterTypeInput = document.getElementById('monsterTypeInput');
 const monsterMaxHpInput = document.getElementById('monsterMaxHpInput');
@@ -236,6 +256,12 @@ const monsterBookNameInput = document.getElementById('monsterBookNameInput');
 const monsterBookEditionInput = document.getElementById('monsterBookEditionInput');
 const monsterBookCoverInput = document.getElementById('monsterBookCoverInput');
 const monsterBookSourceInput = document.getElementById('monsterBookSourceInput');
+const monsterBookScaleInput = document.getElementById('monsterBookScaleInput');
+const monsterBookModal = document.getElementById('monsterBookModal');
+const monsterBookBackdrop = document.getElementById('monsterBookBackdrop');
+const closeMonsterBookModalButton = document.getElementById('closeMonsterBookModalButton');
+const cancelMonsterBookButton = document.getElementById('cancelMonsterBookButton');
+const openMonsterBookModalButton = document.getElementById('openMonsterBookModalButton');
 const addMonsterBookButton = document.getElementById('addMonsterBookButton');
 const exportMonsterBookButton = document.getElementById('exportMonsterBookButton');
 const saveMonsterBookButton = document.getElementById('saveMonsterBookButton');
@@ -248,6 +274,12 @@ const monsterBookTiles = document.getElementById('monsterBookTiles');
 const closeMonsterDetailButton = document.getElementById('closeMonsterDetailButton');
 const editMonsterButton = document.getElementById('editMonsterButton');
 const deleteMonsterButton = document.getElementById('deleteMonsterButton');
+const monsterModal = document.getElementById('monsterModal');
+const monsterBackdrop = document.getElementById('monsterBackdrop');
+const closeMonsterModalButton = document.getElementById('closeMonsterModalButton');
+const cancelMonsterModalButton = document.getElementById('cancelMonsterModalButton');
+const openMonsterModalButton = document.getElementById('openMonsterModalButton');
+const monsterModalTitle = document.getElementById('monsterModalTitle');
 const factionNameInput = document.getElementById('factionNameInput');
 const factionInfluenceInput = document.getElementById('factionInfluenceInput');
 const factionAlignmentInput = document.getElementById('factionAlignmentInput');
@@ -319,7 +351,12 @@ let worldMap = {
   zoom: 1,
   offsetX: 0,
   offsetY: 0,
-  markers: []
+  markers: [],
+  scale: {
+    distancePer100Pixels: 1,
+    unit: 'mi'
+  },
+  players: []
 };
 let worldNotes = '';
 let questBoard = [];
@@ -335,6 +372,7 @@ let activeMonsterBookId = null;
 let selectedMonsterBookIds = [];
 let activeMonsterId = null;
 let editingMonsterId = null;
+let mapActivePlayerId = null;
 const updateWorldNotes = (value) => {
   worldNotes = value;
   saveState();
@@ -443,6 +481,254 @@ const parseFirstNumber = (value) => {
   return match ? Number(match[0]) : null;
 };
 
+const getXmlText = (root, selector) =>
+  root?.querySelector(selector)?.textContent?.trim() || '';
+
+const parseXmlEntries = (root, selector) =>
+  Array.from(root?.querySelectorAll(selector) || []);
+
+const formatXmlTraitList = (nodes) =>
+  nodes
+    .map((node) => {
+      const name = getXmlText(node, 'name');
+      const texts = parseXmlEntries(node, 'text')
+        .map((textNode) => textNode.textContent?.trim())
+        .filter(Boolean);
+      const detail = texts.join('\n');
+      if (!name && !detail) {
+        return '';
+      }
+      if (!name) {
+        return detail;
+      }
+      if (!detail) {
+        return name;
+      }
+      return `${name}: ${detail}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
+const parseInteger = (value) => {
+  const parsed = Number.parseInt(String(value || '').trim(), 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const normalizeInlineText = (value) =>
+  String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const formatAbilityModifier = (score) => {
+  const numeric = Number.parseInt(String(score || '').trim(), 10);
+  if (Number.isNaN(numeric)) {
+    return '';
+  }
+  const modifier = Math.floor((numeric - 10) / 2);
+  const sign = modifier >= 0 ? '+' : '';
+  return `(${sign}${modifier})`;
+};
+
+const formatMonsterSize = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+  const map = {
+    T: 'Tiny',
+    S: 'Small',
+    M: 'Medium',
+    L: 'Large',
+    H: 'Huge',
+    G: 'Gargantuan'
+  };
+  if (raw.length === 1) {
+    return map[raw.toUpperCase()] || raw;
+  }
+  return raw
+    .split(/\s+/)
+    .map((part) => map[part.toUpperCase()] || part)
+    .join(' ');
+};
+
+const splitCreatureType = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return { creatureType: '', source: '' };
+  }
+  const [left, ...rest] = raw.split(',');
+  return {
+    creatureType: left.trim(),
+    source: rest.join(',').trim()
+  };
+};
+
+const parseXmlTextList = (node, selector) =>
+  parseXmlEntries(node, selector)
+    .map((textNode) => textNode.textContent?.trim())
+    .filter(Boolean);
+
+const parseXmlActionBlocks = (nodes, { includeAttacks = false } = {}) =>
+  nodes.map((node) => ({
+    name: getXmlText(node, 'name'),
+    text: parseXmlTextList(node, 'text'),
+    attacks: includeAttacks
+      ? parseXmlEntries(node, 'attack')
+          .map((attackNode) => attackNode.textContent?.trim())
+          .filter(Boolean)
+      : []
+  }));
+
+const formatLegacyActionText = (blocks) =>
+  blocks
+    .map((block) => {
+      const text = block.text.join('\n');
+      if (!block.name && !text) {
+        return '';
+      }
+      if (!block.name) {
+        return text;
+      }
+      if (!text) {
+        return block.name;
+      }
+      return `${block.name}. ${text}`;
+    })
+    .filter(Boolean)
+    .join('\n\n');
+
+const parseMonsterXml = (raw) => {
+  if (typeof DOMParser === 'undefined') {
+    throw new Error('XML parsing is not supported in this environment.');
+  }
+  const parser = new DOMParser();
+  const document = parser.parseFromString(raw, 'application/xml');
+  if (document.querySelector('parsererror')) {
+    throw new Error('Invalid XML.');
+  }
+  const monsters = Array.from(document.querySelectorAll('monster'));
+  return monsters.map((monster) => {
+    const name = getXmlText(monster, 'name');
+    const size = formatMonsterSize(getXmlText(monster, 'size'));
+    const typeValue = getXmlText(monster, 'type');
+    const { creatureType, source } = splitCreatureType(typeValue);
+    const alignment = getXmlText(monster, 'alignment');
+    const armorClass = normalizeInlineText(getXmlText(monster, 'ac'));
+    const hitPoints = getXmlText(monster, 'hp');
+    const speed = normalizeInlineText(getXmlText(monster, 'speed'));
+    const savingThrows = normalizeInlineText(getXmlText(monster, 'save'));
+    const skills = normalizeInlineText(getXmlText(monster, 'skill'));
+    const damageVulnerabilities = getXmlText(monster, 'vulnerable');
+    const damageResistances = getXmlText(monster, 'resist');
+    const damageImmunities = getXmlText(monster, 'immune');
+    const conditionImmunities = getXmlText(monster, 'conditionImmune');
+    const senses = normalizeInlineText(getXmlText(monster, 'senses'));
+    const passive = getXmlText(monster, 'passive');
+    const languages = normalizeInlineText(getXmlText(monster, 'languages'));
+    const cr = getXmlText(monster, 'cr');
+    const xp = parseInteger(getXmlText(monster, 'xp'));
+    const traitList = parseXmlActionBlocks(parseXmlEntries(monster, 'trait'));
+    const actionList = parseXmlActionBlocks(parseXmlEntries(monster, 'action'), {
+      includeAttacks: true
+    });
+    const bonusActionList = parseXmlActionBlocks(parseXmlEntries(monster, 'bonus'));
+    const reactionList = parseXmlActionBlocks(parseXmlEntries(monster, 'reaction'));
+    const legendaryActionIntro = parseXmlTextList(monster, 'lemma > text');
+    const legendaryActionList = parseXmlEntries(monster, 'lemmaction').map((node) => ({
+      name: getXmlText(node, 'name'),
+      text: parseXmlTextList(node, 'text'),
+      cost: Math.max(1, parseInteger(getXmlText(node, 'cost')))
+    }));
+    const mythicActionList = parseXmlActionBlocks(parseXmlEntries(monster, 'mythic'));
+    const traits = formatLegacyActionText(traitList);
+    const actions = formatLegacyActionText(actionList);
+    const bonusActions = formatLegacyActionText(bonusActionList);
+    const reactions = formatLegacyActionText(reactionList);
+    const legendaryActions = [
+      ...legendaryActionIntro,
+      formatLegacyActionText(legendaryActionList)
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    const mythicActions = formatLegacyActionText(mythicActionList);
+    const passivePerception = parseInteger(passive);
+    const meta = `${size} ${creatureType}${alignment ? `, ${alignment}` : ''}`.trim();
+    const challenge = xp ? `${cr} (${xp.toLocaleString()} XP)` : cr;
+    return {
+      id: crypto.randomUUID(),
+      name,
+      size,
+      creatureType,
+      source,
+      alignment,
+      type: 'npc',
+      meta,
+      hitPoints,
+      maxHp: parseFirstNumber(hitPoints),
+      armorClass,
+      speed,
+      stats: {
+        str: getXmlText(monster, 'str'),
+        dex: getXmlText(monster, 'dex'),
+        con: getXmlText(monster, 'con'),
+        int: getXmlText(monster, 'int'),
+        wis: getXmlText(monster, 'wis'),
+        cha: getXmlText(monster, 'cha'),
+        strMod: formatAbilityModifier(getXmlText(monster, 'str')),
+        dexMod: formatAbilityModifier(getXmlText(monster, 'dex')),
+        conMod: formatAbilityModifier(getXmlText(monster, 'con')),
+        intMod: formatAbilityModifier(getXmlText(monster, 'int')),
+        wisMod: formatAbilityModifier(getXmlText(monster, 'wis')),
+        chaMod: formatAbilityModifier(getXmlText(monster, 'cha'))
+      },
+      savingThrows,
+      skills,
+      damageVulnerabilities,
+      damageResistances,
+      damageImmunities,
+      conditionImmunities,
+      senses,
+      passivePerception,
+      languages,
+      challenge,
+      cr,
+      xp,
+      traits,
+      actions,
+      bonusActions,
+      reactions,
+      legendaryActions,
+      mythicActions,
+      traitList,
+      actionList,
+      bonusActionList,
+      reactionList,
+      legendaryActionIntro,
+      legendaryActionList,
+      mythicActionList,
+      spellcasting: {
+        spells: getXmlText(monster, 'spells')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+        slots: getXmlText(monster, 'slots')
+          .split(',')
+          .map((value) => parseInteger(value))
+          .concat(Array(9).fill(0))
+          .slice(0, 9)
+      },
+      environment: getXmlText(monster, 'environment'),
+      description: getXmlText(monster, 'description'),
+      token: getXmlText(monster, 'token'),
+      art: getXmlText(monster, 'art'),
+      url: getXmlText(monster, 'url'),
+      imageUrl: '',
+      imageUrls: [],
+      notes: ''
+    };
+  });
+};
+
 const truncateText = (value, maxLength = 140) => {
   const text = String(value || '').trim();
   if (text.length <= maxLength) {
@@ -475,6 +761,28 @@ const normalizeImageUrls = (value) => {
     .split('\n')
     .map((entry) => entry.trim())
     .filter(Boolean);
+};
+
+const getMonsterPreviewImage = (monster) => {
+  if (!monster) {
+    return '';
+  }
+  if (monster.imageUrls?.length) {
+    return monster.imageUrls[0];
+  }
+  if (monster.imageUrl) {
+    return monster.imageUrl;
+  }
+  return '';
+};
+
+const createMonsterPlaceholder = (name = '') => {
+  const label = (name || 'Monster')
+    .trim()
+    .slice(0, 16)
+    .replace(/[^\w\s.-]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="16" fill="#1f2433"/><path d="M30 40c0-9 7-16 18-16s18 7 18 16c0 6-3 11-8 14l6 14H32l6-14c-5-3-8-8-8-14z" fill="#7a52ff" opacity="0.9"/><text x="48" y="84" font-size="10" font-family="Inter, system-ui, sans-serif" text-anchor="middle" fill="#cfd3e3">${label}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
 const normalizeMonsterEntry = (entry) => {
@@ -604,15 +912,17 @@ const normalizeMonsterBooks = (books) => {
     if (!name) {
       return acc;
     }
-    const key = name.toLowerCase();
+    const edition = String(entry?.edition || '').trim();
+    const id = entry?.id ? String(entry.id) : '';
+    const key = id ? `id:${id}` : `${name.toLowerCase()}|${edition.toLowerCase()}`;
     if (seen.has(key)) {
       return acc;
     }
     seen.add(key);
     acc.push({
-      id: entry.id ? String(entry.id) : crypto.randomUUID(),
+      id: id || crypto.randomUUID(),
       name,
-      edition: String(entry?.edition || '').trim(),
+      edition,
       coverImage: String(entry?.coverImage || '').trim(),
       source: normalizeBookSource(entry?.source),
       monsters: normalizeMonsterManual(entry.monsters || entry.entries || [])
@@ -956,6 +1266,53 @@ const openWorldEditModal = (worldId) => {
   return true;
 };
 
+const openMonsterBookModal = () => {
+  if (!monsterBookModal) {
+    return false;
+  }
+  monsterBookModal.classList.add('is-open');
+  monsterBookModal.setAttribute('aria-hidden', 'false');
+  updateMonsterBookError('');
+  renderMonsterBookSelect();
+  if (monsterBookNameInput) {
+    monsterBookNameInput.focus();
+  }
+  return true;
+};
+
+const closeMonsterBookModal = () => {
+  if (!monsterBookModal) {
+    return;
+  }
+  monsterBookModal.classList.remove('is-open');
+  monsterBookModal.setAttribute('aria-hidden', 'true');
+  updateMonsterBookError('');
+};
+
+const openMonsterModal = () => {
+  if (!monsterModal) {
+    return false;
+  }
+  monsterModal.classList.add('is-open');
+  monsterModal.setAttribute('aria-hidden', 'false');
+  updateMonsterImportError('');
+  if (monsterNameInput) {
+    monsterNameInput.focus();
+  }
+  return true;
+};
+
+const closeMonsterModal = () => {
+  if (!monsterModal) {
+    return;
+  }
+  monsterModal.classList.remove('is-open');
+  monsterModal.setAttribute('aria-hidden', 'true');
+  setMonsterEditState(false);
+  resetMonsterForm();
+  updateMonsterImportError('');
+};
+
 const closeWorldEditModal = () => {
   if (!worldEditModal) {
     return;
@@ -1073,6 +1430,19 @@ const getCurrentWorld = () => worlds[activeWorldId];
 
 const setWorldSelectedState = (isSelected) => {
   document.body.classList.toggle('world-selected', Boolean(isSelected));
+};
+
+const applyMonsterBookScale = (scaleValue) => {
+  if (!monsterBookTiles) {
+    return;
+  }
+  const parsed = Number(scaleValue);
+  const clamped = Number.isNaN(parsed) ? 1 : Math.min(1.3, Math.max(0.7, parsed));
+  monsterBookTiles.style.setProperty('--monster-book-scale', clamped);
+  if (monsterBookScaleInput) {
+    monsterBookScaleInput.value = clamped.toFixed(1);
+  }
+  localStorage.setItem('monsterBookScale', String(clamped));
 };
 
 const applyWorldScale = (scaleValue) => {
@@ -1273,8 +1643,24 @@ const setActiveWorld = (worldId) => {
         ...marker,
         url: marker.url || ''
       }))
+      : [],
+    scale: {
+      distancePer100Pixels:
+        Number(nextWorld.worldMap?.scale?.distancePer100Pixels) || 1,
+      unit: nextWorld.worldMap?.scale?.unit || 'mi'
+    },
+    players: Array.isArray(nextWorld.worldMap?.players)
+      ? nextWorld.worldMap.players.map((player) => ({
+        ...player,
+        distanceTravelled: Number(player.distanceTravelled) || 0
+      }))
       : []
   };
+  mapActivePlayerId = null;
+  updateMapPlayerHelp();
+  if (mapCancelMoveButton) {
+    mapCancelMoveButton.hidden = true;
+  }
   worldNotes = nextWorld.worldNotes || '';
   worldCoverImage = nextWorld.coverImage || '';
   questBoard = Array.isArray(nextWorld.questBoard) ? nextWorld.questBoard : [];
@@ -2173,17 +2559,26 @@ const getCalendarEventById = (eventId) =>
   calendarEvents.find((event) => event.id === eventId);
 
 const updateFactionOptions = () => {
-  if (!factionOptions) {
-    return;
+  if (factionOptions) {
+    factionOptions.innerHTML = '';
   }
-  factionOptions.innerHTML = '';
+  if (factionFilterOptions) {
+    factionFilterOptions.innerHTML = '';
+  }
   factionRoster
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((faction) => {
-      const option = document.createElement('option');
-      option.value = faction.name;
-      factionOptions.appendChild(option);
+      if (factionOptions) {
+        const option = document.createElement('option');
+        option.value = faction.name;
+        factionOptions.appendChild(option);
+      }
+      if (factionFilterOptions) {
+        const option = document.createElement('option');
+        option.value = faction.name;
+        factionFilterOptions.appendChild(option);
+      }
     });
 };
 
@@ -2200,7 +2595,36 @@ const renderNpcDirectory = () => {
     npcList.appendChild(item);
     return;
   }
-  npcDirectory
+  const query = npcSearchInput?.value.trim().toLowerCase() || '';
+  const statusFilter = npcStatusFilterInput?.value || '';
+  const factionFilter = npcFactionFilterInput?.value.trim().toLowerCase() || '';
+  const filtered = npcDirectory
+    .filter((npc) => {
+      if (statusFilter && npc.status !== statusFilter) {
+        return false;
+      }
+      if (factionFilter) {
+        const factionValue = (npc.faction || '').toLowerCase();
+        if (!factionValue.includes(factionFilter)) {
+          return false;
+        }
+      }
+      if (!query) {
+        return true;
+      }
+      const haystack = `${npc.name} ${npc.role || ''} ${npc.faction || ''} ${
+        npc.notes || ''
+      }`.toLowerCase();
+      return haystack.includes(query);
+    });
+  if (filtered.length === 0) {
+    const item = document.createElement('li');
+    item.className = 'helper-text';
+    item.textContent = 'No NPCs match those filters.';
+    npcList.appendChild(item);
+    return;
+  }
+  filtered
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .forEach((npc) => {
@@ -2271,6 +2695,23 @@ const getSelectedMonsterBookIds = () =>
 const setSelectedMonsterBookIds = (ids) => {
   selectedMonsterBookIds = ids.filter((id) => monsterBooks.some((book) => book.id === id));
   saveState();
+};
+
+const parseChallengeRating = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return null;
+  }
+  if (raw.includes('/')) {
+    const [numerator, denominator] = raw.split('/');
+    const num = Number(numerator);
+    const den = Number(denominator);
+    if (Number.isFinite(num) && Number.isFinite(den) && den !== 0) {
+      return num / den;
+    }
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const renderMonsterBookTiles = () => {
@@ -2412,6 +2853,10 @@ const renderMonsterManual = () => {
     return;
   }
   const query = monsterSearchInput?.value.trim().toLowerCase() || '';
+  const typeFilter = monsterTypeFilterInput?.value.trim().toLowerCase() || '';
+  const sourceFilter = monsterSourceFilterInput?.value || '';
+  const crMin = parseChallengeRating(monsterCrMinInput?.value);
+  const crMax = parseChallengeRating(monsterCrMaxInput?.value);
   const filtered = selectedBooks
     .flatMap((book) =>
       book.monsters.map((monster) => ({
@@ -2420,6 +2865,27 @@ const renderMonsterManual = () => {
       }))
     )
     .filter(({ monster, book }) => {
+      if (sourceFilter && book.source !== sourceFilter) {
+        return false;
+      }
+      if (typeFilter) {
+        const typeValue = `${monster.type || ''} ${monster.meta || ''}`.toLowerCase();
+        if (!typeValue.includes(typeFilter)) {
+          return false;
+        }
+      }
+      if (crMin !== null || crMax !== null) {
+        const challengeValue = parseChallengeRating(monster.challenge);
+        if (challengeValue === null) {
+          return false;
+        }
+        if (crMin !== null && challengeValue < crMin) {
+          return false;
+        }
+        if (crMax !== null && challengeValue > crMax) {
+          return false;
+        }
+      }
       if (!query) {
         return true;
       }
@@ -2477,7 +2943,7 @@ const renderMonsterManual = () => {
 
       const content = document.createElement('div');
       content.className = 'monster-content';
-      const previewImage = monster.imageUrls?.[0] || monster.imageUrl;
+      const previewImage = getMonsterPreviewImage(monster) || createMonsterPlaceholder(monster.name);
       if (previewImage) {
         const image = document.createElement('img');
         image.className = 'monster-image';
@@ -2527,13 +2993,7 @@ const renderMonsterManual = () => {
       details.append(statLine, extra, preview);
       content.appendChild(details);
 
-      const actions = document.createElement('div');
-      actions.className = 'button-row';
-      const view = document.createElement('button');
-      view.type = 'button';
-      view.className = 'ghost';
-      view.textContent = 'View';
-      view.addEventListener('click', () => {
+      const openDetail = () => {
         activeMonsterBookId = book.id;
         storeMonsterDetailSnapshot({ monster, book, worldId: activeWorldId });
         window.location.href = buildMonsterDetailUrl({
@@ -2541,10 +3001,18 @@ const renderMonsterManual = () => {
           bookId: book.id,
           worldId: activeWorldId
         });
+      };
+      item.tabIndex = 0;
+      item.setAttribute('role', 'button');
+      item.addEventListener('click', openDetail);
+      item.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openDetail();
+        }
       });
-      actions.append(view);
 
-      item.append(header, meta, content, actions);
+      item.append(header, meta, content);
       monsterList.appendChild(item);
     });
 };
@@ -2834,14 +3302,14 @@ const renderMonsterDetail = () => {
     monsterListPanel.hidden = true;
   }
   if (deleteMonsterButton) {
-    deleteMonsterButton.hidden = !editingMonsterId;
+    deleteMonsterButton.hidden = false;
   }
   monsterDetailContent.innerHTML = '';
   if (monsterDetailRelated) {
     monsterDetailRelated.innerHTML = '';
   }
 
-  const isEditing = editingMonsterId === selectedMonster.id;
+  const isEditing = false;
   const block = document.createElement('div');
   block.className = 'stat-block';
 
@@ -3127,14 +3595,14 @@ const setMonsterEditState = (isEditing) => {
   if (!isEditing) {
     editingMonsterId = null;
   }
+  if (monsterModalTitle) {
+    monsterModalTitle.textContent = isEditing ? 'Edit Monster' : 'Add Monster';
+  }
   if (addMonsterButton) {
     addMonsterButton.textContent = isEditing ? 'Save Monster' : 'Add Monster';
   }
   if (cancelMonsterEditButton) {
     cancelMonsterEditButton.hidden = !isEditing;
-  }
-  if (deleteMonsterButton) {
-    deleteMonsterButton.hidden = !isEditing;
   }
 };
 
@@ -3168,10 +3636,7 @@ const startMonsterEdit = (monster) => {
 };
 
 const cancelMonsterEdit = () => {
-  editingMonsterId = null;
-  resetMonsterForm();
-  setMonsterEditState(false);
-  renderMonsterDetail();
+  closeMonsterModal();
 };
 
 const deleteActiveMonster = () => {
@@ -3260,6 +3725,7 @@ const handleAddMonsterBook = () => {
   if (monsterBookCoverInput) {
     monsterBookCoverInput.value = '';
   }
+  closeMonsterBookModal();
 };
 
 const handleExportMonsterBook = () => {
@@ -3387,6 +3853,7 @@ const handleAddMonster = () => {
     renderCombatantPresets();
     saveState();
     saveMonsterBookToLibrary(activeBook, { silent: true });
+    closeMonsterModal();
     return;
   }
   const entry = normalizeMonsterEntry({
@@ -3402,10 +3869,7 @@ const handleAddMonster = () => {
   }
   updateMonsterImportError('');
   if (addMonsterToManual(entry)) {
-    resetMonsterForm();
-    if (monsterNameInput) {
-      monsterNameInput.focus();
-    }
+    closeMonsterModal();
   }
 };
 
@@ -3415,8 +3879,63 @@ const handleImportMonsters = () => {
   }
   const raw = monsterImportInput.value.trim();
   if (!raw) {
-    updateMonsterImportError('Paste some JSON to import.');
+    updateMonsterImportError('Paste some JSON or XML to import.');
     return;
+  }
+  if (raw.startsWith('<')) {
+    try {
+      const entries = parseMonsterXml(raw);
+      if (entries.length === 0) {
+        updateMonsterImportError('No valid monsters found in the XML.');
+        return;
+      }
+      const bookName =
+        String(monsterBookNameInput?.value || '').trim() ||
+        getActiveMonsterBook()?.name ||
+        'Imported Monsters';
+      const metadata = {
+        edition: String(monsterBookEditionInput?.value || '').trim(),
+        coverImage: String(monsterBookCoverInput?.value || '').trim(),
+        source: monsterBookSourceInput?.value || 'user'
+      };
+      const targetBook = ensureMonsterBook(bookName, metadata);
+      if (!targetBook) {
+        updateMonsterImportError('Provide a valid book name.');
+        return;
+      }
+      const normalized = normalizeMonsterManual(entries);
+      if (normalized.length === 0) {
+        updateMonsterImportError('No valid monsters found in the XML.');
+        return;
+      }
+      const additions = normalized.filter((monster) =>
+        targetBook.monsters.every(
+          (existing) => existing.name.toLowerCase() !== monster.name.toLowerCase()
+        )
+      );
+      if (additions.length === 0) {
+        updateMonsterImportError('All imported monsters already exist.');
+        return;
+      }
+      updateMonsterImportError('');
+      targetBook.monsters = [...targetBook.monsters, ...additions];
+      activeMonsterBookId = targetBook.id;
+      if (!selectedMonsterBookIds.includes(targetBook.id)) {
+        selectedMonsterBookIds = [...selectedMonsterBookIds, targetBook.id];
+      }
+      renderMonsterManual();
+      renderCombatantPresets();
+      saveState();
+      saveMonsterBookToLibrary(targetBook, { silent: true });
+      monsterImportInput.value = '';
+      if (monsterBookNameInput) {
+        monsterBookNameInput.value = '';
+      }
+      return;
+    } catch (error) {
+      updateMonsterImportError('Invalid XML. Please check the format.');
+      return;
+    }
   }
   try {
     const parsed = JSON.parse(raw);
@@ -3853,7 +4372,194 @@ const renderEncounterPlans = () => {
       item.appendChild(roster);
     }
     item.append(actions);
-    encounterPlanList.appendChild(item);
+  encounterPlanList.appendChild(item);
+  });
+};
+
+const getMapBaseDimensions = () => {
+  if (!mapImage || !mapViewport || !worldMap.image) {
+    return null;
+  }
+  const rect = mapImage.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return null;
+  }
+  const zoom = Number(worldMap.zoom) || 1;
+  return {
+    rect,
+    width: rect.width / zoom,
+    height: rect.height / zoom
+  };
+};
+
+const updateMapScaleDisplay = () => {
+  if (!mapScaleDisplay || !mapScaleLabel) {
+    return;
+  }
+  const distancePer100Pixels = Number(worldMap.scale?.distancePer100Pixels) || 0;
+  const unit = worldMap.scale?.unit || '';
+  if (distancePer100Pixels > 0 && unit) {
+    mapScaleLabel.textContent = `100 px = ${distancePer100Pixels} ${unit}`;
+    mapScaleDisplay.removeAttribute('aria-hidden');
+  } else {
+    mapScaleLabel.textContent = '';
+    mapScaleDisplay.setAttribute('aria-hidden', 'true');
+  }
+  if (mapScaleDistanceInput) {
+    mapScaleDistanceInput.value = distancePer100Pixels ? String(distancePer100Pixels) : '';
+  }
+  if (mapScaleUnitInput) {
+    mapScaleUnitInput.value = unit;
+  }
+};
+
+const updateMapPlayerHelp = (message) => {
+  if (!mapPlayerHelp) {
+    return;
+  }
+  mapPlayerHelp.textContent =
+    message || 'Add a player, then click “Set Position” and choose their spot on the map.';
+};
+
+const getPlayerMarkerInitials = (name) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || '?';
+
+const formatTravelDistance = (value) => {
+  const unit = worldMap.scale?.unit || 'units';
+  const amount = Number.isFinite(value) ? value : 0;
+  return `${amount.toFixed(2)} ${unit}`;
+};
+
+const setMapPlayerPosition = (playerId, x, y) => {
+  const dimensions = getMapBaseDimensions();
+  if (!dimensions) {
+    return;
+  }
+  const distancePer100Pixels = Number(worldMap.scale?.distancePer100Pixels) || 0;
+  const distancePerPixel = distancePer100Pixels / 100;
+  worldMap.players = worldMap.players.map((player) => {
+    if (player.id !== playerId) {
+      return player;
+    }
+    const prevX = Number(player.x) || 0;
+    const prevY = Number(player.y) || 0;
+    const deltaX = ((x - prevX) / 100) * dimensions.width;
+    const deltaY = ((y - prevY) / 100) * dimensions.height;
+    const distance = distancePerPixel
+      ? Math.hypot(deltaX, deltaY) * distancePerPixel
+      : 0;
+    if (distance) {
+      worldStats = {
+        ...worldStats,
+        distanceTravelled: (worldStats.distanceTravelled || 0) + distance
+      };
+    }
+    return {
+      ...player,
+      x,
+      y,
+      distanceTravelled: (player.distanceTravelled || 0) + distance
+    };
+  });
+  renderWorldMap();
+  saveState();
+};
+
+const renderMapPlayers = () => {
+  if (mapPlayerMarkers) {
+    mapPlayerMarkers.innerHTML = '';
+  }
+  if (mapPlayerList) {
+    mapPlayerList.innerHTML = '';
+  }
+  if (!worldMap.players.length) {
+    if (mapPlayerList) {
+      const item = document.createElement('li');
+      item.className = 'helper-text';
+      item.textContent = 'No player markers yet.';
+      mapPlayerList.appendChild(item);
+    }
+    return;
+  }
+  worldMap.players.forEach((player) => {
+    const safeX = Number.isFinite(player.x) ? player.x : 50;
+    const safeY = Number.isFinite(player.y) ? player.y : 50;
+    if (mapPlayerMarkers) {
+      const marker = document.createElement('button');
+      marker.type = 'button';
+      marker.className = 'map-player-marker';
+      marker.textContent = getPlayerMarkerInitials(player.name);
+      marker.style.left = `${safeX}%`;
+      marker.style.top = `${safeY}%`;
+      marker.title = player.name;
+      marker.addEventListener('click', (event) => {
+        event.stopPropagation();
+        mapActivePlayerId = player.id;
+        updateMapPlayerHelp(`Click the map to move ${player.name}.`);
+        if (mapCancelMoveButton) {
+          mapCancelMoveButton.hidden = false;
+        }
+      });
+      mapPlayerMarkers.appendChild(marker);
+    }
+    if (mapPlayerList) {
+      const item = document.createElement('li');
+      item.className = 'quest-item';
+
+      const header = document.createElement('div');
+      header.className = 'quest-header';
+      const name = document.createElement('span');
+      name.textContent = player.name;
+      const distance = document.createElement('span');
+      distance.className = 'timeline-tag';
+      distance.textContent = formatTravelDistance(player.distanceTravelled || 0);
+      header.append(name, distance);
+
+      const meta = document.createElement('div');
+      meta.className = 'timeline-meta';
+      const coords = document.createElement('span');
+      coords.textContent = `Position: ${safeX.toFixed(1)}%, ${safeY.toFixed(1)}%`;
+      meta.appendChild(coords);
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row';
+      const move = document.createElement('button');
+      move.type = 'button';
+      move.className = 'ghost';
+      move.textContent = 'Set Position';
+      move.addEventListener('click', () => {
+        mapActivePlayerId = player.id;
+        updateMapPlayerHelp(`Click the map to move ${player.name}.`);
+        if (mapCancelMoveButton) {
+          mapCancelMoveButton.hidden = false;
+        }
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'ghost';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => {
+        worldMap.players = worldMap.players.filter((entry) => entry.id !== player.id);
+        if (mapActivePlayerId === player.id) {
+          mapActivePlayerId = null;
+          updateMapPlayerHelp();
+          if (mapCancelMoveButton) {
+            mapCancelMoveButton.hidden = true;
+          }
+        }
+        renderWorldMap();
+        saveState();
+      });
+      actions.append(move, remove);
+
+      item.append(header, meta, actions);
+      mapPlayerList.appendChild(item);
+    }
   });
 };
 
@@ -3862,6 +4568,7 @@ const handleMapDragStart = (event) => {
     return;
   }
   mapViewport.dataset.dragging = 'true';
+  mapViewport.dataset.wasDragged = 'false';
   mapViewport.classList.add('is-dragging');
   mapViewport.dataset.dragStartX = event.clientX;
   mapViewport.dataset.dragStartY = event.clientY;
@@ -3879,6 +4586,7 @@ const handleMapDragMove = (event) => {
   const originY = Number(mapViewport.dataset.dragOriginY) || 0;
   worldMap.offsetX = originX + (event.clientX - startX);
   worldMap.offsetY = originY + (event.clientY - startY);
+  mapViewport.dataset.wasDragged = 'true';
   renderWorldMap();
 };
 
@@ -3892,11 +4600,11 @@ const handleMapDragEnd = () => {
 };
 
 const addMapMarker = (event) => {
-  if (!mapImage || !mapViewport || !worldMap.image) {
+  if (!mapImage || !mapViewport || !worldMap.image || mapActivePlayerId) {
     return;
   }
-  const rect = mapImage.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) {
+  const dimensions = getMapBaseDimensions();
+  if (!dimensions) {
     return;
   }
   const label = window.prompt('Label this location');
@@ -3906,14 +4614,36 @@ const addMapMarker = (event) => {
   const url = window
     .prompt('Optional wiki URL for this location', '')
     ?.trim() || '';
-  const x = ((event.clientX - rect.left) / rect.width) * 100;
-  const y = ((event.clientY - rect.top) / rect.height) * 100;
+  const x = ((event.clientX - dimensions.rect.left) / dimensions.rect.width) * 100;
+  const y = ((event.clientY - dimensions.rect.top) / dimensions.rect.height) * 100;
   worldMap.markers = [
     ...worldMap.markers,
     { id: crypto.randomUUID(), label: label.trim(), url, x, y }
   ];
   renderWorldMap();
   saveState();
+};
+
+const handleMapPlayerPlacement = (event) => {
+  if (!mapActivePlayerId || !mapViewport) {
+    return;
+  }
+  if (mapViewport.dataset.wasDragged === 'true') {
+    mapViewport.dataset.wasDragged = 'false';
+    return;
+  }
+  const dimensions = getMapBaseDimensions();
+  if (!dimensions) {
+    return;
+  }
+  const x = ((event.clientX - dimensions.rect.left) / dimensions.rect.width) * 100;
+  const y = ((event.clientY - dimensions.rect.top) / dimensions.rect.height) * 100;
+  setMapPlayerPosition(mapActivePlayerId, x, y);
+  mapActivePlayerId = null;
+  updateMapPlayerHelp();
+  if (mapCancelMoveButton) {
+    mapCancelMoveButton.hidden = true;
+  }
 };
 
 const renderWorldMap = () => {
@@ -3924,9 +4654,13 @@ const renderWorldMap = () => {
   if (mapZoomInput) {
     mapZoomInput.value = worldMap.zoom;
   }
+  updateMapScaleDisplay();
   const transform = `translate(${worldMap.offsetX}px, ${worldMap.offsetY}px) scale(${worldMap.zoom})`;
   mapImage.style.transform = transform;
   mapMarkers.style.transform = transform;
+  if (mapPlayerMarkers) {
+    mapPlayerMarkers.style.transform = transform;
+  }
   mapMarkers.innerHTML = '';
   worldMap.markers.forEach((marker) => {
     const pin = document.createElement('button');
@@ -3941,6 +4675,7 @@ const renderWorldMap = () => {
     }
     mapMarkers.appendChild(pin);
   });
+  renderMapPlayers();
   if (mapTagList) {
     mapTagList.innerHTML = '';
     if (worldMap.markers.length === 0) {
@@ -5736,11 +6471,74 @@ if (mapResetButton) {
     saveState();
   });
 }
+if (mapScaleDistanceInput) {
+  mapScaleDistanceInput.addEventListener('input', () => {
+    const value = Number(mapScaleDistanceInput.value);
+    worldMap = {
+      ...worldMap,
+      scale: {
+        ...worldMap.scale,
+        distancePer100Pixels: Number.isFinite(value) ? value : 0
+      }
+    };
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapScaleUnitInput) {
+  mapScaleUnitInput.addEventListener('input', () => {
+    worldMap = {
+      ...worldMap,
+      scale: {
+        ...worldMap.scale,
+        unit: mapScaleUnitInput.value.trim()
+      }
+    };
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapAddPlayerButton) {
+  mapAddPlayerButton.addEventListener('click', () => {
+    if (!mapPlayerNameInput) {
+      return;
+    }
+    const name = mapPlayerNameInput.value.trim();
+    if (!name) {
+      mapPlayerNameInput.focus();
+      return;
+    }
+    const player = {
+      id: crypto.randomUUID(),
+      name,
+      x: 50,
+      y: 50,
+      distanceTravelled: 0
+    };
+    worldMap.players = [...worldMap.players, player];
+    mapPlayerNameInput.value = '';
+    mapActivePlayerId = player.id;
+    updateMapPlayerHelp(`Click the map to place ${player.name}.`);
+    if (mapCancelMoveButton) {
+      mapCancelMoveButton.hidden = false;
+    }
+    renderWorldMap();
+    saveState();
+  });
+}
+if (mapCancelMoveButton) {
+  mapCancelMoveButton.addEventListener('click', () => {
+    mapActivePlayerId = null;
+    updateMapPlayerHelp();
+    mapCancelMoveButton.hidden = true;
+  });
+}
 if (mapViewport) {
   mapViewport.addEventListener('mousedown', handleMapDragStart);
   mapViewport.addEventListener('mousemove', handleMapDragMove);
   mapViewport.addEventListener('mouseup', handleMapDragEnd);
   mapViewport.addEventListener('mouseleave', handleMapDragEnd);
+  mapViewport.addEventListener('click', handleMapPlayerPlacement);
   mapViewport.addEventListener('dblclick', addMapMarker);
 }
 if (partyMemberName) {
@@ -5853,6 +6651,11 @@ if (partyProfileNotes) {
     updatePartyMember(selectedPartyMemberId, {
       notes: partyProfileNotes.value
     });
+  });
+}
+if (monsterBookScaleInput) {
+  monsterBookScaleInput.addEventListener('input', () => {
+    applyMonsterBookScale(monsterBookScaleInput.value);
   });
 }
 const updatePartyCoins = (updates) => {
@@ -6095,6 +6898,29 @@ if (addNpcButton) {
     saveState();
   });
 }
+if (npcSearchInput) {
+  npcSearchInput.addEventListener('input', renderNpcDirectory);
+}
+if (npcStatusFilterInput) {
+  npcStatusFilterInput.addEventListener('change', renderNpcDirectory);
+}
+if (npcFactionFilterInput) {
+  npcFactionFilterInput.addEventListener('input', renderNpcDirectory);
+}
+if (npcFilterResetButton) {
+  npcFilterResetButton.addEventListener('click', () => {
+    if (npcSearchInput) {
+      npcSearchInput.value = '';
+    }
+    if (npcStatusFilterInput) {
+      npcStatusFilterInput.value = '';
+    }
+    if (npcFactionFilterInput) {
+      npcFactionFilterInput.value = '';
+    }
+    renderNpcDirectory();
+  });
+}
 if (addMonsterButton) {
   addMonsterButton.addEventListener('click', handleAddMonster);
 }
@@ -6108,6 +6934,38 @@ if (monsterNameInput) {
 }
 if (monsterSearchInput) {
   monsterSearchInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterTypeFilterInput) {
+  monsterTypeFilterInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterCrMinInput) {
+  monsterCrMinInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterCrMaxInput) {
+  monsterCrMaxInput.addEventListener('input', renderMonsterManual);
+}
+if (monsterSourceFilterInput) {
+  monsterSourceFilterInput.addEventListener('change', renderMonsterManual);
+}
+if (monsterFilterResetButton) {
+  monsterFilterResetButton.addEventListener('click', () => {
+    if (monsterSearchInput) {
+      monsterSearchInput.value = '';
+    }
+    if (monsterTypeFilterInput) {
+      monsterTypeFilterInput.value = '';
+    }
+    if (monsterCrMinInput) {
+      monsterCrMinInput.value = '';
+    }
+    if (monsterCrMaxInput) {
+      monsterCrMaxInput.value = '';
+    }
+    if (monsterSourceFilterInput) {
+      monsterSourceFilterInput.value = '';
+    }
+    renderMonsterManual();
+  });
 }
 if (monsterImportInput) {
   monsterImportInput.addEventListener('input', () => updateMonsterImportError(''));
@@ -6151,8 +7009,44 @@ if (exportMonsterBookButton) {
 if (saveMonsterBookButton) {
   saveMonsterBookButton.addEventListener('click', handleSaveMonsterBook);
 }
+if (openMonsterBookModalButton) {
+  openMonsterBookModalButton.addEventListener('click', () => {
+    openMonsterBookModal();
+  });
+}
+if (closeMonsterBookModalButton) {
+  closeMonsterBookModalButton.addEventListener('click', closeMonsterBookModal);
+}
+if (monsterBookBackdrop) {
+  monsterBookBackdrop.addEventListener('click', closeMonsterBookModal);
+}
+if (cancelMonsterBookButton) {
+  cancelMonsterBookButton.addEventListener('click', closeMonsterBookModal);
+}
 if (cancelMonsterEditButton) {
-  cancelMonsterEditButton.addEventListener('click', cancelMonsterEdit);
+  cancelMonsterEditButton.addEventListener('click', () => {
+    setMonsterEditState(false);
+    resetMonsterForm();
+    if (monsterNameInput) {
+      monsterNameInput.focus();
+    }
+  });
+}
+if (openMonsterModalButton) {
+  openMonsterModalButton.addEventListener('click', () => {
+    setMonsterEditState(false);
+    resetMonsterForm();
+    openMonsterModal();
+  });
+}
+if (closeMonsterModalButton) {
+  closeMonsterModalButton.addEventListener('click', closeMonsterModal);
+}
+if (monsterBackdrop) {
+  monsterBackdrop.addEventListener('click', closeMonsterModal);
+}
+if (cancelMonsterModalButton) {
+  cancelMonsterModalButton.addEventListener('click', closeMonsterModal);
 }
 if (closeMonsterDetailButton) {
   closeMonsterDetailButton.addEventListener('click', () => {
@@ -6173,12 +7067,8 @@ if (editMonsterButton) {
     if (!selected) {
       return;
     }
-    if (editingMonsterId === selected.id) {
-      saveMonsterDetailEdits();
-      return;
-    }
     startMonsterEdit(selected);
-    renderMonsterDetail();
+    openMonsterModal();
   });
 }
 if (deleteMonsterButton) {
@@ -6642,6 +7532,8 @@ document.addEventListener('keydown', (event) => {
     closeWorldModal();
     closeWorldEditModal();
     closeInteractionModal();
+    closeMonsterBookModal();
+    closeMonsterModal();
   }
 });
 document.addEventListener('click', (event) => {
@@ -6901,6 +7793,14 @@ if (importWorldInput) {
             offsetY: Number(parsed.worldMap?.offsetY) || 0,
             markers: Array.isArray(parsed.worldMap?.markers)
               ? parsed.worldMap.markers
+              : [],
+            scale: {
+              distancePer100Pixels:
+                Number(parsed.worldMap?.scale?.distancePer100Pixels) || 1,
+              unit: parsed.worldMap?.scale?.unit || 'mi'
+            },
+            players: Array.isArray(parsed.worldMap?.players)
+              ? parsed.worldMap.players
               : []
           },
           worldNotes: parsed.worldNotes || '',
@@ -6989,6 +7889,10 @@ const initializeDefaults = async () => {
   renderEncounterPresets();
   renderQuestBoard();
   renderDowntimeTracker();
+  if (monsterBookTiles) {
+    const savedScale = localStorage.getItem('monsterBookScale');
+    applyMonsterBookScale(savedScale || 1);
+  }
   if (worldGrid) {
     const savedScale = localStorage.getItem('worldTileScale');
     if (savedScale) {

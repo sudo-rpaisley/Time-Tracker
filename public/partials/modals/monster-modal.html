@@ -1,0 +1,49 @@
+<div class="modal" id="monsterModal" aria-hidden="true">
+  <div class="modal-backdrop" id="monsterBackdrop"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="monsterModalTitle">
+    <div class="modal-header">
+      <h2 id="monsterModalTitle">Add Monster</h2>
+      <button type="button" class="icon-button" id="closeMonsterModalButton" aria-label="Close monster">
+        ✕
+      </button>
+    </div>
+    <p class="helper-text">Add a custom monster to the active book.</p>
+    <div class="input-row">
+      <label>
+        Name
+        <input type="text" id="monsterNameInput" placeholder="e.g. Displacer Beast" />
+      </label>
+      <label>
+        Type
+        <input type="text" id="monsterTypeInput" placeholder="e.g. Beast" />
+      </label>
+      <label>
+        Max HP
+        <input type="number" id="monsterMaxHpInput" min="0" placeholder="e.g. 85" />
+      </label>
+      <label>
+        Image URLs
+        <textarea
+          id="monsterImageInput"
+          rows="2"
+          placeholder="Add one image URL per line"
+        ></textarea>
+      </label>
+    </div>
+    <label>
+      Notes
+      <textarea
+        id="monsterNotesInput"
+        rows="2"
+        placeholder="e.g. Multiattack, Displacement"
+      ></textarea>
+    </label>
+    <div class="button-row">
+      <button class="ghost" id="cancelMonsterModalButton" type="button">Cancel</button>
+      <button class="primary" id="addMonsterButton" type="button">Add Monster</button>
+      <button class="ghost" id="cancelMonsterEditButton" type="button" hidden>
+        Cancel Edit
+      </button>
+    </div>
+  </div>
+</div>

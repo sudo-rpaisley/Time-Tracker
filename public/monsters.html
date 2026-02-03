@@ -17,93 +17,35 @@
             Build a searchable monster list for each world and organize monsters into books.
           </p>
         </div>
+        <div class="button-row">
+          <button
+            class="icon-button"
+            id="openMonsterBookModalButton"
+            type="button"
+            aria-label="Add monster book"
+            title="Add monster book"
+          >
+            📘+
+          </button>
+          <button
+            class="icon-button"
+            id="openMonsterModalButton"
+            type="button"
+            aria-label="Add monster"
+            title="Add monster"
+          >
+            🐉+
+          </button>
+        </div>
       </header>
 
       <div class="controls">
-        <div class="quest-card">
-          <h3>Monster Books</h3>
-          <div class="input-row">
-            <label>
-              Active Book
-              <select id="monsterBookSelect"></select>
-            </label>
-            <label>
-              New Book Name
-              <input type="text" id="monsterBookNameInput" placeholder="e.g. Official Manual" />
-            </label>
-            <label>
-              Edition
-              <input type="text" id="monsterBookEditionInput" placeholder="e.g. 5e" />
-            </label>
-            <label>
-              Cover Image URL
-              <input type="url" id="monsterBookCoverInput" placeholder="https://..." />
-            </label>
-            <label>
-              Book Source
-              <select id="monsterBookSourceInput">
-                <option value="core">Core</option>
-                <option value="user" selected>User</option>
-              </select>
-            </label>
-          </div>
-          <div class="button-row">
-            <button class="ghost" id="addMonsterBookButton" type="button">Add Book</button>
-            <button class="ghost" id="exportMonsterBookButton" type="button">
-              Export Book JSON
-            </button>
-            <button class="ghost" id="saveMonsterBookButton" type="button">
-              Save Book to Library
-            </button>
-          </div>
-          <p class="helper-text" id="monsterBookError" role="alert"></p>
-        </div>
-        <div class="quest-card">
-          <h3>Add Monster</h3>
-          <div class="input-row">
-            <label>
-              Name
-              <input type="text" id="monsterNameInput" placeholder="e.g. Displacer Beast" />
-            </label>
-            <label>
-              Type
-              <input type="text" id="monsterTypeInput" placeholder="e.g. Beast" />
-            </label>
-            <label>
-              Max HP
-              <input type="number" id="monsterMaxHpInput" min="0" placeholder="e.g. 85" />
-            </label>
-            <label>
-              Image URLs
-              <textarea
-                id="monsterImageInput"
-                rows="2"
-                placeholder="Add one image URL per line"
-              ></textarea>
-            </label>
-          </div>
-          <label>
-            Notes
-            <textarea
-              id="monsterNotesInput"
-              rows="2"
-              placeholder="e.g. Multiattack, Displacement"
-            ></textarea>
-          </label>
-          <div class="button-row">
-            <button class="primary" id="addMonsterButton" type="button">Add Monster</button>
-            <button class="ghost" id="cancelMonsterEditButton" type="button" hidden>
-              Cancel Edit
-            </button>
-          </div>
-        </div>
-
         <div class="quest-card">
           <h3>Import Monsters</h3>
           <p class="helper-text">
             Paste JSON for a monster array or a book export. Supported keys: name, type,
             maxHp, notes, and statblock fields. Book name is taken from the JSON or the
-            New Book Name field.
+            New Book Name field. XML in the 5e-style <monster> format is also supported.
           </p>
           <textarea
             id="monsterImportInput"
@@ -123,6 +65,17 @@
                 Monster Books
                 <span title="Toggle books on/off to include their monsters in the list."> ⓘ </span>
               </h3>
+              <label class="monster-book-scale" for="monsterBookScaleInput">
+                Scale
+                <input
+                  type="range"
+                  id="monsterBookScaleInput"
+                  min="0.7"
+                  max="1.3"
+                  step="0.1"
+                  value="1"
+                />
+              </label>
             </div>
             <div class="monster-book-grid" id="monsterBookTiles"></div>
           </div>
@@ -132,12 +85,39 @@
               <input type="search" id="monsterSearchInput" placeholder="Search monsters" />
             </label>
           </div>
+          <div class="input-row">
+            <label>
+              Type
+              <input type="text" id="monsterTypeFilterInput" placeholder="e.g. Beast" />
+            </label>
+            <label>
+              CR Min
+              <input type="text" id="monsterCrMinInput" placeholder="e.g. 1/2" />
+            </label>
+            <label>
+              CR Max
+              <input type="text" id="monsterCrMaxInput" placeholder="e.g. 10" />
+            </label>
+            <label>
+              Source
+              <select id="monsterSourceFilterInput">
+                <option value="">All</option>
+                <option value="core">Core</option>
+                <option value="user">User</option>
+              </select>
+            </label>
+            <button class="ghost" id="monsterFilterResetButton" type="button">
+              Reset Filters
+            </button>
+          </div>
           <ul class="quest-list" id="monsterList"></ul>
         </div>
       </div>
     </section>
 
-    @@include('partials/modals.html')
+    @@include('partials/modals/party-profile-modal.html')
+    @@include('partials/modals/monster-book-modal.html')
+    @@include('partials/modals/monster-modal.html')
     <script src="script.js"></script>
   </body>
 </html>
