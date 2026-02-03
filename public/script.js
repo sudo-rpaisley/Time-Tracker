@@ -497,6 +497,28 @@ const formatXmlTraitList = (nodes) =>
     .filter(Boolean)
     .join('\n');
 
+const formatMonsterSize = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+  const map = {
+    T: 'Tiny',
+    S: 'Small',
+    M: 'Medium',
+    L: 'Large',
+    H: 'Huge',
+    G: 'Gargantuan'
+  };
+  if (raw.length === 1) {
+    return map[raw.toUpperCase()] || raw;
+  }
+  return raw
+    .split(/\s+/)
+    .map((part) => map[part.toUpperCase()] || part)
+    .join(' ');
+};
+
 const parseMonsterXml = (raw) => {
   if (typeof DOMParser === 'undefined') {
     throw new Error('XML parsing is not supported in this environment.');
@@ -509,7 +531,7 @@ const parseMonsterXml = (raw) => {
   const monsters = Array.from(document.querySelectorAll('monster'));
   return monsters.map((monster) => {
     const name = getXmlText(monster, 'name');
-    const size = getXmlText(monster, 'size');
+    const size = formatMonsterSize(getXmlText(monster, 'size'));
     const type = getXmlText(monster, 'type');
     const alignment = getXmlText(monster, 'alignment');
     const armorClass = getXmlText(monster, 'ac');
@@ -525,6 +547,7 @@ const parseMonsterXml = (raw) => {
     const actions = formatXmlTraitList(parseXmlEntries(monster, 'action'));
     const spells = getXmlText(monster, 'spells');
     const slots = getXmlText(monster, 'slots');
+    const metaParts = [size, type].filter(Boolean);
     const notesParts = [
       alignment ? `Alignment: ${alignment}` : '',
       passive ? `Passive Perception: ${passive}` : '',
@@ -534,7 +557,7 @@ const parseMonsterXml = (raw) => {
     return {
       name,
       type: type || 'npc',
-      meta: size,
+      meta: metaParts.join(' '),
       maxHp: parseFirstNumber(hitPoints),
       armorClass,
       hitPoints,
