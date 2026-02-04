@@ -4,8 +4,23 @@
   "description": "D&D time and turn tracker",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js --watch",
+    "lint": "eslint server.js public/modules/ --fix",
+    "format": "prettier --write server.js public/modules/ public/script.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   },
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.1.1",
+    "jest": "^29.7.0"
+  }
 }
+

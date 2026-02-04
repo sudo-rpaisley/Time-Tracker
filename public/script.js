@@ -474,435 +474,14 @@ const baseMonsterPresets = [
   }
 ];
 
-const stripHtml = (value) => String(value || '').replace(/<[^>]*>/g, '').trim();
-
-const parseFirstNumber = (value) => {
-  const match = String(value || '').match(/-?\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : null;
-};
-
-const getXmlText = (root, selector) =>
-  root?.querySelector(selector)?.textContent?.trim() || '';
-
-const parseXmlEntries = (root, selector) =>
-  Array.from(root?.querySelectorAll(selector) || []);
-
-const formatXmlTraitList = (nodes) =>
-  nodes
-    .map((node) => {
-      const name = getXmlText(node, 'name');
-      const texts = parseXmlEntries(node, 'text')
-        .map((textNode) => textNode.textContent?.trim())
-        .filter(Boolean);
-      const detail = texts.join('\n');
-      if (!name && !detail) {
-        return '';
-      }
-      if (!name) {
-        return detail;
-      }
-      if (!detail) {
-        return name;
-      }
-      return `${name}: ${detail}`;
-    })
-    .filter(Boolean)
-    .join('\n');
-
-const parseInteger = (value) => {
-  const parsed = Number.parseInt(String(value || '').trim(), 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
-
-const normalizeInlineText = (value) =>
-  String(value || '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const formatAbilityModifier = (score) => {
-  const numeric = Number.parseInt(String(score || '').trim(), 10);
-  if (Number.isNaN(numeric)) {
-    return '';
-  }
-  const modifier = Math.floor((numeric - 10) / 2);
-  const sign = modifier >= 0 ? '+' : '';
-  return `(${sign}${modifier})`;
-};
-
-const formatMonsterSize = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) {
-    return '';
-  }
-  const map = {
-    T: 'Tiny',
-    S: 'Small',
-    M: 'Medium',
-    L: 'Large',
-    H: 'Huge',
-    G: 'Gargantuan'
-  };
-  if (raw.length === 1) {
-    return map[raw.toUpperCase()] || raw;
-  }
-  return raw
-    .split(/\s+/)
-    .map((part) => map[part.toUpperCase()] || part)
-    .join(' ');
-};
-
-const splitCreatureType = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) {
-    return { creatureType: '', source: '' };
-  }
-  const [left, ...rest] = raw.split(',');
-  return {
-    creatureType: left.trim(),
-    source: rest.join(',').trim()
-  };
-};
-
-const parseXmlTextList = (node, selector) =>
-  parseXmlEntries(node, selector)
-    .map((textNode) => textNode.textContent?.trim())
-    .filter(Boolean);
-
-const parseXmlActionBlocks = (nodes, { includeAttacks = false } = {}) =>
-  nodes.map((node) => ({
-    name: getXmlText(node, 'name'),
-    text: parseXmlTextList(node, 'text'),
-    attacks: includeAttacks
-      ? parseXmlEntries(node, 'attack')
-          .map((attackNode) => attackNode.textContent?.trim())
-          .filter(Boolean)
-      : []
-  }));
-
-const formatLegacyActionText = (blocks) =>
-  blocks
-    .map((block) => {
-      const text = block.text.join('\n');
-      if (!block.name && !text) {
-        return '';
-      }
-      if (!block.name) {
-        return text;
-      }
-      if (!text) {
-        return block.name;
-      }
-      return `${block.name}. ${text}`;
-    })
-    .filter(Boolean)
-    .join('\n\n');
-
-const parseMonsterXml = (raw) => {
-  if (typeof DOMParser === 'undefined') {
-    throw new Error('XML parsing is not supported in this environment.');
-  }
-  const parser = new DOMParser();
-  const document = parser.parseFromString(raw, 'application/xml');
-  if (document.querySelector('parsererror')) {
-    throw new Error('Invalid XML.');
-  }
-  const monsters = Array.from(document.querySelectorAll('monster'));
-  return monsters.map((monster) => {
-    const name = getXmlText(monster, 'name');
-    const size = formatMonsterSize(getXmlText(monster, 'size'));
-    const typeValue = getXmlText(monster, 'type');
-    const { creatureType, source } = splitCreatureType(typeValue);
-    const alignment = getXmlText(monster, 'alignment');
-    const armorClass = normalizeInlineText(getXmlText(monster, 'ac'));
-    const hitPoints = getXmlText(monster, 'hp');
-    const speed = normalizeInlineText(getXmlText(monster, 'speed'));
-    const savingThrows = normalizeInlineText(getXmlText(monster, 'save'));
-    const skills = normalizeInlineText(getXmlText(monster, 'skill'));
-    const damageVulnerabilities = getXmlText(monster, 'vulnerable');
-    const damageResistances = getXmlText(monster, 'resist');
-    const damageImmunities = getXmlText(monster, 'immune');
-    const conditionImmunities = getXmlText(monster, 'conditionImmune');
-    const senses = normalizeInlineText(getXmlText(monster, 'senses'));
-    const passive = getXmlText(monster, 'passive');
-    const languages = normalizeInlineText(getXmlText(monster, 'languages'));
-    const cr = getXmlText(monster, 'cr');
-    const xp = parseInteger(getXmlText(monster, 'xp'));
-    const traitList = parseXmlActionBlocks(parseXmlEntries(monster, 'trait'));
-    const actionList = parseXmlActionBlocks(parseXmlEntries(monster, 'action'), {
-      includeAttacks: true
-    });
-    const bonusActionList = parseXmlActionBlocks(parseXmlEntries(monster, 'bonus'));
-    const reactionList = parseXmlActionBlocks(parseXmlEntries(monster, 'reaction'));
-    const legendaryActionIntro = parseXmlTextList(monster, 'lemma > text');
-    const legendaryActionList = parseXmlEntries(monster, 'lemmaction').map((node) => ({
-      name: getXmlText(node, 'name'),
-      text: parseXmlTextList(node, 'text'),
-      cost: Math.max(1, parseInteger(getXmlText(node, 'cost')))
-    }));
-    const mythicActionList = parseXmlActionBlocks(parseXmlEntries(monster, 'mythic'));
-    const traits = formatLegacyActionText(traitList);
-    const actions = formatLegacyActionText(actionList);
-    const bonusActions = formatLegacyActionText(bonusActionList);
-    const reactions = formatLegacyActionText(reactionList);
-    const legendaryActions = [
-      ...legendaryActionIntro,
-      formatLegacyActionText(legendaryActionList)
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-    const mythicActions = formatLegacyActionText(mythicActionList);
-    const passivePerception = parseInteger(passive);
-    const meta = `${size} ${creatureType}${alignment ? `, ${alignment}` : ''}`.trim();
-    const challenge = xp ? `${cr} (${xp.toLocaleString()} XP)` : cr;
-    return {
-      id: crypto.randomUUID(),
-      name,
-      size,
-      creatureType,
-      source,
-      alignment,
-      type: 'npc',
-      meta,
-      hitPoints,
-      maxHp: parseFirstNumber(hitPoints),
-      armorClass,
-      speed,
-      stats: {
-        str: getXmlText(monster, 'str'),
-        dex: getXmlText(monster, 'dex'),
-        con: getXmlText(monster, 'con'),
-        int: getXmlText(monster, 'int'),
-        wis: getXmlText(monster, 'wis'),
-        cha: getXmlText(monster, 'cha'),
-        strMod: formatAbilityModifier(getXmlText(monster, 'str')),
-        dexMod: formatAbilityModifier(getXmlText(monster, 'dex')),
-        conMod: formatAbilityModifier(getXmlText(monster, 'con')),
-        intMod: formatAbilityModifier(getXmlText(monster, 'int')),
-        wisMod: formatAbilityModifier(getXmlText(monster, 'wis')),
-        chaMod: formatAbilityModifier(getXmlText(monster, 'cha'))
-      },
-      savingThrows,
-      skills,
-      damageVulnerabilities,
-      damageResistances,
-      damageImmunities,
-      conditionImmunities,
-      senses,
-      passivePerception,
-      languages,
-      challenge,
-      cr,
-      xp,
-      traits,
-      actions,
-      bonusActions,
-      reactions,
-      legendaryActions,
-      mythicActions,
-      traitList,
-      actionList,
-      bonusActionList,
-      reactionList,
-      legendaryActionIntro,
-      legendaryActionList,
-      mythicActionList,
-      spellcasting: {
-        spells: getXmlText(monster, 'spells')
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean),
-        slots: getXmlText(monster, 'slots')
-          .split(',')
-          .map((value) => parseInteger(value))
-          .concat(Array(9).fill(0))
-          .slice(0, 9)
-      },
-      environment: getXmlText(monster, 'environment'),
-      description: getXmlText(monster, 'description'),
-      token: getXmlText(monster, 'token'),
-      art: getXmlText(monster, 'art'),
-      url: getXmlText(monster, 'url'),
-      imageUrl: '',
-      imageUrls: [],
-      notes: ''
-    };
-  });
-};
-
-const truncateText = (value, maxLength = 140) => {
-  const text = String(value || '').trim();
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return `${text.slice(0, maxLength).trim()}…`;
-};
-
-const getMonsterMaxHp = (monster) => {
-  if (!monster) {
-    return null;
-  }
-  if (Number.isFinite(monster.maxHp)) {
-    return monster.maxHp;
-  }
-  const parsed = parseFirstNumber(monster.hitPoints);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const normalizeImageUrls = (value) => {
-  if (!value) {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    return value
-      .map((entry) => String(entry || '').trim())
-      .filter(Boolean);
-  }
-  return String(value)
-    .split('\n')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-};
-
-const getMonsterPreviewImage = (monster) => {
-  if (!monster) {
-    return '';
-  }
-  if (monster.imageUrls?.length) {
-    return monster.imageUrls[0];
-  }
-  if (monster.imageUrl) {
-    return monster.imageUrl;
-  }
-  return '';
-};
-
-const createMonsterPlaceholder = (name = '') => {
-  const label = (name || 'Monster')
-    .trim()
-    .slice(0, 16)
-    .replace(/[^\w\s.-]/g, '');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="16" fill="#1f2433"/><path d="M30 40c0-9 7-16 18-16s18 7 18 16c0 6-3 11-8 14l6 14H32l6-14c-5-3-8-8-8-14z" fill="#7a52ff" opacity="0.9"/><text x="48" y="84" font-size="10" font-family="Inter, system-ui, sans-serif" text-anchor="middle" fill="#cfd3e3">${label}</text></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-};
-
-const normalizeMonsterEntry = (entry) => {
-  if (!entry || typeof entry !== 'object') {
-    return null;
-  }
-  const name = String(entry.name || entry.Name || '').trim();
-  if (!name) {
-    return null;
-  }
-  const rawType = entry.type || entry.Type || '';
-  const type = String(rawType).trim() || 'npc';
-  const parsedMaxHp =
-    Number(entry.maxHp ?? entry.maxHP ?? entry['Max HP'] ?? entry['Hit Points']);
-  const maxHpFromText =
-    parseFirstNumber(entry['Hit Points'] ?? entry.hitPoints ?? entry.HitPoints);
-  const maxHp = Number.isNaN(parsedMaxHp)
-    ? maxHpFromText
-    : Math.max(0, parsedMaxHp);
-  const meta = String(entry.meta || entry.Meta || entry.type || entry.Type || '').trim();
-  const armorClass = String(
-    entry.armorClass ||
-      entry['Armor Class'] ||
-      entry['Armor class'] ||
-      entry['ArmorClass'] ||
-      ''
-  ).trim();
-  const hitPoints = String(entry.hitPoints || entry['Hit Points'] || '').trim();
-  const speed = String(entry.speed || entry.Speed || '').trim();
-  const savingThrows = String(entry.savingThrows || entry['Saving Throws'] || '').trim();
-  const skills = String(entry.skills || entry.Skills || '').trim();
-  const senses = String(entry.senses || entry.Senses || '').trim();
-  const languages = String(entry.languages || entry.Languages || '').trim();
-  const challenge = String(entry.challenge || entry.Challenge || '').trim();
-  const traits = stripHtml(entry.traits || entry.Traits || '');
-  const actions = stripHtml(entry.actions || entry.Actions || '');
-  const legendaryActions = stripHtml(entry.legendaryActions || entry['Legendary Actions'] || '');
-  const imageUrls = normalizeImageUrls(
-    entry.imageUrls ||
-      entry.images ||
-      entry.imageUrl ||
-      entry.img_url ||
-      entry.image ||
-      entry['Image URL'] ||
-      ''
-  );
-  const imageUrl = imageUrls[0] || '';
-  const stats = {
-    str: entry.STR || entry.str || '',
-    dex: entry.DEX || entry.dex || '',
-    con: entry.CON || entry.con || '',
-    int: entry.INT || entry.int || '',
-    wis: entry.WIS || entry.wis || '',
-    cha: entry.CHA || entry.cha || '',
-    strMod: entry.STR_mod || entry.strMod || '',
-    dexMod: entry.DEX_mod || entry.dexMod || '',
-    conMod: entry.CON_mod || entry.conMod || '',
-    intMod: entry.INT_mod || entry.intMod || '',
-    wisMod: entry.WIS_mod || entry.wisMod || '',
-    chaMod: entry.CHA_mod || entry.chaMod || ''
-  };
-  const notes = String(entry.notes || entry.Notes || entry.description || '').trim();
-  return {
-    id: entry.id ? String(entry.id) : crypto.randomUUID(),
-    name,
-    type,
-    meta,
-    maxHp,
-    armorClass,
-    hitPoints,
-    speed,
-    savingThrows,
-    skills,
-    senses,
-    languages,
-    challenge,
-    traits,
-    actions,
-    legendaryActions,
-    imageUrl,
-    imageUrls,
-    stats,
-    notes
-  };
-};
-
-const normalizeMonsterManual = (entries) => {
-  const list = Array.isArray(entries) ? entries : [];
-  const seen = new Set();
-  return list.reduce((acc, entry) => {
-    const monster = normalizeMonsterEntry(entry);
-    if (!monster) {
-      return acc;
-    }
-    const key = monster.name.toLowerCase();
-    if (seen.has(key)) {
-      return acc;
-    }
-    seen.add(key);
-    acc.push(monster);
-    return acc;
-  }, []);
-};
-
-const normalizeBookSource = (source) => {
-  const value = String(source || '').trim().toLowerCase();
-  if (value === 'core') {
-    return 'core';
-  }
-  return 'user';
-};
-
-const createMonsterBook = (name, monsters = [], metadata = {}) => ({
-  id: crypto.randomUUID(),
-  name,
-  edition: String(metadata.edition || '').trim(),
-  coverImage: String(metadata.coverImage || '').trim(),
-  source: normalizeBookSource(metadata.source),
-  monsters: normalizeMonsterManual(monsters)
-});
+// UTILITIES MOVED TO modules/utilities.js
+// Functions: stripHtml, isSafeUrl, safeOpenUrl, setBackgroundImage, parseInteger,
+// parseFirstNumber, formatAbilityModifier, formatMonsterSize, getMonsterMaxHp,
+// normalizeImageUrls, getMonsterPreviewImage, createMonsterPlaceholder,
+// getXmlText, parseXmlEntries, parseXmlTextList, formatXmlTraitList,
+// parseXmlActionBlocks, formatLegacyActionText, splitCreatureType, parseMonsterXml,
+// normalizeMonsterEntry, normalizeMonsterManual, normalizeBookSource,
+// createMonsterBook, normalizeMonsterBooks, normalizeInlineText, truncateText
 
 const normalizeMonsterBooks = (books) => {
   const list = Array.isArray(books) ? books : [];
@@ -1255,9 +834,7 @@ const openWorldEditModal = (worldId) => {
     worldCoverInput.value = '';
   }
   if (worldCoverPreview) {
-    worldCoverPreview.style.backgroundImage = worldEditCoverImage
-      ? `url("${worldEditCoverImage}")`
-      : 'none';
+    setBackgroundImage(worldCoverPreview, worldEditCoverImage);
   }
   setTimeout(() => {
     worldEditNameInput.focus();
@@ -1517,18 +1094,30 @@ const saveState = () => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ worlds: payloadWorlds, activeWorldId })
+  }).then(response => {
+    if (!response.ok) {
+      console.error('[saveState] Server returned status:', response.status);
+      return response.text().then(text => {
+        console.error('[saveState] Server response:', text);
+      });
+    }
+    console.log('[saveState] State saved successfully');
   }).catch((error) => {
-    console.error('Failed to save state', error);
+    console.error('[saveState] Failed to save state', error);
   });
 };
 
 const loadState = async () => {
   try {
+    console.log('[script.js] loadState: fetching /api/state');
     const response = await fetch('/api/state');
+    console.log('[script.js] loadState: fetch response status', response.status);
     if (!response.ok) {
+      console.error('[script.js] loadState: response not OK', response.status, response.statusText);
       return false;
     }
     const parsed = await response.json();
+    console.log('[script.js] loadState: parsed response', parsed);
     if (
       parsed &&
       parsed.worlds &&
@@ -1536,10 +1125,12 @@ const loadState = async () => {
     ) {
       worlds = parsed.worlds;
       activeWorldId = parsed.activeWorldId;
+      console.log('[script.js] loadState: loaded worlds:', Object.keys(worlds).length, 'worlds, activeWorldId:', activeWorldId);
       return true;
     }
+    console.error('[script.js] loadState: parsed response missing required fields');
   } catch (error) {
-    console.error('Failed to load stored data', error);
+    console.error('[script.js] loadState: fetch failed', error);
   }
   return false;
 };
@@ -1764,7 +1355,10 @@ const setActiveWorld = (worldId) => {
   renderCombatantPresets();
   renderMonsterDetail();
   saveState();
-  saveMonsterBookToLibrary(activeBook, { silent: true });
+  const activeBook = getActiveMonsterBook();
+  if (activeBook) {
+    saveMonsterBookToLibrary(activeBook, { silent: true });
+  }
 };
 
 const renderWorldTiles = () => {
@@ -1810,7 +1404,7 @@ const renderWorldTiles = () => {
     const cover = document.createElement('div');
     cover.className = 'world-cover';
     if (world.coverImage) {
-      cover.style.backgroundImage = `url("${world.coverImage}")`;
+      setBackgroundImage(cover, world.coverImage);
     }
 
     const name = document.createElement('div');
@@ -2414,13 +2008,7 @@ const renderEncounterPresets = () => {
   });
 };
 
-const formatQuestDeadline = (deadline) => {
-  if (!deadline) {
-    return 'No deadline';
-  }
-  return `Day ${deadline.day}, Month ${deadline.month}, Year ${deadline.year}`;
-};
-
+// renderQuestBoard and formatQuestDeadline MOVED TO modules/feature-renderers.js
 const renderQuestBoard = () => {
   if (!questList) {
     return;
@@ -2748,7 +2336,7 @@ const renderMonsterBookTiles = () => {
       const cover = document.createElement('div');
       cover.className = 'monster-book-cover';
       if (book.coverImage) {
-        cover.style.backgroundImage = `url("${book.coverImage}")`;
+        setBackgroundImage(cover, book.coverImage);
       }
 
       const info = document.createElement('div');
@@ -4670,7 +4258,7 @@ const renderWorldMap = () => {
     pin.style.top = `${marker.y}%`;
     if (marker.url) {
       pin.addEventListener('click', () => {
-        window.open(marker.url, '_blank', 'noopener');
+        safeOpenUrl(marker.url);
       });
     }
     mapMarkers.appendChild(pin);
@@ -5916,7 +5504,7 @@ const renderInitiative = () => {
     avatar.className = 'combatant-avatar';
     if (combatant.avatar) {
       avatar.classList.add('has-image');
-      avatar.style.backgroundImage = `url(${combatant.avatar})`;
+      setBackgroundImage(avatar, combatant.avatar);
       avatar.textContent = '';
     } else {
       avatar.classList.remove('has-image');
@@ -7458,7 +7046,7 @@ if (worldCoverInput) {
     reader.onload = () => {
       worldEditCoverImage = reader.result;
       if (worldCoverPreview) {
-        worldCoverPreview.style.backgroundImage = `url("${worldEditCoverImage}")`;
+        setBackgroundImage(worldCoverPreview, worldEditCoverImage);
       }
     };
     reader.readAsDataURL(file);
@@ -7846,7 +7434,12 @@ if (importWorldInput) {
 }
 
 const initializeDefaults = async () => {
+  console.log('[script.js] initializeDefaults starting');
   const loaded = await loadState();
+  console.log('[script.js] initializeDefaults: loadState returned', loaded);
+  console.log('[script.js] initializeDefaults: worlds count:', Object.keys(worlds).length);
+  console.log('[script.js] initializeDefaults: activeWorldId:', activeWorldId);
+  
   if (!loaded) {
     worlds = {};
     activeWorldId = null;
@@ -7901,24 +7494,268 @@ const initializeDefaults = async () => {
   }
 };
 
-initializeDefaults().then(() => {
-  renderInitiative();
-  renderProfile();
-  const snapshot = getMonsterDetailSnapshot();
-  const monsterId = getMonsterIdFromLocation() || snapshot?.monster?.id || null;
-  if (isMonsterDetailPage()) {
-    const { bookId, worldId } = getMonsterQueryParams();
-    const targetWorldId = worldId || snapshot?.worldId;
-    if (targetWorldId && worlds[targetWorldId]) {
-      setActiveWorld(targetWorldId);
-    }
-    const targetBookId = bookId || snapshot?.bookId;
-    if (targetBookId && getMonsterBookById(targetBookId)) {
-      activeMonsterBookId = targetBookId;
-      if (!selectedMonsterBookIds.includes(targetBookId)) {
-        selectedMonsterBookIds = [...selectedMonsterBookIds, targetBookId];
-      }
-    }
-  }
-  setActiveMonster(monsterId, { syncHash: false });
+// Export for page-specific initialization (called by page main.js after modules are loaded)
+// DO NOT call automatically - each page needs to initialize independently
+// initializeDefaults().then(() => {
+//   renderInitiative();
+//   renderProfile();
+//   const snapshot = getMonsterDetailSnapshot();
+//   const monsterId = getMonsterIdFromLocation() || snapshot?.monster?.id || null;
+//   if (isMonsterDetailPage()) {
+//     const { bookId, worldId } = getMonsterQueryParams();
+//     const targetWorldId = worldId || snapshot?.worldId;
+//     if (targetWorldId && worlds[targetWorldId]) {
+//       setActiveWorld(targetWorldId);
+//     }
+//     const targetBookId = bookId || snapshot?.bookId;
+//     if (targetBookId && getMonsterBookById(targetBookId)) {
+//       activeMonsterBookId = targetBookId;
+//       if (!selectedMonsterBookIds.includes(targetBookId)) {
+//         selectedMonsterBookIds = [...selectedMonsterBookIds, targetBookId];
+//       }
+//     }
+//   }
+//   setActiveMonster(monsterId, { syncHash: false });
+// });
+
+// Export critical functions to window for module access
+window.initializeDefaults = initializeDefaults;
+window.renderWorldTiles = renderWorldTiles;
+window.renderRoundHistory = renderRoundHistory;
+window.renderCalendar = renderCalendar;
+window.renderCalendarEventsList = renderCalendarEventsList;
+window.renderTimeline = renderTimeline;
+window.renderMapPlayers = renderMapPlayers;
+window.renderStats = renderStats;
+window.renderCombatantPresets = renderCombatantPresets;
+window.renderMonsterBookTiles = renderMonsterBookTiles;
+window.renderMonsterManual = renderMonsterManual;
+
+// Export utility functions from modules that script.js needs
+// These functions are defined in modules but called from script.js
+window.normalizeBookSource = window.normalizeBookSource || ((source) => (source === 'core' ? 'core' : 'user'));
+window.normalizeMonsterManual = window.normalizeMonsterManual || ((entries) => (Array.isArray(entries) ? entries : []));
+window.normalizeMonsterEntry = window.normalizeMonsterEntry || ((entry) => {
+  if (!entry) return null;
+  return {
+    id: entry.id || crypto.randomUUID(),
+    name: String(entry.name || '').trim(),
+    type: String(entry.type || '').trim(),
+    alignment: String(entry.alignment || '').trim(),
+    ac: entry.ac,
+    maxHp: entry.maxHp,
+    speed: entry.speed || {},
+    abilities: entry.abilities || {},
+    savingThrows: entry.savingThrows || {},
+    skills: entry.skills || {},
+    resistances: entry.resistances || [],
+    immunities: entry.immunities || [],
+    languages: entry.languages || [],
+    senses: entry.senses || [],
+    traits: entry.traits || [],
+    actions: entry.actions || [],
+    reactions: entry.reactions || [],
+    legendaryActions: entry.legendaryActions || [],
+    description: String(entry.description || '').trim(),
+    source: String(entry.source || '').trim()
+  };
 });
+window.normalizeMonsterBooks = window.normalizeMonsterBooks || ((books) => {
+  const list = Array.isArray(books) ? books : [];
+  const seen = new Set();
+  return list.reduce((acc, entry) => {
+    const name = String(entry?.name || '').trim();
+    if (!name) return acc;
+    const edition = String(entry?.edition || '').trim();
+    const id = entry?.id ? String(entry.id) : '';
+    const key = id ? `id:${id}` : `${name.toLowerCase()}|${edition.toLowerCase()}`;
+    if (seen.has(key)) return acc;
+    seen.add(key);
+    acc.push({
+      id: id || crypto.randomUUID(),
+      name,
+      edition,
+      coverImage: String(entry?.coverImage || '').trim(),
+      source: (entry?.source === 'core' ? 'core' : 'user'),
+      monsters: Array.isArray(entry?.monsters) ? entry.monsters : (Array.isArray(entry?.entries) ? entry.entries : [])
+    });
+    return acc;
+  }, []);
+});
+window.createMonsterBook = window.createMonsterBook || ((data) => data);
+window.normalizeInlineText = window.normalizeInlineText || ((text) => String(text || '').trim());
+window.truncateText = window.truncateText || ((text, length) => {
+  const str = String(text || '').trim();
+  return length ? str.substring(0, length) : str;
+});
+window.formatXmlTraitList = window.formatXmlTraitList || ((text) => String(text || '').trim());
+window.parseXmlActionBlocks = window.parseXmlActionBlocks || ((xml) => []);
+window.formatLegacyActionText = window.formatLegacyActionText || ((text) => String(text || '').trim());
+window.splitCreatureType = window.splitCreatureType || ((type) => String(type || '').split(',').map(s => s.trim()));
+window.parseMonsterXml = window.parseMonsterXml || ((xml) => ({}));
+window.parseXmlTextList = window.parseXmlTextList || ((xml) => []);
+window.parseXmlEntries = window.parseXmlEntries || ((xml) => []);
+window.getXmlText = window.getXmlText || ((xml, tag) => '');
+window.createMonsterPlaceholder = window.createMonsterPlaceholder || ((name = '') => {
+  const label = (name || 'Monster')
+    .trim()
+    .slice(0, 16)
+    .replace(/[^\w\s.-]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="16" fill="#1f2433"/><path d="M30 40c0-9 7-16 18-16s18 7 18 16c0 6-3 11-8 14l6 14H32l6-14c-5-3-8-8-8-14z" fill="#7a52ff" opacity="0.9"/><text x="48" y="84" font-size="10" font-family="Inter, system-ui, sans-serif" text-anchor="middle" fill="#cfd3e3">${label}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+});
+window.getMonsterPreviewImage = window.getMonsterPreviewImage || ((monster) => {
+  if (!monster) return '';
+  if (monster.imageUrls?.length) {
+    return String(monster.imageUrls[0]).trim();
+  }
+  if (monster.imageUrl) {
+    return String(monster.imageUrl).trim();
+  }
+  return '';
+});
+window.normalizeImageUrls = window.normalizeImageUrls || ((monster) => monster);
+window.getMonsterMaxHp = window.getMonsterMaxHp || ((monster) => 0);
+window.formatMonsterSize = window.formatMonsterSize || ((size) => String(size || '').trim());
+window.formatAbilityModifier = window.formatAbilityModifier || ((ability) => {
+  const val = parseInt(ability);
+  return val > 0 ? `+${val}` : `${val}`;
+});
+window.parseFirstNumber = window.parseFirstNumber || ((str) => {
+  const match = String(str || '').match(/\d+/);
+  return match ? parseInt(match[0]) : 0;
+});
+window.parseInteger = window.parseInteger || ((str) => parseInt(String(str || '0').replace(/\D/g, '')) || 0);
+window.isSafeUrl = window.isSafeUrl || ((url) => {
+  if (!url) return false;
+  const trimmed = String(url).trim().toLowerCase();
+  return (
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('blob:')
+  );
+});
+
+window.setBackgroundImage = window.setBackgroundImage || ((element, url) => {
+  if (!element) return;
+  const isSafeUrl = window.isSafeUrl;
+  if (!url || !isSafeUrl(url)) {
+    element.style.backgroundImage = 'none';
+    return;
+  }
+  try {
+    new URL(url, window.location.origin);
+    element.style.backgroundImage = `url("${String(url).replace(/"/g, '\\"')}")`;
+  } catch {
+    element.style.backgroundImage = 'none';
+  }
+});
+
+// Consolidated legacy access object for modules
+// NOTE: Disabled because many of these functions don't exist in script.js scope.
+// The modules export their own functions directly.
+/* Disabled: window.__legacy object
+window.__legacy = {
+  syncInputs,
+  render,
+  logEvent,
+  updateRoundDisplay,
+  recordRoundHistory,
+  updateStartCombatButton,
+  stopAutoClock,
+  fromTotalSeconds,
+  formatDate,
+  formatTime,
+  getMonsterById,
+  getInitials,
+  setBackgroundImage,
+  renderEncounterDraft,
+  formatConditionLabel,
+  normalizeConditions,
+  removeConditionFromMember,
+  changeCalendarMonth,
+  renderCalendarEventsList,
+  renderTimeline,
+  renderWorldMap,
+  handleMapDragStart,
+  handleMapDragMove,
+  handleMapDragEnd,
+  addMapMarker,
+  handleMapPlayerPlacement,
+  closeWorldModal,
+  closeWorldEditModal,
+  closeMonsterBookModal,
+  closeMonsterModal,
+  closeXpMenus,
+  closeConditionPopovers,
+  getMonsterIdFromLocation,
+  setActiveMonster,
+  updateTimeEditingState,
+  generateWorldId,
+  stripHtml,
+  setCalendarViewToCurrent,
+  renderSessionNotes,
+  renderPartyNav,
+  getSelectedMonsterBookIds,
+  setSelectedMonsterBookIds,
+  getActiveMonsterBook,
+  getMonsterPreviewImage,
+  storeMonsterDetailSnapshot,
+  saveState,
+  safeOpenUrl,
+  getPlayerMarkerInitials,
+  renderCombatLog,
+  renderRoundHistory,
+  formatRoundHistoryEntry,
+  renderEncounterPresets,
+  renderQuestBoard,
+  renderDowntimeTracker,
+  renderNpcDirectory,
+  renderFactionRoster,
+  renderRumorBoard,
+  renderSessionNotes,
+  renderCampaignMilestones,
+  renderEncounterPlans,
+  formatQuestDeadline,
+  parseTags,
+  getCurrentDateParts,
+  formatOptionalDate,
+  getCalendarEventById,
+  updateFactionOptions,
+  generateRumorHook,
+  buildTimelineEvents,
+  stripHtml,
+  isSafeUrl,
+  safeOpenUrl,
+  setBackgroundImage,
+  parseInteger,
+  parseFirstNumber,
+  formatAbilityModifier,
+  formatMonsterSize,
+  getMonsterMaxHp,
+  normalizeImageUrls,
+  getMonsterPreviewImage,
+  createMonsterPlaceholder,
+  getXmlText,
+  parseXmlEntries,
+  parseXmlTextList,
+  formatXmlTraitList,
+  parseXmlActionBlocks,
+  formatLegacyActionText,
+  splitCreatureType,
+  parseMonsterXml,
+  normalizeMonsterEntry,
+  normalizeMonsterManual,
+  normalizeBookSource,
+  createMonsterBook,
+  normalizeMonsterBooks,
+  normalizeInlineText,
+  truncateText,
+  renderInitiative,
+  renderProfile,
+  renderMonsterManual,
+  renderMonsterDetail
+};
+*/

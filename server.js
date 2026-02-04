@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const port = process.env.PORT || 3000;
 const publicDir = path.join(__dirname, 'public');
@@ -10,6 +11,56 @@ const dataDir = path.join(__dirname, 'data');
 const stateFile = path.join(dataDir, 'state.json');
 const worldsDir = path.join(dataDir, 'worlds');
 const booksIndexFile = path.join(dataDir, 'books-index.json');
+
+// Logger utility
+/* eslint-disable no-console */
+const logger = {
+  error: (message, error) => {
+    console.error(`[ERROR] ${message}`, error?.message || error || '');
+  },
+  warn: (message) => {
+    console.warn(`[WARN] ${message}`);
+  },
+  info: (message) => {
+    console.log(`[INFO] ${message}`);
+  }
+};
+/* eslint-enable no-console */
+
+// Path safety check: ensure resolved path is within allowed directories
+const isPathSafe = (filePath, baseDir) => {
+  try {
+    const resolvedFile = path.resolve(filePath);
+    const resolvedBase = path.resolve(baseDir);
+    return resolvedFile.startsWith(resolvedBase + path.sep) || resolvedFile === resolvedBase;
+  } catch (error) {
+    return false;
+  }
+};
+
+// Atomic write: write to temp file, then rename
+const atomicWriteJsonFile = async (filePath, payload) => {
+  try {
+    const dir = path.dirname(filePath);
+    ensureDir(dir);
+    const tempFile = path.join(dir, `.${crypto.randomUUID()}.tmp`);
+    await fs.promises.writeFile(tempFile, JSON.stringify(payload, null, 2));
+    try {
+      await fs.promises.rename(tempFile, filePath);
+    } catch (renameError) {
+      // On Windows, sometimes rename fails due to file locks. Try direct write instead.
+      if (renameError.code === 'EPERM') {
+        await fs.promises.writeFile(filePath, JSON.stringify(payload, null, 2));
+        await fs.promises.unlink(tempFile).catch(() => {}); // Clean up temp file if it exists
+      } else {
+        throw renameError;
+      }
+    }
+  } catch (error) {
+    logger.error(`Failed to write ${filePath}:`, error);
+    throw error;
+  }
+};
 
 const mimeTypes = {
   '.html': 'text/html',
@@ -34,16 +85,21 @@ const readJsonFile = async (filePath, fallback = null) => {
     const content = await fs.promises.readFile(filePath, 'utf8');
     return JSON.parse(content);
   } catch (error) {
+    if (error.code !== 'ENOENT') {
+      logger.warn(`Could not read ${filePath}: ${error.message}`);
+    }
     return fallback;
   }
 };
 
 const writeJsonFile = async (filePath, payload) => {
-  await fs.promises.writeFile(filePath, JSON.stringify(payload, null, 2));
+  await atomicWriteJsonFile(filePath, payload);
 };
 
-const sanitizeFolderName = (name) =>
-  name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim() || 'book';
+const sanitizeFolderName = (name) => {
+  // eslint-disable-next-line no-control-regex
+  return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim() || 'book';
+};
 
 const slugify = (value) =>
   value.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'book';
@@ -133,12 +189,43 @@ const decodeBookPath = (value) => {
   return decoded;
 };
 
+// Body reader with size limit
+const readBody = (req, maxBytes = 1048576) => {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    let bytes = 0;
+    const timeout = setTimeout(() => {
+      reject(new Error('Request timeout'));
+    }, 30000);
+
+    req.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > maxBytes) {
+        clearTimeout(timeout);
+        reject(new Error(`Payload exceeds limit of ${maxBytes} bytes`));
+        return;
+      }
+      body += chunk;
+    });
+
+    req.on('end', () => {
+      clearTimeout(timeout);
+      resolve(body);
+    });
+
+    req.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+  });
+};
+
 const server = http.createServer(async (req, res) => {
   if (req.url === '/api/state') {
     if (req.method === 'GET') {
       const state = await readJsonFile(stateFile, null);
       if (!state || typeof state !== 'object') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
         res.end(JSON.stringify({}));
         return;
       }
@@ -175,17 +262,14 @@ const server = http.createServer(async (req, res) => {
             : monsterBooks.map((book) => book.id)
         };
       }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
       res.end(JSON.stringify({ worlds, activeWorldId: state.activeWorldId || null }));
       return;
     }
 
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', (chunk) => {
-        body += chunk;
-      });
-      req.on('end', async () => {
+      try {
+        const body = await readBody(req, 1048576);
         try {
           const parsed = JSON.parse(body);
           const incomingWorlds = parsed?.worlds && typeof parsed.worlds === 'object'
@@ -216,128 +300,139 @@ const server = http.createServer(async (req, res) => {
             activeWorldId: parsed?.activeWorldId || null,
             worldIds
           });
-          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
           res.end(JSON.stringify({ ok: true }));
-        } catch (error) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
+        } catch (parseError) {
+          logger.warn(`Invalid JSON in /api/state POST: ${parseError.message}`);
+          res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
           res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
         }
-      });
+      } catch (error) {
+        logger.error('Error handling /api/state POST:', error);
+        res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
+        res.end(JSON.stringify({ error: error.message || 'Request failed' }));
+      }
       return;
     }
   }
 
   if (req.url === '/api/books' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk;
-    });
-    req.on('end', async () => {
+    (async () => {
       try {
-        const parsed = JSON.parse(body);
-        const book = parsed?.book;
-        if (!book || !book.name) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Missing book data.' }));
-          return;
-        }
-        const bookId = book.id ? String(book.id) : crypto.randomUUID();
-        const index = await loadBooksIndex();
-        const existingEntry = index[bookId];
-        const source = normalizeBookSource(existingEntry?.source || book.source);
-        const folderName =
-          existingEntry?.folderName ||
-          sanitizeFolderName(`${book.name}${book.edition ? ` ${book.edition}` : ''}`);
-        const fileBase = slugify(folderName);
-        const bookDir = path.join(booksDir, source, folderName);
-        const imagesDir = path.join(bookDir, 'images');
-        ensureDir(imagesDir);
+        const body = await readBody(req, 5242880); // 5MB for large book uploads
+        try {
+          const parsed = JSON.parse(body);
+          const book = parsed?.book;
+          if (!book || !book.name) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Missing book data.' }));
+            return;
+          }
+          const bookId = book.id ? String(book.id) : crypto.randomUUID();
+          const index = await loadBooksIndex();
+          const existingEntry = index[bookId];
+          const source = normalizeBookSource(existingEntry?.source || book.source);
+          const folderName =
+            existingEntry?.folderName ||
+            sanitizeFolderName(`${book.name}${book.edition ? ` ${book.edition}` : ''}`);
+          const fileBase = slugify(folderName);
+          const bookDir = path.join(booksDir, source, folderName);
+          const imagesDir = path.join(bookDir, 'images');
+          ensureDir(imagesDir);
 
-        const urlBase = `/books/${source}/${folderName}`;
-        const monsters = Array.isArray(book.monsters) ? book.monsters : [];
-        const updatedMonsters = [];
+          const urlBase = `/books/${source}/${folderName}`;
+          const monsters = Array.isArray(book.monsters) ? book.monsters : [];
+          const updatedMonsters = [];
 
-        for (const monster of monsters) {
-          const imageUrls = Array.isArray(monster.imageUrls)
-            ? monster.imageUrls
-            : monster.imageUrl
-              ? [monster.imageUrl]
-              : [];
-          const localUrls = [];
-          for (let index = 0; index < imageUrls.length; index += 1) {
-            const url = imageUrls[index];
-            if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
-              if (url) {
+          for (const monster of monsters) {
+            const imageUrls = Array.isArray(monster.imageUrls)
+              ? monster.imageUrls
+              : monster.imageUrl
+                ? [monster.imageUrl]
+                : [];
+            const localUrls = [];
+            for (let index = 0; index < imageUrls.length; index += 1) {
+              const url = imageUrls[index];
+              if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+                if (url) {
+                  localUrls.push(url);
+                }
+                continue;
+              }
+              const ext = path.extname(new URL(url).pathname) || '.jpg';
+              const fileName = slugify(
+                `${monster.name || monster.id || 'monster'}-${index + 1}`
+              );
+              const imageName = `${fileName}${ext}`;
+              const destPath = path.join(imagesDir, imageName);
+              try {
+                await downloadToFile(url, destPath);
+                localUrls.push(`${urlBase}/images/${encodeURIComponent(imageName)}`);
+              } catch (error) {
+                logger.warn(`Failed to download image from ${url}:`, error);
                 localUrls.push(url);
               }
-              continue;
             }
-            const ext = path.extname(new URL(url).pathname) || '.jpg';
-            const fileName = slugify(
-              `${monster.name || monster.id || 'monster'}-${index + 1}`
-            );
-            const imageName = `${fileName}${ext}`;
-            const destPath = path.join(imagesDir, imageName);
+            updatedMonsters.push({
+              ...monster,
+              imageUrls: localUrls,
+              imageUrl: localUrls[0] || monster.imageUrl || ''
+            });
+          }
+
+          let coverImage = book.coverImage || '';
+          if (coverImage && /^https?:\/\//i.test(coverImage)) {
+            const ext = path.extname(new URL(coverImage).pathname) || '.jpg';
+            const coverName = `cover${ext}`;
             try {
-              await downloadToFile(url, destPath);
-              localUrls.push(`${urlBase}/images/${encodeURIComponent(imageName)}`);
+              await downloadToFile(coverImage, path.join(bookDir, coverName));
+              coverImage = `${urlBase}/${encodeURIComponent(coverName)}`;
             } catch (error) {
-              localUrls.push(url);
+              logger.warn(`Failed to download cover image from ${coverImage}:`, error);
+              // keep original URL if download fails
             }
           }
-          updatedMonsters.push({
-            ...monster,
-            imageUrls: localUrls,
-            imageUrl: localUrls[0] || monster.imageUrl || ''
-          });
-        }
 
-        let coverImage = book.coverImage || '';
-        if (coverImage && /^https?:\/\//i.test(coverImage)) {
-          const ext = path.extname(new URL(coverImage).pathname) || '.jpg';
-          const coverName = `cover${ext}`;
-          try {
-            await downloadToFile(coverImage, path.join(bookDir, coverName));
-            coverImage = `${urlBase}/${encodeURIComponent(coverName)}`;
-          } catch (error) {
-            // keep original URL if download fails
-          }
+          const payload = {
+            id: bookId,
+            name: book.name,
+            edition: book.edition || '',
+            coverImage,
+            source,
+            monsters: updatedMonsters
+          };
+          const fileName = `${fileBase}.json`;
+          const filePath = path.join(bookDir, fileName);
+          await atomicWriteJsonFile(filePath, payload);
+          index[bookId] = {
+            source,
+            folderName,
+            fileName
+          };
+          await atomicWriteJsonFile(booksIndexFile, index);
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
+          res.end(
+            JSON.stringify({
+              ok: true,
+              message: 'Book saved to library.',
+              book: payload
+            })
+          );
+        } catch (parseError) {
+          logger.warn(`Invalid JSON in /api/books POST: ${parseError.message}`);
+          res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
+          res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
         }
-
-        const payload = {
-          id: bookId,
-          name: book.name,
-          edition: book.edition || '',
-          coverImage,
-          source,
-          monsters: updatedMonsters
-        };
-        const fileName = `${fileBase}.json`;
-        const filePath = path.join(bookDir, fileName);
-        await writeJsonFile(filePath, payload);
-        index[bookId] = {
-          source,
-          folderName,
-          fileName
-        };
-        await writeJsonFile(booksIndexFile, index);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(
-          JSON.stringify({
-            ok: true,
-            message: 'Book saved to library.',
-            book: payload
-          })
-        );
       } catch (error) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Failed to save book.' }));
+        logger.error('Error handling /api/books POST:', error);
+        res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
+        res.end(JSON.stringify({ error: error.message || 'Failed to save book.' }));
       }
-    });
+    })();
     return;
   }
 
-    const url = new URL(req.url, `http://${req.headers.host}`);
+  const url = new URL(req.url, `http://${req.headers.host}`);
   const requestedPath = url.pathname === '/' ? '/index.html' : url.pathname;
 
   // URL paths should always be POSIX-style (forward slashes), even on Windows
@@ -358,21 +453,75 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(publicDir, ...relPath.split('/'));
   }
 
+  // SECURITY: Verify resolved path is within allowed directories
+  const baseDir = isBookAsset ? booksDir : publicDir;
+  if (!isPathSafe(filePath, baseDir)) {
+    logger.warn(`Path traversal attempt blocked: ${requestedPath}`);
+    res.writeHead(403, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
+    res.end('Forbidden');
+    return;
+  }
+
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      if (err.code !== 'ENOENT') {
+        logger.warn(`Error reading ${filePath}: ${err.message}`);
+      }
+      res.writeHead(404, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store, no-cache, must-revalidate' });
       res.end('Not found');
       return;
     }
 
     const ext = path.extname(filePath);
+    const headers = {};
+    const mime = mimeTypes[ext] || 'application/octet-stream';
+
+    // Cache policy: HTML should not be cached aggressively; static assets can be cached
     if (ext === '.html') {
+      headers['Content-Type'] = 'text/html';
+      headers['Cache-Control'] = 'no-cache';
       const rendered = renderIncludes(data.toString(), publicDir);
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      // Support gzip for text/html
+      if (/gzip/.test(req.headers['accept-encoding'] || '')) {
+        zlib.gzip(rendered, (gzipErr, gzipped) => {
+          if (gzipErr) {
+            res.writeHead(200, headers);
+            res.end(rendered);
+            return;
+          }
+          headers['Content-Encoding'] = 'gzip';
+          headers['Vary'] = 'Accept-Encoding';
+          res.writeHead(200, headers);
+          res.end(gzipped);
+        });
+        return;
+      }
+      res.writeHead(200, headers);
       res.end(rendered);
       return;
     }
-    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+
+    headers['Content-Type'] = mime;
+    // Cache static assets for a day
+    headers['Cache-Control'] = 'public, max-age=86400';
+
+    const isText = ['.css', '.js', '.svg', '.json', '.txt'].includes(ext.toLowerCase());
+    if (isText && /gzip/.test(req.headers['accept-encoding'] || '')) {
+      zlib.gzip(data, (gzipErr, gzipped) => {
+        if (gzipErr) {
+          res.writeHead(200, headers);
+          res.end(data);
+          return;
+        }
+        headers['Content-Encoding'] = 'gzip';
+        headers['Vary'] = 'Accept-Encoding';
+        res.writeHead(200, headers);
+        res.end(gzipped);
+      });
+      return;
+    }
+
+    res.writeHead(200, headers);
     res.end(data);
   });
 });
@@ -380,17 +529,43 @@ const server = http.createServer(async (req, res) => {
 const renderIncludes = (content, baseDir) => {
   const includeRegex = /@@include\(['"](.+?)['"]\)/g;
   let result = content;
-  let match = includeRegex.exec(content);
-  while (match) {
-    const includePath = path.join(baseDir, match[1]);
-    const includeContent = fs.readFileSync(includePath, 'utf8');
-    const renderedInclude = renderIncludes(includeContent, baseDir);
-    result = result.replace(match[0], renderedInclude);
-    match = includeRegex.exec(content);
+  let match;
+  const maxDepth = 10;
+  let depth = 0;
+
+  try {
+    while ((match = includeRegex.exec(content)) && depth < maxDepth) {
+      const includePath = path.join(baseDir, match[1]);
+      
+      // Safety: ensure included file is within baseDir
+      if (!isPathSafe(includePath, baseDir)) {
+        logger.warn(`Attempted to include file outside base directory: ${match[1]}`);
+        result = result.replace(match[0], '');
+        continue;
+      }
+
+      try {
+        const includeContent = fs.readFileSync(includePath, 'utf8');
+        const renderedInclude = renderIncludes(includeContent, baseDir);
+        result = result.replace(match[0], renderedInclude);
+        depth += 1;
+      } catch (error) {
+        logger.warn(`Include file not found or unreadable: ${includePath}`);
+        result = result.replace(match[0], '');
+      }
+    }
+    
+    if (depth >= maxDepth) {
+      logger.warn(`Include nesting exceeded max depth (${maxDepth})`);
+    }
+  } catch (error) {
+    logger.error('Error rendering includes:', error);
   }
+
   return result;
 };
 
 server.listen(port, () => {
+  // eslint-disable-next-line no-console
   console.log(`Server running at http://localhost:${port}`);
 });

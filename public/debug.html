@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Debug - API Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .log {
+      background: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-left: 4px solid #666;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .error {
+      border-left-color: #ff6b6b;
+    }
+    .success {
+      border-left-color: #51cf66;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Debug - API Test</h1>
+  <p style="background: #ffffcc; padding: 10px; border: 1px solid #cccc00; margin-bottom: 20px;">
+    <strong>Note:</strong> If accessing from a different machine, use your computer's IP address instead of localhost.
+    E.g., http://192.168.x.x:3000/debug.html
+  </p>
+  <button onclick="testFetch()">Test /api/state Fetch</button>
+  <button onclick="clearLog()">Clear Log</button>
+  
+  <div id="log"></div>
+
+  <script>
+    function log(message, isError = false) {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log ' + (isError ? 'error' : 'success');
+      const timestamp = new Date().toLocaleTimeString();
+      entry.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    async function testFetch() {
+      log('Testing fetch to /api/state...');
+      try {
+        const response = await fetch('/api/state');
+        log(`Fetch response status: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          log(`ERROR: Response not OK (${response.status})`, true);
+          return;
+        }
+        
+        const data = await response.json();
+        log(`Response JSON: ${JSON.stringify(data)}`);
+        
+        if (data.worlds) {
+          const worldCount = Object.keys(data.worlds).length;
+          log(`SUCCESS: Got ${worldCount} world(s)`, false);
+          log(`Active World ID: ${data.activeWorldId || '(none)'}`, false);
+          
+          for (const [id, world] of Object.entries(data.worlds)) {
+            log(`  - World: ${world.name} (ID: ${id})`);
+          }
+        } else {
+          log('ERROR: Response missing "worlds" field', true);
+        }
+      } catch (error) {
+        log(`ERROR: Fetch failed: ${error.message}`, true);
+        log(`Error: ${error.toString()}`, true);
+      }
+    }
+
+    // Test on load
+    window.addEventListener('load', () => {
+      log('Page loaded, ready to test');
+      testFetch();
+    });
+  </script>
+</body>
+</html>
